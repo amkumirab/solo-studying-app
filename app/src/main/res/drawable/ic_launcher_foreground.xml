@@ -1,0 +1,39 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer Neon-Blue Shield frame -->
+    <path
+        android:fillColor="#00D2FF"
+        android:pathData="M54,16 L84,28 L84,58 C84,75.5 71.5,91.2 54,96 C36.5,91.2 24,75.5 24,58 L24,28 Z" />
+
+    <!-- Inner Deep Fantasy Core Shield -->
+    <path
+        android:fillColor="#0D0D12"
+        android:pathData="M54,21 L80,31 L80,58 C80,72.9 69.3,86.3 54,90.4 C38.7,86.3 28,72.9 28,58 L28,31 Z" />
+
+    <!-- Golden Sword of Focus -->
+    <!-- Blade -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M52.5,28 L55.5,28 L55.5,62 L52.5,62 Z" />
+    <!-- Crossguard -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M46,38 L62,38 L62,41 L46,41 Z" />
+    <!-- Pommel/Handle -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M51,62 L57,62 L55,71 L53,71 Z" />
+
+    <!-- High-level gaming RPG stars -->
+    <path
+        android:fillColor="#00D2FF"
+        android:pathData="M38,48 L40,51 L44,51 L41,53 L42,57 L38,55 L34,57 L35,53 L32,51 L36,51 Z" />
+    <path
+        android:fillColor="#00D2FF"
+        android:pathData="M70,48 L72,51 L76,51 L73,53 L74,57 L70,55 L66,57 L67,53 L64,51 L68,51 Z" />
+
+</vector>

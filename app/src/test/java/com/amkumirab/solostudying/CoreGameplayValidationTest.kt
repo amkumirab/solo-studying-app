@@ -150,7 +150,11 @@ class CoreGameplayValidationTest {
 
             // Start battle and complete active boss
             battleViewModel.selectAndStartBattle(boss)
-            
+
+            waitForCondition {
+                if (battleViewModel.isBattleActive) true else null
+            }
+
             // Simulating complete session directly
             // Medium Boss gives 150 XP, 80 Gold.
             // Starting at 50 XP, Level 1.
@@ -189,7 +193,11 @@ class CoreGameplayValidationTest {
 
             // Select and start battle
             battleViewModel.selectAndStartBattle(boss)
-            
+
+            waitForCondition {
+                if (battleViewModel.isBattleActive) true else null
+            }
+
             // Simulate partial focus study: 15 minutes (900 seconds)
             battleViewModel.simulateStudySeconds(15 * 60)
 

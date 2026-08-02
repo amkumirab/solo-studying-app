@@ -166,6 +166,7 @@ class BattleViewModel(
             isBattlePaused = false
             saveFocusSessionState()
             startTimer()
+            RpgSoundManager.playBeginBattleSound()
         }
     }
 
@@ -183,6 +184,7 @@ class BattleViewModel(
             isBattlePaused = false
             saveFocusSessionState()
             startTimer()
+            RpgSoundManager.playBeginBattleSound()
         }
     }
 

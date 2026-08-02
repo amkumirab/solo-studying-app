@@ -1,134 +1,119 @@
 package com.amkumirab.solostudying.sound
 
+import android.content.Context
 import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioTrack
+import android.media.SoundPool
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.PI
-import kotlin.math.sin
+import androidx.annotation.RawRes
+import com.amkumirab.solostudying.R
+import java.util.EnumMap
+import java.util.concurrent.ConcurrentHashMap
 
-/** Generates short interface sounds without bundled audio files. */
+/** Plays short, low-latency feedback sounds for study and progression events. */
 object RpgSoundManager {
     private const val TAG = "RpgSoundManager"
-    private const val SAMPLE_RATE = 22_050
-    private val playbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private const val MAX_STREAMS = 4
 
-    fun playClickSound() = play(Tone(1_300f, 55, 0.16f), Tone(750f, 35, 0.10f))
+    private val soundIds = EnumMap<Effect, Int>(Effect::class.java)
+    private val loadedSoundIds = ConcurrentHashMap.newKeySet<Int>()
 
-    fun playBeginBattleSound() =
-        play(Tone(330f, 90), Tone(494f, 90), Tone(659f, 150))
+    @Volatile
+    private var soundPool: SoundPool? = null
 
-    fun playPauseStudySound() = play(Tone(700f, 80), Tone(420f, 110))
+    /** Preloads every sound once using the application context. */
+    @Synchronized
+    fun initialize(context: Context) {
+        if (soundPool != null) return
 
-    fun playResumeStudySound() = play(Tone(420f, 80), Tone(820f, 120))
-
-    fun playEndSessionSound() = play(Tone(523f, 90), Tone(659f, 90), Tone(784f, 160))
-
-    fun playBossDefeatedSound() = playConquerSound()
-
-    fun playConquerSound() =
-        play(Tone(330f, 100), Tone(494f, 100), Tone(659f, 120), Tone(831f, 220))
-
-    fun playGoldSpendSound() = play(Tone(880f, 65), Tone(660f, 65), Tone(440f, 100))
-
-    fun playShopPurchaseSound() = play(Tone(660f, 70), Tone(990f, 130))
-
-    fun playSkillUnlockSound() =
-        play(Tone(392f, 70), Tone(523f, 70), Tone(659f, 70), Tone(988f, 180))
-
-    fun playLevelUpSound() =
-        play(
-            Tone(262f, 65),
-            Tone(330f, 65),
-            Tone(392f, 65),
-            Tone(523f, 65),
-            Tone(659f, 65),
-            Tone(784f, 65),
-            Tone(1_047f, 220),
-        )
-
-    fun playWarningAlarmSound() =
-        play(Tone(580f, 120, 0.24f), Tone(280f, 120, 0.24f), Tone(580f, 160, 0.24f))
-
-    private fun play(vararg tones: Tone) {
-        playbackScope.launch {
-            val samples = synthesize(tones)
-            val bufferSize = maxOf(
-                AudioTrack.getMinBufferSize(
-                    SAMPLE_RATE,
-                    AudioFormat.CHANNEL_OUT_MONO,
-                    AudioFormat.ENCODING_PCM_16BIT,
-                ),
-                samples.size * Short.SIZE_BYTES,
-            )
-
-            val audioTrack = try {
-                AudioTrack.Builder()
-                    .setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build(),
-                    )
-                    .setAudioFormat(
-                        AudioFormat.Builder()
-                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                            .setSampleRate(SAMPLE_RATE)
-                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                            .build(),
-                    )
-                    .setBufferSizeInBytes(bufferSize)
-                    .setTransferMode(AudioTrack.MODE_STATIC)
+        val pool = SoundPool.Builder()
+            .setMaxStreams(MAX_STREAMS)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
-            } catch (error: IllegalArgumentException) {
-                Log.w(TAG, "Unable to create an audio track", error)
-                return@launch
-            }
+            )
+            .build()
 
-            try {
-                audioTrack.write(samples, 0, samples.size)
-                audioTrack.play()
-                delay(tones.sumOf { it.durationMs }.toLong() + 80L)
-            } catch (error: IllegalStateException) {
-                Log.w(TAG, "Unable to play interface sound", error)
-            } finally {
-                runCatching { audioTrack.stop() }
-                audioTrack.release()
+        pool.setOnLoadCompleteListener { _, sampleId, status ->
+            if (status == 0) {
+                loadedSoundIds.add(sampleId)
+            } else {
+                Log.w(TAG, "Unable to load sound sample $sampleId (status $status)")
             }
+        }
+
+        soundPool = pool
+        Effect.entries.forEach { effect ->
+            soundIds[effect] = pool.load(context.applicationContext, effect.resourceId, 1)
         }
     }
 
-    private fun synthesize(tones: Array<out Tone>): ShortArray {
-        val sampleCount = tones.sumOf { tone ->
-            (SAMPLE_RATE * tone.durationMs / 1_000f).toInt()
-        }
-        val samples = ShortArray(sampleCount)
-        var offset = 0
+    fun playClickSound() = play(Effect.CLICK)
 
-        tones.forEach { tone ->
-            val toneSamples = (SAMPLE_RATE * tone.durationMs / 1_000f).toInt()
-            for (index in 0 until toneSamples) {
-                val progress = index.toFloat() / toneSamples.coerceAtLeast(1)
-                val attack = (progress / 0.08f).coerceAtMost(1f)
-                val envelope = attack * (1f - progress)
-                val time = index.toDouble() / SAMPLE_RATE
-                val wave = sin(2.0 * PI * tone.frequencyHz.toDouble() * time)
-                samples[offset + index] =
-                    (wave * Short.MAX_VALUE * tone.volume * envelope).toInt().toShort()
-            }
-            offset += toneSamples
-        }
-        return samples
+    fun playBeginBattleSound() = play(Effect.BATTLE_START)
+
+    fun playPauseStudySound() = play(Effect.STUDY_PAUSE)
+
+    fun playResumeStudySound() = play(Effect.STUDY_RESUME)
+
+    fun playEndSessionSound() = play(Effect.SESSION_COMPLETE)
+
+    fun playBossDefeatedSound() = play(Effect.BOSS_DEFEATED)
+
+    fun playConquerSound() = play(Effect.BOSS_DEFEATED)
+
+    fun playGoldSpendSound() = play(Effect.GOLD_SPEND)
+
+    fun playShopPurchaseSound() = play(Effect.SHOP_PURCHASE)
+
+    fun playSkillUnlockSound() = play(Effect.SKILL_UNLOCK)
+
+    fun playLevelUpSound() = play(Effect.LEVEL_UP)
+
+    fun playWarningAlarmSound() = play(Effect.WARNING)
+
+    @Synchronized
+    fun release() {
+        soundPool?.release()
+        soundPool = null
+        soundIds.clear()
+        loadedSoundIds.clear()
     }
 
-    private data class Tone(
-        val frequencyHz: Float,
-        val durationMs: Int,
-        val volume: Float = 0.20f,
-    )
+    private fun play(effect: Effect) {
+        val pool = soundPool ?: return
+        val soundId = soundIds[effect] ?: return
+        if (soundId !in loadedSoundIds) return
+
+        val streamId = pool.play(
+            soundId,
+            effect.volume,
+            effect.volume,
+            1,
+            0,
+            effect.playbackRate,
+        )
+        if (streamId == 0) {
+            Log.d(TAG, "No stream was available for ${effect.name}")
+        }
+    }
+
+    private enum class Effect(
+        @RawRes val resourceId: Int,
+        val volume: Float = 0.72f,
+        val playbackRate: Float = 1f,
+    ) {
+        CLICK(R.raw.system_click, volume = 0.48f),
+        BATTLE_START(R.raw.battle_start, volume = 0.82f),
+        STUDY_PAUSE(R.raw.study_pause, volume = 0.62f),
+        STUDY_RESUME(R.raw.study_resume, volume = 0.68f),
+        SESSION_COMPLETE(R.raw.session_complete, volume = 0.78f),
+        BOSS_DEFEATED(R.raw.boss_defeated, volume = 0.88f),
+        GOLD_SPEND(R.raw.gold_spend, volume = 0.58f),
+        SHOP_PURCHASE(R.raw.shop_purchase, volume = 0.66f),
+        SKILL_UNLOCK(R.raw.skill_unlock, volume = 0.82f),
+        LEVEL_UP(R.raw.level_up, volume = 0.9f),
+        WARNING(R.raw.system_warning, volume = 0.76f),
+    }
 }

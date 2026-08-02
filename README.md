@@ -17,7 +17,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - Custom real-life rewards purchased with earned gold
 - Streaks, level progression, and recovery challenges
 - Local reminders based on schedule and current progress
-- Procedurally generated interface sounds
+- Low-latency sci-fi interface sounds for study and progression feedback
 - Local persistence with Room
 
 ## Tech stack
@@ -29,6 +29,10 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - MVVM with feature-specific view models
 - AlarmManager and BroadcastReceiver for reminders
 - Robolectric and JUnit for local tests
+
+The bundled interface sounds come from Kenney's CC0 Interface Sounds pack.
+See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the source, license,
+and file mapping.
 
 ## Architecture
 

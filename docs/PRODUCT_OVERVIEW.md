@@ -38,8 +38,10 @@ must not affect stored study progress.
 
 ### Audio
 
-Short feedback sounds are synthesized on-device with `AudioTrack`. The app does
-not bundle third-party music or sound effects.
+Short feedback sounds are preloaded and played with `SoundPool` to keep button,
+session, warning, and progression feedback responsive. The bundled OGG files are
+CC0 assets documented in `THIRD_PARTY_NOTICES.md`; the app does not include
+audio extracted from films, television, anime, or games.
 
 ## Design boundaries
 
@@ -57,4 +59,3 @@ not bundle third-party music or sound effects.
 - Add JSON export and restore with schema versioning.
 - Add accessibility checks and end-to-end UI tests.
 - Add a migration test for every future database version.
-

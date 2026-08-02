@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.notification.NotificationHelper
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.ui.screens.MainAppScreen
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
@@ -22,6 +23,7 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+    RpgSoundManager.initialize(applicationContext)
 
     if (
       Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

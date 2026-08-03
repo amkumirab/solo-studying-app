@@ -41,7 +41,9 @@ must not affect stored study progress.
 Short feedback sounds are preloaded and played with `SoundPool` to keep button,
 session, warning, and progression feedback responsive. The bundled OGG files are
 CC0 assets documented in `THIRD_PARTY_NOTICES.md`; the app does not include
-audio extracted from films, television, anime, or games.
+audio extracted from films, television, anime, or games. Players can disable
+interface audio or set a master volume; both preferences persist locally across
+app restarts.
 
 ## Design boundaries
 

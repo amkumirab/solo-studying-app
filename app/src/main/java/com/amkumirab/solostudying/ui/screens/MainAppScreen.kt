@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -40,6 +42,7 @@ import androidx.compose.ui.window.Dialog
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.notification.NotificationReceiver
 import com.amkumirab.solostudying.sound.RpgSoundManager
+import com.amkumirab.solostudying.sound.SoundSettings
 import com.amkumirab.solostudying.ui.theme.*
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
 import kotlinx.coroutines.delay
@@ -62,6 +65,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     val balances by viewModel.balances.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
     val skills by viewModel.skills.collectAsState()
+    val soundSettings by RpgSoundManager.settings.collectAsState()
 
     var currentTab by remember { mutableStateOf(Tab.Dungeons) }
     var showCreateBossDialog by remember { mutableStateOf(false) }
@@ -204,6 +208,13 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onDeleteSkill = { skill -> viewModel.deleteSkill(skill) },
                         onUpdateSchedule = { days, mins, flex, weekdayMins -> viewModel.updateScheduleWithWeekdays(days, mins, flex, weekdayMins) },
                         onTriggerSimulatedNotification = { action -> viewModel.simulateCompanionNotification(action) },
+                        soundSettings = soundSettings,
+                        onSoundEnabledChange = { enabled ->
+                            RpgSoundManager.setSoundEnabled(enabled)
+                            if (enabled) RpgSoundManager.playClickSound()
+                        },
+                        onSoundVolumeChange = RpgSoundManager::setVolume,
+                        onPreviewSound = RpgSoundManager::previewSound,
                         onReplayTutorial = { viewModel.tutorialViewModel.replayTutorial() }
                     )
                 }
@@ -2217,6 +2228,10 @@ fun StatsTab(
     onDeleteSkill: (SkillEntity) -> Unit,
     onUpdateSchedule: (String, Int, String, String) -> Unit,
     onTriggerSimulatedNotification: (String) -> Unit,
+    soundSettings: SoundSettings,
+    onSoundEnabledChange: (Boolean) -> Unit,
+    onSoundVolumeChange: (Float) -> Unit,
+    onPreviewSound: () -> Unit,
     onReplayTutorial: () -> Unit
 ) {
     val nonNullProfile = profile ?: UserProfileEntity()
@@ -2743,8 +2758,93 @@ fun StatsTab(
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = if (soundSettings.enabled) {
+                                    Icons.AutoMirrored.Filled.VolumeUp
+                                } else {
+                                    Icons.AutoMirrored.Filled.VolumeOff
+                                },
+                                contentDescription = null,
+                                tint = if (soundSettings.enabled) NeonBlueAccent else TextMuted,
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "INTERFACE SOUND",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        color = TextWhite,
+                                        fontWeight = FontWeight.Black,
+                                    ),
+                                )
+                                Text(
+                                    text = "Battle, reward, warning, and navigation feedback",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+                                )
+                            }
+                            Switch(
+                                checked = soundSettings.enabled,
+                                onCheckedChange = onSoundEnabledChange,
+                                modifier = Modifier.testTag("sound_enabled_switch"),
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "MASTER VOLUME",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = TextMuted,
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                            )
+                            Text(
+                                text = "${(soundSettings.volume * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = NeonBlueAccent,
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                            )
+                        }
+
+                        Slider(
+                            value = soundSettings.volume,
+                            onValueChange = onSoundVolumeChange,
+                            enabled = soundSettings.enabled,
+                            valueRange = 0f..1f,
+                            steps = 9,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("sound_volume_slider"),
+                        )
+
+                        OutlinedButton(
+                            onClick = onPreviewSound,
+                            enabled = soundSettings.enabled && soundSettings.volume > 0f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("sound_preview_button"),
+                            border = BorderStroke(1.dp, NeonBlueAccent.copy(alpha = 0.5f)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("PREVIEW SYSTEM SOUND")
+                        }
+
+                        HorizontalDivider(color = DarkCardBorder.copy(alpha = 0.6f))
+
                         Text(
                             text = "Want to re-experience the immersive Hunter Awakening Ritual? You can replay the introductory covenant setup at any time.",
                             style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),

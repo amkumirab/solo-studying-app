@@ -27,6 +27,10 @@ import java.util.*
 @Config(sdk = [36])
 class CoreGameplayValidationTest {
 
+    private companion object {
+        const val BATTLE_PREFERENCES = "solo_studying_battle_prefs"
+    }
+
     private lateinit var db: SoloStudyingDatabase
     private lateinit var repository: SoloStudyingRepository
     private lateinit var context: Context
@@ -51,24 +55,40 @@ class CoreGameplayValidationTest {
     fun setup() {
         runBlocking {
             context = ApplicationProvider.getApplicationContext()
+            context.getSharedPreferences(BATTLE_PREFERENCES, Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .commit()
             db = Room.inMemoryDatabaseBuilder(context, SoloStudyingDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
             repository = SoloStudyingRepository(db.soloStudyingDao())
-            statusViewModel = StatusViewModel(repository, context)
-            battleViewModel = BattleViewModel(repository, context)
 
-            // Initialize default profile and wait for it
+            // Initialize the shared profile before ViewModels start their asynchronous setup.
             repository.insertOrUpdateProfile(UserProfileEntity())
             waitForCondition {
                 repository.getProfileSync()
             }
+
+            statusViewModel = StatusViewModel(repository, context)
+            battleViewModel = BattleViewModel(repository, context)
         }
     }
 
     @After
     fun tearDown() {
-        db.close()
+        if (::battleViewModel.isInitialized) {
+            battleViewModel.pauseBattle()
+        }
+        if (::context.isInitialized) {
+            context.getSharedPreferences(BATTLE_PREFERENCES, Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .commit()
+        }
+        if (::db.isInitialized) {
+            db.close()
+        }
     }
 
     @Test

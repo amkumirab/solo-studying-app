@@ -8,6 +8,9 @@ import androidx.annotation.RawRes
 import com.amkumirab.solostudying.R
 import java.util.EnumMap
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /** Plays short, low-latency feedback sounds for study and progression events. */
 object RpgSoundManager {
@@ -16,13 +19,21 @@ object RpgSoundManager {
 
     private val soundIds = EnumMap<Effect, Int>(Effect::class.java)
     private val loadedSoundIds = ConcurrentHashMap.newKeySet<Int>()
+    private val mutableSettings = MutableStateFlow(SoundSettings())
+
+    val settings: StateFlow<SoundSettings> = mutableSettings.asStateFlow()
 
     @Volatile
     private var soundPool: SoundPool? = null
+    private var settingsStore: SoundSettingsStore? = null
 
     /** Preloads every sound once using the application context. */
     @Synchronized
     fun initialize(context: Context) {
+        val store = SoundSettingsStore(context.applicationContext)
+        settingsStore = store
+        mutableSettings.value = store.read()
+
         if (soundPool != null) return
 
         val pool = SoundPool.Builder()
@@ -73,6 +84,19 @@ object RpgSoundManager {
 
     fun playWarningAlarmSound() = play(Effect.WARNING)
 
+    fun previewSound() = play(Effect.SESSION_COMPLETE)
+
+    @Synchronized
+    fun setSoundEnabled(enabled: Boolean) {
+        updateSettings(mutableSettings.value.copy(enabled = enabled))
+    }
+
+    @Synchronized
+    fun setVolume(volume: Float) {
+        val normalizedVolume = if (volume.isFinite()) volume.coerceIn(0f, 1f) else 1f
+        updateSettings(mutableSettings.value.copy(volume = normalizedVolume))
+    }
+
     @Synchronized
     fun release() {
         soundPool?.release()
@@ -82,14 +106,18 @@ object RpgSoundManager {
     }
 
     private fun play(effect: Effect) {
+        val currentSettings = mutableSettings.value
+        if (!currentSettings.enabled || currentSettings.volume <= 0f) return
+
         val pool = soundPool ?: return
         val soundId = soundIds[effect] ?: return
         if (soundId !in loadedSoundIds) return
 
+        val playbackVolume = effect.volume * currentSettings.volume
         val streamId = pool.play(
             soundId,
-            effect.volume,
-            effect.volume,
+            playbackVolume,
+            playbackVolume,
             1,
             0,
             effect.playbackRate,
@@ -99,8 +127,13 @@ object RpgSoundManager {
         }
     }
 
+    private fun updateSettings(settings: SoundSettings) {
+        mutableSettings.value = settings
+        settingsStore?.write(settings)
+    }
+
     private enum class Effect(
-        @RawRes val resourceId: Int,
+        @param:RawRes val resourceId: Int,
         val volume: Float = 0.72f,
         val playbackRate: Float = 1f,
     ) {

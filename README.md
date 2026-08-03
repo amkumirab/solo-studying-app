@@ -18,6 +18,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - Streaks, level progression, and recovery challenges
 - Local reminders based on schedule and current progress
 - Low-latency sci-fi interface sounds for study and progression feedback
+- Persistent sound enable and volume controls
 - Local persistence with Room
 
 ## Tech stack

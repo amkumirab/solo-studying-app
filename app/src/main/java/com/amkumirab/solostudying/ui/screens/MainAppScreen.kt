@@ -31,6 +31,13 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -565,28 +572,41 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
     NavigationBar(
         containerColor = DarkFantasySurface,
         tonalElevation = 8.dp,
-        modifier = Modifier.drawBehind {
-            drawLine(
-                color = NeonBlueAccent.copy(alpha = 0.25f),
-                start = Offset(0f, 0f),
-                end = Offset(size.width, 0f),
-                strokeWidth = 1.dp.toPx()
-            )
-        }
+        modifier = Modifier
+            .drawBehind {
+                drawLine(
+                    color = NeonBlueAccent.copy(alpha = 0.25f),
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, 0f),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
+            .semantics { isTraversalGroup = true }
     ) {
-        Tab.values().forEach { tab ->
+        Tab.values().forEachIndexed { index, tab ->
             val isSelected = currentTab == tab
+            val accessibilityLabel = if (tab == Tab.Battle && isBattleActive) {
+                "${tab.title}, study session active"
+            } else {
+                tab.title
+            }
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
                     RpgSoundManager.playClickSound()
                     onTabSelected(tab)
                 },
+                modifier = Modifier
+                    .testTag("bottom_nav_${tab.name.lowercase()}")
+                    .semantics {
+                        contentDescription = accessibilityLabel
+                        traversalIndex = index.toFloat()
+                    },
                 icon = {
                     Box {
                         Icon(
                             imageVector = tab.icon,
-                            contentDescription = tab.title,
+                            contentDescription = null,
                             tint = if (isSelected) NeonBlueAccent else TextMuted
                         )
                         if (tab == Tab.Battle && isBattleActive) {
@@ -2739,140 +2759,13 @@ fun StatsTab(
 
         // Replay Tutorial / System Controls Section
         item {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "⚙️ SYSTEM CONTROLS",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = NeonBlueAccent,
-                        letterSpacing = 1.sp
-                    ),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                    border = BorderStroke(1.dp, DarkCardBorder),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = if (soundSettings.enabled) {
-                                    Icons.AutoMirrored.Filled.VolumeUp
-                                } else {
-                                    Icons.AutoMirrored.Filled.VolumeOff
-                                },
-                                contentDescription = null,
-                                tint = if (soundSettings.enabled) NeonBlueAccent else TextMuted,
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "INTERFACE SOUND",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        color = TextWhite,
-                                        fontWeight = FontWeight.Black,
-                                    ),
-                                )
-                                Text(
-                                    text = "Battle, reward, warning, and navigation feedback",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
-                                )
-                            }
-                            Switch(
-                                checked = soundSettings.enabled,
-                                onCheckedChange = onSoundEnabledChange,
-                                modifier = Modifier.testTag("sound_enabled_switch"),
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                text = "MASTER VOLUME",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = TextMuted,
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                            )
-                            Text(
-                                text = "${(soundSettings.volume * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = NeonBlueAccent,
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                            )
-                        }
-
-                        Slider(
-                            value = soundSettings.volume,
-                            onValueChange = onSoundVolumeChange,
-                            enabled = soundSettings.enabled,
-                            valueRange = 0f..1f,
-                            steps = 9,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("sound_volume_slider"),
-                        )
-
-                        OutlinedButton(
-                            onClick = onPreviewSound,
-                            enabled = soundSettings.enabled && soundSettings.volume > 0f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("sound_preview_button"),
-                            border = BorderStroke(1.dp, NeonBlueAccent.copy(alpha = 0.5f)),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("PREVIEW SYSTEM SOUND")
-                        }
-
-                        HorizontalDivider(color = DarkCardBorder.copy(alpha = 0.6f))
-
-                        Text(
-                            text = "Want to re-experience the immersive Hunter Awakening Ritual? You can replay the introductory covenant setup at any time.",
-                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                RpgSoundManager.playClickSound()
-                                onReplayTutorial()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B1B22)),
-                            border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth().testTag("replay_tutorial_button")
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(imageVector = Icons.Default.Refresh, contentDescription = null, tint = RpgGold, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("REPLAY AWAKENING CEREMONY", color = RpgGold, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black))
-                            }
-                        }
-                    }
-                }
-            }
+            SystemControlsCard(
+                soundSettings = soundSettings,
+                onSoundEnabledChange = onSoundEnabledChange,
+                onSoundVolumeChange = onSoundVolumeChange,
+                onPreviewSound = onPreviewSound,
+                onReplayTutorial = onReplayTutorial,
+            )
         }
 
         // System 6: SKILL ACADEMY INSTRUCTION SECTION
@@ -3436,6 +3329,195 @@ fun StatsTab(
                             Text("SEAL TREATY", color = BlackFantasyBackground, fontWeight = FontWeight.Black)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SystemControlsCard(
+    soundSettings: SoundSettings,
+    onSoundEnabledChange: (Boolean) -> Unit,
+    onSoundVolumeChange: (Float) -> Unit,
+    onPreviewSound: () -> Unit,
+    onReplayTutorial: () -> Unit,
+) {
+    val volumePercent = (soundSettings.volume.coerceIn(0f, 1f) * 100).toInt()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { isTraversalGroup = true },
+    ) {
+        Text(
+            text = "⚙️ SYSTEM CONTROLS",
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = NeonBlueAccent,
+                letterSpacing = 1.sp,
+            ),
+            modifier = Modifier
+                .padding(bottom = 8.dp)
+                .semantics { heading() },
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
+            border = BorderStroke(1.dp, DarkCardBorder),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .semantics { isTraversalGroup = true },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = if (soundSettings.enabled) {
+                            Icons.AutoMirrored.Filled.VolumeUp
+                        } else {
+                            Icons.AutoMirrored.Filled.VolumeOff
+                        },
+                        contentDescription = null,
+                        tint = if (soundSettings.enabled) NeonBlueAccent else TextMuted,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "INTERFACE SOUND",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                color = TextWhite,
+                                fontWeight = FontWeight.Black,
+                            ),
+                        )
+                        Text(
+                            text = "Battle, reward, warning, and navigation feedback",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+                        )
+                    }
+                    Switch(
+                        checked = soundSettings.enabled,
+                        onCheckedChange = onSoundEnabledChange,
+                        modifier = Modifier
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .testTag("sound_enabled_switch")
+                            .semantics {
+                                contentDescription = "Interface sound"
+                                stateDescription = if (soundSettings.enabled) "On" else "Off"
+                                traversalIndex = 0f
+                            },
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "MASTER VOLUME",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = TextMuted,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                    Text(
+                        text = "$volumePercent%",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = NeonBlueAccent,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("sound_volume_slider")
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = "Master volume"
+                            stateDescription = "$volumePercent percent"
+                            traversalIndex = 1f
+                            if (!soundSettings.enabled) disabled()
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Slider(
+                        value = soundSettings.volume,
+                        onValueChange = onSoundVolumeChange,
+                        enabled = soundSettings.enabled,
+                        valueRange = 0f..1f,
+                        steps = 9,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onPreviewSound,
+                    enabled = soundSettings.enabled && soundSettings.volume > 0f,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("sound_preview_button")
+                        .semantics {
+                            contentDescription = "Preview interface sound"
+                            traversalIndex = 2f
+                        },
+                    border = BorderStroke(1.dp, NeonBlueAccent.copy(alpha = 0.5f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("PREVIEW SYSTEM SOUND")
+                }
+
+                HorizontalDivider(color = DarkCardBorder.copy(alpha = 0.6f))
+
+                Text(
+                    text = "Want to re-experience the immersive Hunter Awakening Ritual? You can replay the introductory covenant setup at any time.",
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        RpgSoundManager.playClickSound()
+                        onReplayTutorial()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B1B22)),
+                    border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("replay_tutorial_button")
+                        .semantics {
+                            contentDescription = "Replay onboarding tutorial"
+                            traversalIndex = 3f
+                        },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = RpgGold,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "REPLAY AWAKENING CEREMONY",
+                        color = RpgGold,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black),
+                    )
                 }
             }
         }

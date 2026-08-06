@@ -8,6 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.focus.FocusSessionSnapshot
+import com.amkumirab.solostudying.focus.FocusSessionStore
+import com.amkumirab.solostudying.focus.reconcileFocusSession
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -21,10 +24,10 @@ import java.util.*
 
 class BattleViewModel(
     private val repository: SoloStudyingRepository,
-    private val context: Context
+    private val context: Context,
+    private val focusSessionStore: FocusSessionStore = FocusSessionStore(context),
+    private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
-
-    private val prefs = context.getSharedPreferences("solo_studying_battle_prefs", Context.MODE_PRIVATE)
 
     // --- Active Battle States ---
     var activeBoss by mutableStateOf<BossEntity?>(null)
@@ -50,6 +53,7 @@ class BattleViewModel(
     private var initialBossTimeSpent: Long = 0
     private var lastTickTimeMillis: Long = 0
     private var timerJob: Job? = null
+    private var isCompletingSession = false
 
     // For level ups or streak updates that need to be triggered from BattleViewModel
     var showStreakResetToast by mutableStateOf<String?>(null)
@@ -61,81 +65,58 @@ class BattleViewModel(
     }
 
     private fun saveFocusSessionState() {
-        prefs.edit().apply {
-            putBoolean("session_battle_active", isBattleActive)
-            putBoolean("session_free_active", isFreeStudyActive)
-            putBoolean("session_battle_paused", isBattlePaused)
-            putLong("session_time_left", battleTimeLeftSeconds)
-            putLong("session_time_spent", battleTimeSpentSeconds)
-            putLong("session_boss_spent_initial", initialBossTimeSpent)
-            putLong("session_last_tick", lastTickTimeMillis)
-            putInt("session_boss_id", activeBoss?.id ?: -1)
-            putInt("session_skill_id", selectedSkillToTrain?.id ?: -1)
-            apply()
+        if (!isBattleActive) {
+            focusSessionStore.clear()
+            return
         }
+
+        focusSessionStore.write(
+            FocusSessionSnapshot(
+                isActive = isBattleActive,
+                isFreeStudy = isFreeStudyActive,
+                isPaused = isBattlePaused,
+                timeLeftSeconds = battleTimeLeftSeconds,
+                timeSpentSeconds = battleTimeSpentSeconds,
+                initialBossTimeSpentSeconds = initialBossTimeSpent,
+                lastTickTimeMillis = lastTickTimeMillis,
+                bossId = activeBoss?.id,
+                skillId = selectedSkillToTrain?.id,
+            ),
+        )
     }
 
     private fun clearFocusSessionState() {
-        prefs.edit().apply {
-            remove("session_battle_active")
-            remove("session_free_active")
-            remove("session_battle_paused")
-            remove("session_time_left")
-            remove("session_time_spent")
-            remove("session_boss_spent_initial")
-            remove("session_last_tick")
-            remove("session_boss_id")
-            remove("session_skill_id")
-            apply()
-        }
+        focusSessionStore.clear()
     }
 
     private fun restoreSavedFocusSession() {
         viewModelScope.launch {
-            val savedBattleActive = prefs.getBoolean("session_battle_active", false)
-            val savedFreeActive = prefs.getBoolean("session_free_active", false)
-            if (!savedBattleActive && !savedFreeActive) return@launch
+            val savedSnapshot = focusSessionStore.read() ?: return@launch
+            val restoredSnapshot = reconcileFocusSession(savedSnapshot, clock())
 
-            val savedPaused = prefs.getBoolean("session_battle_paused", false)
-            val savedTimeLeftSec = prefs.getLong("session_time_left", 0L)
-            val savedTimeSpentSec = prefs.getLong("session_time_spent", 0L)
-            val savedBossSpentInitial = prefs.getLong("session_boss_spent_initial", 0L)
-            val savedLastTickMillis = prefs.getLong("session_last_tick", 0L)
-            val savedBossId = prefs.getInt("session_boss_id", -1)
-            val savedSkillId = prefs.getInt("session_skill_id", -1)
-
-            if (savedBossId != -1) {
-                activeBoss = repository.getBossById(savedBossId)
+            if (restoredSnapshot.bossId != null) {
+                activeBoss = repository.getBossById(restoredSnapshot.bossId)
             }
-            if (savedSkillId != -1) {
-                selectedSkillToTrain = repository.getSkillById(savedSkillId)
+            if (!restoredSnapshot.isFreeStudy && activeBoss == null) {
+                clearFocusSessionState()
+                return@launch
+            }
+            if (restoredSnapshot.skillId != null) {
+                selectedSkillToTrain = repository.getSkillById(restoredSnapshot.skillId)
             }
 
-            initialBossTimeSpent = savedBossSpentInitial
-            isFreeStudyActive = savedFreeActive
+            initialBossTimeSpent = restoredSnapshot.initialBossTimeSpentSeconds
+            isFreeStudyActive = restoredSnapshot.isFreeStudy
             isBattleActive = true
-            isBattlePaused = savedPaused
+            isBattlePaused = restoredSnapshot.isPaused
+            battleTimeLeftSeconds = restoredSnapshot.timeLeftSeconds
+            battleTimeSpentSeconds = restoredSnapshot.timeSpentSeconds
+            lastTickTimeMillis = restoredSnapshot.lastTickTimeMillis
 
-            // Compute offline elapsed focus seconds
-            if (!savedPaused && savedLastTickMillis > 0) {
-                val now = System.currentTimeMillis()
-                val elapsedSeconds = (now - savedLastTickMillis) / 1000L
-                if (elapsedSeconds > 0) {
-                    val actualSub = minOf(elapsedSeconds, savedTimeLeftSec)
-                    battleTimeLeftSeconds = savedTimeLeftSec - actualSub
-                    battleTimeSpentSeconds = savedTimeSpentSec + actualSub
-                    
-                    if (actualSub > 0 && activeBoss != null) {
-                        saveIncrementalBossProgress()
-                    }
-                } else {
-                    battleTimeLeftSeconds = savedTimeLeftSec
-                    battleTimeSpentSeconds = savedTimeSpentSec
-                }
-            } else {
-                battleTimeLeftSeconds = savedTimeLeftSec
-                battleTimeSpentSeconds = savedTimeSpentSec
+            if (restoredSnapshot != savedSnapshot && activeBoss != null) {
+                saveIncrementalBossProgress()
             }
+            saveFocusSessionState()
 
             if (battleTimeLeftSeconds > 0) {
                 if (!isBattlePaused) {
@@ -188,49 +169,88 @@ class BattleViewModel(
         }
     }
 
-    fun pauseBattle() {
-        if (!isBattleActive || isBattlePaused) return
+    fun pauseBattle(onPaused: () -> Unit = {}) {
+        if (!isBattleActive) return
+        if (isBattlePaused) {
+            saveFocusSessionState()
+            onPaused()
+            return
+        }
+        val pausedAtMillis = clock()
         isBattlePaused = true
         timerJob?.cancel()
-        saveFocusSessionState()
-        RpgSoundManager.playPauseStudySound()
+        viewModelScope.launch {
+            advanceSessionClock(pausedAtMillis, forceBossSync = true)
+            saveFocusSessionState()
+            RpgSoundManager.playPauseStudySound()
+            onPaused()
+        }
     }
 
     fun resumeBattle() {
         if (!isBattleActive || !isBattlePaused) return
         isBattlePaused = false
-        saveFocusSessionState()
-        startTimer()
-        RpgSoundManager.playResumeStudySound()
+        if (battleTimeLeftSeconds <= 0L) {
+            completeActiveBoss()
+        } else {
+            startTimer()
+            RpgSoundManager.playResumeStudySound()
+        }
+    }
+
+    fun syncFocusSessionTime() {
+        if (!isBattleActive || isBattlePaused || isCompletingSession) return
+        timerJob?.cancel()
+        viewModelScope.launch {
+            advanceSessionClock(clock(), forceBossSync = true)
+            if (battleTimeLeftSeconds <= 0L) {
+                completeActiveBoss()
+            } else {
+                startTimer()
+            }
+        }
     }
 
     private fun startTimer() {
         timerJob?.cancel()
-        lastTickTimeMillis = System.currentTimeMillis()
+        lastTickTimeMillis = clock()
+        saveFocusSessionState()
         timerJob = viewModelScope.launch {
-            while (battleTimeLeftSeconds > 0) {
+            while (isBattleActive && !isBattlePaused && battleTimeLeftSeconds > 0L) {
                 delay(1000L)
-                val now = System.currentTimeMillis()
-                val elapsedMillis = now - lastTickTimeMillis
-                val elapsedSeconds = elapsedMillis / 1000
-                if (elapsedSeconds > 0) {
-                    val actualSub = minOf(elapsedSeconds, battleTimeLeftSeconds)
-                    battleTimeLeftSeconds -= actualSub
-                    battleTimeSpentSeconds += actualSub
-                    lastTickTimeMillis += actualSub * 1000L
-                    
-                    if (battleTimeLeftSeconds in 1..5) {
-                        RpgSoundManager.playWarningAlarmSound()
-                    }
-
-                    if (battleTimeSpentSeconds % 10 == 0L || elapsedSeconds >= 10L) {
-                        saveIncrementalBossProgress()
-                    }
-                    saveFocusSessionState()
+                val appliedSeconds = advanceSessionClock(clock())
+                if (appliedSeconds > 0L && battleTimeLeftSeconds in 1..5) {
+                    RpgSoundManager.playWarningAlarmSound()
                 }
             }
-            completeActiveBoss()
+            if (isBattleActive && !isBattlePaused && battleTimeLeftSeconds <= 0L) {
+                completeActiveBoss()
+            }
         }
+    }
+
+    private suspend fun advanceSessionClock(
+        nowMillis: Long,
+        forceBossSync: Boolean = false,
+    ): Long {
+        if (!isBattleActive || lastTickTimeMillis <= 0L) return 0L
+
+        val elapsedSeconds = ((nowMillis - lastTickTimeMillis).coerceAtLeast(0L)) / 1_000L
+        if (elapsedSeconds <= 0L) return 0L
+
+        val appliedSeconds = minOf(elapsedSeconds, battleTimeLeftSeconds)
+        battleTimeLeftSeconds -= appliedSeconds
+        battleTimeSpentSeconds += appliedSeconds
+        lastTickTimeMillis += appliedSeconds * 1_000L
+
+        if (
+            activeBoss != null &&
+            (forceBossSync || battleTimeSpentSeconds % 10L == 0L || appliedSeconds >= 10L)
+        ) {
+            saveIncrementalBossProgress()
+        }
+        saveFocusSessionState()
+        return appliedSeconds
     }
 
     private suspend fun saveIncrementalBossProgress() {
@@ -243,91 +263,104 @@ class BattleViewModel(
     }
 
     fun completeActiveBoss() {
+        if (!isBattleActive || isCompletingSession) return
+        isCompletingSession = true
         timerJob?.cancel()
         viewModelScope.launch {
-            val finalDuration = battleTimeSpentSeconds
-            val xpEarned: Int
-            val goldEarned: Int
-            val boss = activeBoss
+            try {
+                advanceSessionClock(clock(), forceBossSync = true)
+                val finalDuration = battleTimeSpentSeconds
+                val xpEarned: Int
+                val goldEarned: Int
+                val boss = activeBoss
+                val completedFreeStudy = isFreeStudyActive
 
-            if (isFreeStudyActive) {
-                val minutesStudied = finalDuration / 60f
-                xpEarned = (minutesStudied * 1.5f).toInt().coerceAtLeast(1)
-                goldEarned = (minutesStudied * 0.8f).toInt()
+                if (completedFreeStudy) {
+                    val minutesStudied = finalDuration / 60f
+                    xpEarned = (minutesStudied * 1.5f).toInt().coerceAtLeast(1)
+                    goldEarned = (minutesStudied * 0.8f).toInt()
 
-                repository.insertSession(
-                    StudySessionEntity(
-                        bossId = null,
-                        bossName = "Astral Free Study",
-                        durationSeconds = finalDuration,
-                        xpEarned = xpEarned,
-                        goldEarned = goldEarned,
-                        wasCompleted = true,
-                        isFreeStudy = true
+                    repository.insertSession(
+                        StudySessionEntity(
+                            bossId = null,
+                            bossName = "Astral Free Study",
+                            durationSeconds = finalDuration,
+                            xpEarned = xpEarned,
+                            goldEarned = goldEarned,
+                            wasCompleted = true,
+                            isFreeStudy = true,
+                        ),
                     )
-                )
-            } else if (boss != null) {
-                val finishedBoss = boss.copy(
-                    timeSpentSeconds = initialBossTimeSpent + finalDuration,
-                    isCompleted = true
-                )
-                repository.updateBoss(finishedBoss)
-
-                val baseRewards = getDifficultyRewards(boss.difficulty)
-                xpEarned = baseRewards.xp
-                goldEarned = baseRewards.gold
-
-                repository.insertSession(
-                    StudySessionEntity(
-                        bossId = boss.id,
-                        bossName = boss.name,
-                        durationSeconds = finalDuration,
-                        xpEarned = xpEarned,
-                        goldEarned = goldEarned,
-                        wasCompleted = true,
-                        isFreeStudy = false
+                } else if (boss != null) {
+                    val finishedBoss = boss.copy(
+                        timeSpentSeconds = initialBossTimeSpent + finalDuration,
+                        isCompleted = true,
                     )
-                )
-            } else {
-                xpEarned = 0
-                goldEarned = 0
-            }
+                    repository.updateBoss(finishedBoss)
 
-            // Train selected skill if any
-            val skill = selectedSkillToTrain
-            if (skill != null && finalDuration > 0) {
-                val updatedSpent = skill.spentSeconds + finalDuration
-                val isNowUnlocked = updatedSpent >= skill.targetMinutes * 60L
-                repository.updateSkill(
-                    skill.copy(
-                        spentSeconds = updatedSpent,
-                        isUnlocked = skill.isUnlocked || isNowUnlocked
+                    val baseRewards = getDifficultyRewards(boss.difficulty)
+                    xpEarned = baseRewards.xp
+                    goldEarned = baseRewards.gold
+
+                    repository.insertSession(
+                        StudySessionEntity(
+                            bossId = boss.id,
+                            bossName = boss.name,
+                            durationSeconds = finalDuration,
+                            xpEarned = xpEarned,
+                            goldEarned = goldEarned,
+                            wasCompleted = true,
+                            isFreeStudy = false,
+                        ),
                     )
-                )
-                if (isNowUnlocked && !skill.isUnlocked) {
-                    RpgSoundManager.playSkillUnlockSound()
-                    showStreakResetToast = "SKILL MASTERED! You have unlocked passive trait [${skill.name.uppercase()}]!"
+                } else {
+                    xpEarned = 0
+                    goldEarned = 0
                 }
+
+                // Train selected skill if any
+                val skill = selectedSkillToTrain
+                if (skill != null && finalDuration > 0) {
+                    val updatedSpent = skill.spentSeconds + finalDuration
+                    val isNowUnlocked = updatedSpent >= skill.targetMinutes * 60L
+                    repository.updateSkill(
+                        skill.copy(
+                            spentSeconds = updatedSpent,
+                            isUnlocked = skill.isUnlocked || isNowUnlocked,
+                        ),
+                    )
+                    if (isNowUnlocked && !skill.isUnlocked) {
+                        RpgSoundManager.playSkillUnlockSound()
+                        showStreakResetToast = "SKILL MASTERED! You have unlocked passive trait [${skill.name.uppercase()}]!"
+                    }
+                }
+
+                updateProfileCompletingSession(
+                    durationSeconds = finalDuration,
+                    xpEarned = xpEarned,
+                    goldEarned = goldEarned,
+                    studyCompleted = true,
+                    isFreeStudy = completedFreeStudy,
+                )
+
+                resetActiveSession()
+            } finally {
+                isCompletingSession = false
             }
-
-            updateProfileCompletingSession(
-                durationSeconds = finalDuration,
-                xpEarned = xpEarned,
-                goldEarned = goldEarned,
-                studyCompleted = true,
-                isFreeStudy = isFreeStudyActive
-            )
-
-            // Reset state
-            activeBoss = null
-            isBattleActive = false
-            isBattlePaused = false
-            isFreeStudyActive = false
-            selectedSkillToTrain = null
-            battleTimeLeftSeconds = 0
-            battleTimeSpentSeconds = 0
-            clearFocusSessionState()
         }
+    }
+
+    private fun resetActiveSession() {
+        activeBoss = null
+        isBattleActive = false
+        isBattlePaused = false
+        isFreeStudyActive = false
+        selectedSkillToTrain = null
+        battleTimeLeftSeconds = 0L
+        battleTimeSpentSeconds = 0L
+        initialBossTimeSpent = 0L
+        lastTickTimeMillis = 0L
+        clearFocusSessionState()
     }
 
     suspend fun suspendCurrentSession(applyHeavyPenalty: Boolean = false) {
@@ -397,14 +430,7 @@ class BattleViewModel(
             )
         }
 
-        activeBoss = null
-        isBattleActive = false
-        isBattlePaused = false
-        isFreeStudyActive = false
-        selectedSkillToTrain = null
-        battleTimeLeftSeconds = 0
-        battleTimeSpentSeconds = 0
-        clearFocusSessionState()
+        resetActiveSession()
     }
 
     fun abandonActiveBoss(applyHeavyPenalty: Boolean = true) {
@@ -426,6 +452,7 @@ class BattleViewModel(
                 if (!isFreeStudyActive) {
                     saveIncrementalBossProgress()
                 }
+                saveFocusSessionState()
             }
         }
     }
@@ -627,13 +654,7 @@ class BattleViewModel(
 
             if (activeBoss?.id == boss.id) {
                 timerJob?.cancel()
-                activeBoss = null
-                isBattleActive = false
-                isBattlePaused = false
-                isFreeStudyActive = false
-                battleTimeLeftSeconds = 0
-                battleTimeSpentSeconds = 0
-                clearFocusSessionState()
+                resetActiveSession()
             }
         }
     }
@@ -655,4 +676,12 @@ class BattleViewModel(
     }
 
     private data class DifficultyRewards(val xp: Int, val gold: Int)
+
+    override fun onCleared() {
+        timerJob?.cancel()
+        if (isBattleActive) {
+            saveFocusSessionState()
+        }
+        super.onCleared()
+    }
 }

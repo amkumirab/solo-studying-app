@@ -130,12 +130,16 @@ class SoloStudyingViewModel(
         battleViewModel.selectAndStartFreeStudy(minutes)
     }
 
-    fun pauseBattle() {
-        battleViewModel.pauseBattle()
+    fun pauseBattle(onPaused: () -> Unit = {}) {
+        battleViewModel.pauseBattle(onPaused)
     }
 
     fun resumeBattle() {
         battleViewModel.resumeBattle()
+    }
+
+    fun syncFocusSessionTime() {
+        battleViewModel.syncFocusSessionTime()
     }
 
     fun abandonActiveBoss(applyHeavyPenalty: Boolean = true) {

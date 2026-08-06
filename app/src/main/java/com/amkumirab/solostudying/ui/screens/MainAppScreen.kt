@@ -1,5 +1,9 @@
 package com.amkumirab.solostudying.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -30,6 +34,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
@@ -46,6 +51,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.notification.NotificationReceiver
 import com.amkumirab.solostudying.sound.RpgSoundManager
@@ -78,6 +86,8 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     var showCreateBossDialog by remember { mutableStateOf(false) }
     var showCreateRewardDialog by remember { mutableStateOf(false) }
     var showFreeStudyDialog by remember { mutableStateOf(false) }
+    var pendingTabAfterFocusWarning by remember { mutableStateOf<Tab?>(null) }
+    var showExitFocusDialog by remember { mutableStateOf(false) }
 
     // Before the Battle preparation states
     var prepBoss by remember { mutableStateOf<BossEntity?>(null) }
@@ -87,6 +97,19 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
 
     // Navigation fallback: If a battle is active, user can stay in any tab, but we flash the timer tab.
     val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
+
+    FocusSessionLifecycleEffect(viewModel = viewModel)
+
+    LaunchedEffect(viewModel.isBattleActive) {
+        if (viewModel.isBattleActive && prepBoss == null && prepFreeStudyMins == null) {
+            currentTab = Tab.Battle
+        }
+    }
+
+    BackHandler(enabled = viewModel.isBattleActive) {
+        showExitFocusDialog = true
+    }
 
     if (userProfile != null && !userProfile!!.hasCompletedTutorial) {
         TutorialScreen(viewModel = viewModel.tutorialViewModel)
@@ -107,7 +130,17 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
         bottomBar = {
             RPGBottomBar(
                 currentTab = currentTab,
-                onTabSelected = { currentTab = it },
+                onTabSelected = { selectedTab ->
+                    if (
+                        currentTab == Tab.Battle &&
+                        viewModel.isBattleActive &&
+                        selectedTab != Tab.Battle
+                    ) {
+                        pendingTabAfterFocusWarning = selectedTab
+                    } else {
+                        currentTab = selectedTab
+                    }
+                },
                 isBattleActive = viewModel.isBattleActive
             )
         },
@@ -376,7 +409,118 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
             }
         }
     }
+
+    pendingTabAfterFocusWarning?.let { destination ->
+        AlertDialog(
+            onDismissRequest = { pendingTabAfterFocusWarning = null },
+            modifier = Modifier.testTag("focus_navigation_warning_dialog"),
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Timer,
+                    contentDescription = null,
+                    tint = NeonBlueAccent,
+                )
+            },
+            title = { Text("Leave the focus screen?") },
+            text = {
+                Text("Your study timer will keep running. You can return from the Battle tab at any time.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        currentTab = destination
+                        pendingTabAfterFocusWarning = null
+                    },
+                    modifier = Modifier.testTag("confirm_leave_focus_screen_button"),
+                ) {
+                    Text("LEAVE SCREEN")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { pendingTabAfterFocusWarning = null },
+                    modifier = Modifier.testTag("keep_focusing_button"),
+                ) {
+                    Text("KEEP FOCUSING")
+                }
+            },
+            containerColor = DarkFantasySurface,
+        )
+    }
+
+    if (showExitFocusDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitFocusDialog = false },
+            modifier = Modifier.testTag("focus_exit_warning_dialog"),
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.PauseCircle,
+                    contentDescription = null,
+                    tint = RpgGold,
+                )
+            },
+            title = { Text("Pause and exit?") },
+            text = {
+                Text("The session will be paused and restored when you open the app again.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitFocusDialog = false
+                        viewModel.pauseBattle {
+                            activity?.finish()
+                        }
+                    },
+                    modifier = Modifier.testTag("pause_and_exit_button"),
+                ) {
+                    Text("PAUSE AND EXIT")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showExitFocusDialog = false },
+                    modifier = Modifier.testTag("cancel_focus_exit_button"),
+                ) {
+                    Text("CONTINUE SESSION")
+                }
+            },
+            containerColor = DarkFantasySurface,
+        )
+    }
 }
+}
+
+@Composable
+private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
+    val view = LocalView.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val shouldKeepScreenOn = viewModel.isBattleActive && !viewModel.isBattlePaused
+
+    DisposableEffect(view, shouldKeepScreenOn) {
+        val previousKeepScreenOn = view.keepScreenOn
+        view.keepScreenOn = shouldKeepScreenOn
+        onDispose {
+            view.keepScreenOn = previousKeepScreenOn
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.syncFocusSessionTime()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 // ==========================================

@@ -1,20 +1,13 @@
-# Contributing
+# Testing and feedback
 
-Keep changes focused and describe the user-visible behavior in the commit or
-pull request. Before submitting a change:
+Bug reports and testing feedback are welcome through GitHub Issues. When
+reporting a problem, include:
 
-1. Run `./gradlew testDebugUnitTest lintDebug`.
-2. Add a test when changing progression, rewards, schedules, or persistence.
-3. Keep database changes paired with a Room migration.
-4. Keep UI state in a view model instead of storing it in activity fields.
-5. Do not commit signing keys, local SDK paths, generated build output, or user
-   study data.
+1. the Android version and device model;
+2. steps that reproduce the problem;
+3. the expected and actual behavior; and
+4. relevant screenshots or logs with personal information removed.
 
-Use imperative commit subjects, for example:
-
-```text
-feat: add editable reminder times
-fix: preserve boss progress after timer pause
-test: cover failed reward purchase
-```
-
+Code contributions and modified distributions are not currently accepted.
+Opening an issue or sharing feedback does not change the permissions granted in
+the [Evaluation-Only License](LICENSE).

@@ -152,4 +152,10 @@ Product rules and implementation boundaries are documented in
 
 ## License
 
-This project is available under the [MIT License](LICENSE).
+Copyright (c) 2026 Amir Ali Mirab Zadeh Ardekani. All rights reserved.
+
+The source code may be downloaded, compiled, installed, and run only for
+personal, non-commercial evaluation and testing. Modification, redistribution,
+publication, commercial use, and derivative works are not permitted without
+prior written permission. See the [Evaluation-Only License](LICENSE) for the
+complete terms. This is not an open-source license.

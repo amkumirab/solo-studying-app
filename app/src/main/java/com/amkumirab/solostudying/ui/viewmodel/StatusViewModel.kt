@@ -16,13 +16,57 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+
+internal data class MissedDayUpdate(
+    val profile: UserProfileEntity,
+    val message: String,
+)
+
+internal fun calculateMissedDayUpdate(
+    profile: UserProfileEntity,
+    today: LocalDate,
+): MissedDayUpdate? {
+    val lastStudyDate = profile.lastStudyDate
+        ?.let { date -> runCatching { LocalDate.parse(date) }.getOrNull() }
+        ?: return null
+    val missedDays = ChronoUnit.DAYS.between(lastStudyDate, today)
+    if (missedDays <= 1L) return null
+
+    val redDungeonLevel = missedDays.coerceIn(1L, 3L).toInt()
+    val updatedRedDungeonLevel = maxOf(profile.redDungeonDays, redDungeonLevel)
+    val shouldApplyGoldPenalty = profile.currentStreak > 0
+
+    if (!shouldApplyGoldPenalty && updatedRedDungeonLevel == profile.redDungeonDays) {
+        return null
+    }
+
+    val penaltyGold = if (shouldApplyGoldPenalty) 25 else 0
+    val updatedProfile = profile.copy(
+        currentStreak = 0,
+        gold = (profile.gold - penaltyGold).coerceAtLeast(0),
+        redDungeonDays = updatedRedDungeonLevel,
+    )
+    val message = if (shouldApplyGoldPenalty) {
+        "Streak Broken! You missed $missedDays days of studying. Streak reset to 0. " +
+            "Lost $penaltyGold Gold. RED GATES ACTIVE: Level $updatedRedDungeonLevel " +
+            "breach detected. Purification required!"
+    } else {
+        "The Red Dungeon expanded to Level $updatedRedDungeonLevel after $missedDays " +
+            "days away. Return to studying to reduce it."
+    }
+
+    return MissedDayUpdate(profile = updatedProfile, message = message)
+}
 
 class StatusViewModel(
     private val repository: SoloStudyingRepository,
-    private val context: Context
+    context: Context,
+    private val todayProvider: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
+
+    private val context = context.applicationContext
 
     val userProfile: StateFlow<UserProfileEntity?> = repository.userProfile.stateIn(
         scope = viewModelScope,
@@ -55,40 +99,9 @@ class StatusViewModel(
     }
 
     private suspend fun checkStreakOnStartup(profile: UserProfileEntity) {
-        val lastDateStr = profile.lastStudyDate ?: return
-        val currentStreak = profile.currentStreak
-
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        try {
-            val lastDate = sdf.parse(lastDateStr) ?: return
-            val today = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.time
-
-            val diffMs = today.time - lastDate.time
-            val diffDays = diffMs / (1000 * 60 * 60 * 24)
-
-            // If more than 1 day has passed, the streak is broken and Red Dungeon expands!
-            if (diffDays > 1) {
-                val penaltyGold = 25
-                val updatedGold = (profile.gold - penaltyGold).coerceAtLeast(0)
-                // Implement progressive difficulty for Red Dungeon: level is based on missed days up to 3 (or higher)
-                val dungeonGrowth = diffDays.toInt().coerceAtMost(3) // Cap at level 3
-                
-                val updatedProfile = profile.copy(
-                    currentStreak = 0,
-                    gold = updatedGold,
-                    redDungeonDays = dungeonGrowth
-                )
-                repository.insertOrUpdateProfile(updatedProfile)
-                showStreakResetToast = "Streak Broken! You missed $diffDays days of studying. Streak reset to 0. Lost $penaltyGold Gold. RED GATES ACTIVE: Level $dungeonGrowth breach detected. Purification required!"
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        val update = calculateMissedDayUpdate(profile, todayProvider()) ?: return
+        repository.insertOrUpdateProfile(update.profile)
+        showStreakResetToast = update.message
     }
 
     fun finishOnboarding(
@@ -117,7 +130,7 @@ class StatusViewModel(
                 xp = 0,
                 level = 1,
                 currentStreak = 1,
-                lastStudyDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                lastStudyDate = todayProvider().toString()
             )
             repository.insertOrUpdateProfile(updated)
         }
@@ -130,7 +143,7 @@ class StatusViewModel(
                 name = name,
                 hasCompletedOnboarding = true,
                 currentStreak = 1,
-                lastStudyDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                lastStudyDate = todayProvider().toString()
             )
             repository.insertOrUpdateProfile(updated)
         }

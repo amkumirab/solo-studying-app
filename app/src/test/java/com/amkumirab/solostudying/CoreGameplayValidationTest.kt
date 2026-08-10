@@ -10,6 +10,7 @@ import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.ui.viewmodel.BattleViewModel
 import com.amkumirab.solostudying.ui.viewmodel.StatusViewModel
 import com.amkumirab.solostudying.ui.viewmodel.TutorialViewModel
+import com.amkumirab.solostudying.ui.viewmodel.calculateMissedDayUpdate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -20,8 +21,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -235,11 +235,8 @@ class CoreGameplayValidationTest {
     @Test
     fun testRedDungeonTriggerLogic() {
         runBlocking {
-            // Setup profile study on a previous date
-            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val cal = Calendar.getInstance()
-            cal.add(Calendar.DAY_OF_YEAR, -3) // Missed 3 days of studying
-            val missedDaysDate = sdf.format(cal.time)
+            val today = LocalDate.of(2026, 4, 2)
+            val missedDaysDate = today.minusDays(3).toString()
 
             val profile = UserProfileEntity(
                 currentStreak = 5,
@@ -255,7 +252,7 @@ class CoreGameplayValidationTest {
             }
 
             // Instantiate new StatusViewModel to trigger streak check on startup
-            val testStatusVM = StatusViewModel(repository, context)
+            StatusViewModel(repository, context, todayProvider = { today })
 
             // Wait until the streak resets in the database
             val updatedProfile = waitForCondition {
@@ -268,6 +265,42 @@ class CoreGameplayValidationTest {
             // Penalty cap for redDungeonDays is 3
             assertEquals(3, updatedProfile.redDungeonDays)
         }
+    }
+
+    @Test
+    fun `missed day penalty is applied only once per broken streak`() {
+        val today = LocalDate.of(2026, 4, 2)
+        val profile = UserProfileEntity(
+            currentStreak = 5,
+            lastStudyDate = today.minusDays(3).toString(),
+            gold = 100,
+            redDungeonDays = 0,
+        )
+
+        val firstUpdate = calculateMissedDayUpdate(profile, today)
+        assertNotNull(firstUpdate)
+        assertEquals(75, firstUpdate!!.profile.gold)
+        assertEquals(0, firstUpdate.profile.currentStreak)
+        assertEquals(3, firstUpdate.profile.redDungeonDays)
+
+        val repeatedUpdate = calculateMissedDayUpdate(firstUpdate.profile, today)
+        assertNull(repeatedUpdate)
+    }
+
+    @Test
+    fun `missed day count uses calendar dates across daylight saving changes`() {
+        val profile = UserProfileEntity(
+            currentStreak = 4,
+            lastStudyDate = "2026-03-28",
+            gold = 100,
+            redDungeonDays = 0,
+        )
+
+        val update = calculateMissedDayUpdate(profile, LocalDate.of(2026, 3, 30))
+
+        assertNotNull(update)
+        assertEquals(2, update!!.profile.redDungeonDays)
+        assertEquals(75, update.profile.gold)
     }
 
     @Test

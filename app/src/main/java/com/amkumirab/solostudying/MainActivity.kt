@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
     NotificationHelper.scheduleDailyAlarms(applicationContext)
 
     val database = SoloStudyingDatabase.getDatabase(applicationContext)
-    val repository = SoloStudyingRepository(database.soloStudyingDao())
+    val repository = SoloStudyingRepository(database)
     val viewModel = ViewModelProvider(
       this,
       SoloStudyingViewModelFactory(repository, applicationContext)

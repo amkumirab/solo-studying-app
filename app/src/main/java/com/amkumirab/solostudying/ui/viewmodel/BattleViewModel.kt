@@ -270,78 +270,85 @@ class BattleViewModel(
             try {
                 advanceSessionClock(clock(), forceBossSync = true)
                 val finalDuration = battleTimeSpentSeconds
-                val xpEarned: Int
-                val goldEarned: Int
                 val boss = activeBoss
                 val completedFreeStudy = isFreeStudyActive
-
-                if (completedFreeStudy) {
+                val rewards = if (completedFreeStudy) {
                     val minutesStudied = finalDuration / 60f
-                    xpEarned = (minutesStudied * 1.5f).toInt().coerceAtLeast(1)
-                    goldEarned = (minutesStudied * 0.8f).toInt()
-
-                    repository.insertSession(
-                        StudySessionEntity(
-                            bossId = null,
-                            bossName = "Astral Free Study",
-                            durationSeconds = finalDuration,
-                            xpEarned = xpEarned,
-                            goldEarned = goldEarned,
-                            wasCompleted = true,
-                            isFreeStudy = true,
-                        ),
+                    DifficultyRewards(
+                        xp = (minutesStudied * 1.5f).toInt().coerceAtLeast(1),
+                        gold = (minutesStudied * 0.8f).toInt(),
                     )
                 } else if (boss != null) {
-                    val finishedBoss = boss.copy(
-                        timeSpentSeconds = initialBossTimeSpent + finalDuration,
-                        isCompleted = true,
-                    )
-                    repository.updateBoss(finishedBoss)
-
-                    val baseRewards = getDifficultyRewards(boss.difficulty)
-                    xpEarned = baseRewards.xp
-                    goldEarned = baseRewards.gold
-
-                    repository.insertSession(
-                        StudySessionEntity(
-                            bossId = boss.id,
-                            bossName = boss.name,
-                            durationSeconds = finalDuration,
-                            xpEarned = xpEarned,
-                            goldEarned = goldEarned,
-                            wasCompleted = true,
-                            isFreeStudy = false,
-                        ),
-                    )
+                    getDifficultyRewards(boss.difficulty)
                 } else {
-                    xpEarned = 0
-                    goldEarned = 0
+                    DifficultyRewards(xp = 0, gold = 0)
+                }
+                var skillMastered = false
+                var profileFeedback: ProfileCompletionFeedback? = null
+
+                repository.runInTransaction {
+                    if (completedFreeStudy) {
+                        insertSession(
+                            StudySessionEntity(
+                                bossId = null,
+                                bossName = "Astral Free Study",
+                                durationSeconds = finalDuration,
+                                xpEarned = rewards.xp,
+                                goldEarned = rewards.gold,
+                                wasCompleted = true,
+                                isFreeStudy = true,
+                            ),
+                        )
+                    } else if (boss != null) {
+                        updateBoss(
+                            boss.copy(
+                                timeSpentSeconds = initialBossTimeSpent + finalDuration,
+                                isCompleted = true,
+                            ),
+                        )
+                        insertSession(
+                            StudySessionEntity(
+                                bossId = boss.id,
+                                bossName = boss.name,
+                                durationSeconds = finalDuration,
+                                xpEarned = rewards.xp,
+                                goldEarned = rewards.gold,
+                                wasCompleted = true,
+                                isFreeStudy = false,
+                            ),
+                        )
+                    }
+
+                    val skill = selectedSkillToTrain
+                    if (skill != null && finalDuration > 0) {
+                        val updatedSpent = skill.spentSeconds + finalDuration
+                        val isNowUnlocked = updatedSpent >= skill.targetMinutes * 60L
+                        updateSkill(
+                            skill.copy(
+                                spentSeconds = updatedSpent,
+                                isUnlocked = skill.isUnlocked || isNowUnlocked,
+                            ),
+                        )
+                        skillMastered = isNowUnlocked && !skill.isUnlocked
+                    }
+
+                    profileFeedback = updateProfileCompletingSession(
+                        durationSeconds = finalDuration,
+                        xpEarned = rewards.xp,
+                        goldEarned = rewards.gold,
+                        studyCompleted = true,
+                        isFreeStudy = completedFreeStudy,
+                    )
                 }
 
-                // Train selected skill if any
-                val skill = selectedSkillToTrain
-                if (skill != null && finalDuration > 0) {
-                    val updatedSpent = skill.spentSeconds + finalDuration
-                    val isNowUnlocked = updatedSpent >= skill.targetMinutes * 60L
-                    repository.updateSkill(
-                        skill.copy(
-                            spentSeconds = updatedSpent,
-                            isUnlocked = skill.isUnlocked || isNowUnlocked,
-                        ),
-                    )
-                    if (isNowUnlocked && !skill.isUnlocked) {
-                        RpgSoundManager.playSkillUnlockSound()
-                        showStreakResetToast = "SKILL MASTERED! You have unlocked passive trait [${skill.name.uppercase()}]!"
+                if (skillMastered) {
+                    RpgSoundManager.playSkillUnlockSound()
+                    selectedSkillToTrain?.let { skill ->
+                        showStreakResetToast =
+                            "SKILL MASTERED! You have unlocked passive trait [${skill.name.uppercase()}]!"
                     }
                 }
-
-                updateProfileCompletingSession(
-                    durationSeconds = finalDuration,
-                    xpEarned = xpEarned,
-                    goldEarned = goldEarned,
-                    studyCompleted = true,
-                    isFreeStudy = completedFreeStudy,
-                )
+                profileFeedback?.let(::applyProfileCompletionFeedback)
 
                 resetActiveSession()
             } finally {
@@ -367,69 +374,85 @@ class BattleViewModel(
         timerJob?.cancel()
         val finalSpent = battleTimeSpentSeconds
         val boss = activeBoss
+        var profileFeedback: ProfileCompletionFeedback? = null
+        var penaltyFeedback: String? = null
 
-        if (isFreeStudyActive) {
-            if (finalSpent > 5) {
-                val minutesStudied = finalSpent / 60f
-                val xpEarned = (minutesStudied * 0.8f).toInt().coerceAtLeast(1)
-                val goldEarned = (minutesStudied * 0.4f).toInt()
+        repository.runInTransaction {
+            if (isFreeStudyActive) {
+                if (finalSpent > 5) {
+                    val minutesStudied = finalSpent / 60f
+                    val xpEarned = (minutesStudied * 0.8f).toInt().coerceAtLeast(1)
+                    val goldEarned = (minutesStudied * 0.4f).toInt()
 
-                repository.insertSession(
-                    StudySessionEntity(
-                        bossId = null,
-                        bossName = "Astral Free Study (Suspended)",
-                        durationSeconds = finalSpent,
-                        xpEarned = xpEarned,
-                        goldEarned = goldEarned,
-                        wasCompleted = false,
-                        isFreeStudy = true
+                    insertSession(
+                        StudySessionEntity(
+                            bossId = null,
+                            bossName = "Astral Free Study (Suspended)",
+                            durationSeconds = finalSpent,
+                            xpEarned = xpEarned,
+                            goldEarned = goldEarned,
+                            wasCompleted = false,
+                            isFreeStudy = true
+                        )
+                    )
+                    profileFeedback = updateProfileCompletingSession(
+                        finalSpent,
+                        xpEarned,
+                        goldEarned,
+                        studyCompleted = false,
+                        isFreeStudy = true,
+                    )
+                }
+            } else if (boss != null) {
+                updateBoss(
+                    boss.copy(timeSpentSeconds = initialBossTimeSpent + finalSpent),
+                )
+
+                if (finalSpent > 5) {
+                    val minutesStudied = finalSpent / 60f
+                    val xpEarned = (minutesStudied * 1.5f).toInt().coerceAtLeast(1)
+                    val goldEarned = (minutesStudied * 0.8f).toInt()
+
+                    insertSession(
+                        StudySessionEntity(
+                            bossId = boss.id,
+                            bossName = boss.name,
+                            durationSeconds = finalSpent,
+                            xpEarned = xpEarned,
+                            goldEarned = goldEarned,
+                            wasCompleted = false,
+                            isFreeStudy = false
+                        )
+                    )
+                    profileFeedback = updateProfileCompletingSession(
+                        finalSpent,
+                        xpEarned,
+                        goldEarned,
+                        studyCompleted = false,
+                        isFreeStudy = false,
+                    )
+                }
+
+                if (applyHeavyPenalty) {
+                    penaltyFeedback = applyProcrastinationPenalty()
+                }
+            }
+
+            val skill = selectedSkillToTrain
+            if (skill != null && finalSpent > 0) {
+                val updatedSpent = skill.spentSeconds + finalSpent
+                val isNowUnlocked = updatedSpent >= skill.targetMinutes * 60L
+                updateSkill(
+                    skill.copy(
+                        spentSeconds = updatedSpent,
+                        isUnlocked = skill.isUnlocked || isNowUnlocked
                     )
                 )
-                updateProfileCompletingSession(finalSpent, xpEarned, goldEarned, studyCompleted = false, isFreeStudy = true)
-            }
-        } else if (boss != null) {
-            val updatedBoss = boss.copy(
-                timeSpentSeconds = initialBossTimeSpent + finalSpent
-            )
-            repository.updateBoss(updatedBoss)
-
-            if (finalSpent > 5) {
-                val minutesStudied = finalSpent / 60f
-                val xpEarned = (minutesStudied * 1.5f).toInt().coerceAtLeast(1)
-                val goldEarned = (minutesStudied * 0.8f).toInt()
-
-                repository.insertSession(
-                    StudySessionEntity(
-                        bossId = boss.id,
-                        bossName = boss.name,
-                        durationSeconds = finalSpent,
-                        xpEarned = xpEarned,
-                        goldEarned = goldEarned,
-                        wasCompleted = false,
-                        isFreeStudy = false
-                    )
-                )
-                updateProfileCompletingSession(finalSpent, xpEarned, goldEarned, studyCompleted = false, isFreeStudy = false)
-            }
-
-            if (applyHeavyPenalty) {
-                applyProcrastinationPenalty()
             }
         }
 
-        // Train selected skill dynamically for partial time spent
-        val skill = selectedSkillToTrain
-        if (skill != null && finalSpent > 0) {
-            val updatedSpent = skill.spentSeconds + finalSpent
-            val isNowUnlocked = updatedSpent >= skill.targetMinutes * 60L
-            repository.updateSkill(
-                skill.copy(
-                    spentSeconds = updatedSpent,
-                    isUnlocked = skill.isUnlocked || isNowUnlocked
-                )
-            )
-        }
-
+        profileFeedback?.let(::applyProfileCompletionFeedback)
+        penaltyFeedback?.let { showPenaltyToast = it }
         resetActiveSession()
     }
 
@@ -457,8 +480,8 @@ class BattleViewModel(
         }
     }
 
-    private suspend fun applyProcrastinationPenalty() {
-        val profile = repository.getProfileSync() ?: return
+    private suspend fun applyProcrastinationPenalty(): String? {
+        val profile = repository.getProfileSync() ?: return null
         val penaltyGold = 30
         val updatedGold = (profile.gold - penaltyGold).coerceAtLeast(0)
 
@@ -478,7 +501,7 @@ class BattleViewModel(
             currentStreak = 0
         )
         repository.insertOrUpdateProfile(updatedProfile)
-        showPenaltyToast = penaltyText
+        return penaltyText
     }
 
     private suspend fun updateProfileCompletingSession(
@@ -487,7 +510,7 @@ class BattleViewModel(
         goldEarned: Int,
         studyCompleted: Boolean,
         isFreeStudy: Boolean = false
-    ) {
+    ): ProfileCompletionFeedback {
         val profile = repository.getProfileSync() ?: UserProfileEntity()
 
         // Progressive Difficulty for Red Gates:
@@ -533,13 +556,14 @@ class BattleViewModel(
 
         var bonusGold = 0
         var bonusXp = 0
+        var streakMessage: String? = null
         if (studyCompleted && streakUpdated > 0) {
             if (streakUpdated == 3) {
                 bonusXp = 50
-                showStreakResetToast = "3-Day Streak Bonus! Received +$bonusXp XP"
+                streakMessage = "3-Day Streak Bonus! Received +$bonusXp XP"
             } else if (streakUpdated == 7) {
                 bonusGold = 100
-                showStreakResetToast = "7-Day Streak Master! Received +$bonusGold Gold"
+                streakMessage = "7-Day Streak Master! Received +$bonusGold Gold"
             }
         }
 
@@ -569,88 +593,85 @@ class BattleViewModel(
             profile.totalRedDungeonsCleared
         }
 
-        if (levelUpsCount > 0) {
-            val levelUpGoldBonus = levelUpsCount * 50
-            showLevelUpToast = Pair(profile.level, currentLvl)
-            if (studyCompleted) {
+        val levelUpGoldBonus = levelUpsCount * 50
+        repository.insertOrUpdateProfile(
+            profile.copy(
+                level = currentLvl,
+                xp = currentXp,
+                gold = profile.gold + totalGoldGained + levelUpGoldBonus,
+                currentStreak = streakUpdated,
+                longestStreak = longestStreakUpdated,
+                lastStudyDate = todayStr,
+                totalStudyTimeSeconds = profile.totalStudyTimeSeconds + durationSeconds,
+                totalSessionCount = profile.totalSessionCount + 1,
+                totalBossesDefeated = profile.totalBossesDefeated + (if (studyCompleted && !isFreeStudy) 1 else 0),
+                totalGoldEarned = profile.totalGoldEarned + totalGoldGained + levelUpGoldBonus,
+                totalXpEarned = profile.totalXpEarned + totalXpGained,
+                totalFreeStudySeconds = profile.totalFreeStudySeconds + (if (isFreeStudy) durationSeconds else 0L),
+                redDungeonDays = redDungeonDaysUpdated,
+                isRedDungeonBoostActive = isRedDungeonBoostActiveUpdated,
+                totalRedDungeonsCleared = totalRedDungeonsClearedUpdated
+            )
+        )
+        return ProfileCompletionFeedback(
+            previousLevel = profile.level,
+            currentLevel = currentLvl,
+            streakMessage = streakMessage,
+            studyCompleted = studyCompleted,
+        )
+    }
+
+    private fun applyProfileCompletionFeedback(feedback: ProfileCompletionFeedback) {
+        feedback.streakMessage?.let { showStreakResetToast = it }
+        if (feedback.currentLevel > feedback.previousLevel) {
+            showLevelUpToast = feedback.previousLevel to feedback.currentLevel
+            if (feedback.studyCompleted) {
                 RpgSoundManager.playLevelUpSound()
             }
-
-            repository.insertOrUpdateProfile(
-                profile.copy(
-                    level = currentLvl,
-                    xp = currentXp,
-                    gold = profile.gold + totalGoldGained + levelUpGoldBonus,
-                    currentStreak = streakUpdated,
-                    longestStreak = longestStreakUpdated,
-                    lastStudyDate = todayStr,
-                    totalStudyTimeSeconds = profile.totalStudyTimeSeconds + durationSeconds,
-                    totalSessionCount = profile.totalSessionCount + 1,
-                    totalBossesDefeated = profile.totalBossesDefeated + (if (studyCompleted && !isFreeStudy) 1 else 0),
-                    totalGoldEarned = profile.totalGoldEarned + totalGoldGained + levelUpGoldBonus,
-                    totalXpEarned = profile.totalXpEarned + totalXpGained,
-                    totalFreeStudySeconds = profile.totalFreeStudySeconds + (if (isFreeStudy) durationSeconds else 0L),
-                    redDungeonDays = redDungeonDaysUpdated,
-                    isRedDungeonBoostActive = isRedDungeonBoostActiveUpdated,
-                    totalRedDungeonsCleared = totalRedDungeonsClearedUpdated
-                )
-            )
-        } else {
-            if (studyCompleted) {
-                RpgSoundManager.playConquerSound()
-            }
-            repository.insertOrUpdateProfile(
-                profile.copy(
-                    xp = currentXp,
-                    gold = profile.gold + totalGoldGained,
-                    currentStreak = streakUpdated,
-                    longestStreak = longestStreakUpdated,
-                    lastStudyDate = todayStr,
-                    totalStudyTimeSeconds = profile.totalStudyTimeSeconds + durationSeconds,
-                    totalSessionCount = profile.totalSessionCount + 1,
-                    totalBossesDefeated = profile.totalBossesDefeated + (if (studyCompleted && !isFreeStudy) 1 else 0),
-                    totalGoldEarned = profile.totalGoldEarned + totalGoldGained,
-                    totalXpEarned = profile.totalXpEarned + totalXpGained,
-                    totalFreeStudySeconds = profile.totalFreeStudySeconds + (if (isFreeStudy) durationSeconds else 0L),
-                    redDungeonDays = redDungeonDaysUpdated,
-                    isRedDungeonBoostActive = isRedDungeonBoostActiveUpdated,
-                    totalRedDungeonsCleared = totalRedDungeonsClearedUpdated
-                )
-            )
+        } else if (feedback.studyCompleted) {
+            RpgSoundManager.playConquerSound()
         }
     }
 
     fun conquerRealBossManual(boss: BossEntity) {
         viewModelScope.launch {
-            val finishedBoss = boss.copy(
-                isCompleted = true,
-                timeSpentSeconds = boss.requiredMinutes * 60L
-            )
-            repository.updateBoss(finishedBoss)
+            var profileFeedback: ProfileCompletionFeedback? = null
+            val conquered = repository.runInTransaction {
+                val currentBoss = getBossById(boss.id) ?: return@runInTransaction false
+                if (currentBoss.isCompleted) return@runInTransaction false
+                val baseRewards = getDifficultyRewards(currentBoss.difficulty)
+                val xpEarned = (baseRewards.xp * 1.5f).toInt()
+                val goldEarned = (baseRewards.gold * 1.5f).toInt()
+                val durationSeconds = currentBoss.requiredMinutes * 60L
+                updateBoss(
+                    currentBoss.copy(
+                        isCompleted = true,
+                        timeSpentSeconds = durationSeconds,
+                    ),
+                )
+                insertSession(
+                    StudySessionEntity(
+                        bossId = currentBoss.id,
+                        bossName = currentBoss.name + " (Manual Conquest)",
+                        durationSeconds = durationSeconds,
+                        xpEarned = xpEarned,
+                        goldEarned = goldEarned,
+                        wasCompleted = true,
+                        isFreeStudy = false
+                    )
+                )
 
-            val baseRewards = getDifficultyRewards(boss.difficulty)
-            val xpEarned = (baseRewards.xp * 1.5f).toInt()
-            val goldEarned = (baseRewards.gold * 1.5f).toInt()
-
-            repository.insertSession(
-                StudySessionEntity(
-                    bossId = boss.id,
-                    bossName = boss.name + " (Manual Conquest)",
-                    durationSeconds = boss.requiredMinutes * 60L,
+                profileFeedback = updateProfileCompletingSession(
+                    durationSeconds = durationSeconds,
                     xpEarned = xpEarned,
                     goldEarned = goldEarned,
-                    wasCompleted = true,
+                    studyCompleted = true,
                     isFreeStudy = false
                 )
-            )
-
-            updateProfileCompletingSession(
-                durationSeconds = boss.requiredMinutes * 60L,
-                xpEarned = xpEarned,
-                goldEarned = goldEarned,
-                studyCompleted = true,
-                isFreeStudy = false
-            )
+                true
+            }
+            if (!conquered) return@launch
+            profileFeedback?.let(::applyProfileCompletionFeedback)
 
             if (activeBoss?.id == boss.id) {
                 timerJob?.cancel()
@@ -676,6 +697,13 @@ class BattleViewModel(
     }
 
     private data class DifficultyRewards(val xp: Int, val gold: Int)
+
+    private data class ProfileCompletionFeedback(
+        val previousLevel: Int,
+        val currentLevel: Int,
+        val streakMessage: String?,
+        val studyCompleted: Boolean,
+    )
 
     override fun onCleared() {
         timerJob?.cancel()

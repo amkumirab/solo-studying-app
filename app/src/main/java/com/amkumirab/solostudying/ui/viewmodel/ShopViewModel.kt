@@ -1,10 +1,10 @@
 package com.amkumirab.solostudying.ui.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amkumirab.solostudying.data.entity.RewardBalanceEntity
 import com.amkumirab.solostudying.data.entity.RewardItemEntity
+import com.amkumirab.solostudying.data.repository.RewardPurchaseStatus
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 
 class ShopViewModel(
     private val repository: SoloStudyingRepository,
-    private val context: Context
 ) : ViewModel() {
 
     val rewards: StateFlow<List<RewardItemEntity>> = repository.allRewards.stateIn(
@@ -74,42 +73,26 @@ class ShopViewModel(
 
     fun purchaseReward(reward: RewardItemEntity, onResult: (Boolean, String) -> Unit = { _, _ -> }) {
         viewModelScope.launch {
-            val profile = repository.getProfileSync() ?: return@launch
-            if (profile.gold >= reward.cost) {
-                // Deduct gold
-                val updatedProfile = profile.copy(gold = profile.gold - reward.cost)
-                repository.insertOrUpdateProfile(updatedProfile)
-
-                // Update reward balance
-                val currentBal = repository.getBalanceByName(reward.name) ?: RewardBalanceEntity(rewardName = reward.name)
-                val addHours = if (reward.rewardType == "Time-Based") reward.rewardValue.toFloat() else 1.0f
-                val updatedBal = currentBal.copy(
-                    availableHours = currentBal.availableHours + addHours,
-                    purchaseCount = currentBal.purchaseCount + 1
-                )
-                repository.insertOrUpdateBalance(updatedBal)
-                RpgSoundManager.playShopPurchaseSound()
-                onResult(true, "Successfully purchased ${reward.name}!")
-            } else {
-                onResult(false, "Not enough Gold to purchase this reward!")
+            when (repository.purchaseReward(reward)) {
+                RewardPurchaseStatus.Purchased -> {
+                    RpgSoundManager.playShopPurchaseSound()
+                    onResult(true, "Successfully purchased ${reward.name}!")
+                }
+                RewardPurchaseStatus.InsufficientGold -> {
+                    onResult(false, "Not enough Gold to purchase this reward!")
+                }
+                RewardPurchaseStatus.MissingProfile -> {
+                    onResult(false, "Player profile is unavailable. Please reopen the app and try again.")
+                }
             }
         }
     }
 
     fun useReward(rewardName: String, amountToUse: Float, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
-            val currentBal = repository.getBalanceByName(rewardName)
-            if (currentBal == null || currentBal.availableHours < amountToUse) {
-                onResult(false)
-                return@launch
-            }
-
-            val updatedBal = currentBal.copy(
-                availableHours = (currentBal.availableHours - amountToUse).coerceAtLeast(0f)
-            )
-            repository.insertOrUpdateBalance(updatedBal)
-            onResult(true)
-            RpgSoundManager.playGoldSpendSound()
+            val used = repository.useReward(rewardName, amountToUse)
+            onResult(used)
+            if (used) RpgSoundManager.playGoldSpendSound()
         }
     }
 

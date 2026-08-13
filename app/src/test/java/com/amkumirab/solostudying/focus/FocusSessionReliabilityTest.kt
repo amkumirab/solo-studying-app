@@ -40,7 +40,7 @@ class FocusSessionReliabilityTest {
         database = Room.inMemoryDatabaseBuilder(context, SoloStudyingDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = SoloStudyingRepository(database.soloStudyingDao())
+        repository = SoloStudyingRepository(database)
         store = FocusSessionStore(context)
         repository.insertOrUpdateProfile(UserProfileEntity())
     }

@@ -62,7 +62,7 @@ class CoreGameplayValidationTest {
             db = Room.inMemoryDatabaseBuilder(context, SoloStudyingDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-            repository = SoloStudyingRepository(db.soloStudyingDao())
+            repository = SoloStudyingRepository(db)
 
             // Initialize the shared profile before ViewModels start their asynchronous setup.
             repository.insertOrUpdateProfile(UserProfileEntity())

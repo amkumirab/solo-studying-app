@@ -205,7 +205,7 @@ class SoloStudyingViewModelFactory(
             val dungeonVM = DungeonViewModel(repository, context)
             val battleVM = BattleViewModel(repository, context)
             val skillVM = SkillViewModel(repository, context)
-            val shopVM = ShopViewModel(repository, context)
+            val shopVM = ShopViewModel(repository)
             val tutorialVM = TutorialViewModel(repository, context)
             @Suppress("UNCHECKED_CAST")
             return SoloStudyingViewModel(statusVM, dungeonVM, battleVM, skillVM, shopVM, tutorialVM) as T

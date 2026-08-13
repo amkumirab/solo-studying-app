@@ -1,10 +1,20 @@
 package com.amkumirab.solostudying.data.repository
 
+import androidx.room.withTransaction
 import com.amkumirab.solostudying.data.dao.SoloStudyingDao
+import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.*
 import kotlinx.coroutines.flow.Flow
 
-class SoloStudyingRepository(private val dao: SoloStudyingDao) {
+enum class RewardPurchaseStatus {
+    Purchased,
+    InsufficientGold,
+    MissingProfile,
+}
+
+class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
+
+    private val dao: SoloStudyingDao = database.soloStudyingDao()
 
     val allBosses: Flow<List<BossEntity>> = dao.getAllBosses()
     val allDungeons: Flow<List<DungeonEntity>> = dao.getAllDungeons()
@@ -78,6 +88,50 @@ class SoloStudyingRepository(private val dao: SoloStudyingDao) {
         dao.insertOrUpdateBalance(balance)
     }
 
+    suspend fun purchaseReward(reward: RewardItemEntity): RewardPurchaseStatus =
+        database.withTransaction {
+            val profile = dao.getProfileSync() ?: return@withTransaction RewardPurchaseStatus.MissingProfile
+            if (profile.gold < reward.cost) {
+                return@withTransaction RewardPurchaseStatus.InsufficientGold
+            }
+
+            val currentBalance = dao.getBalanceByName(reward.name)
+                ?: RewardBalanceEntity(rewardName = reward.name)
+            val purchasedAmount = if (reward.rewardType == "Time-Based") {
+                reward.rewardValue.toFloat()
+            } else {
+                1f
+            }
+
+            dao.insertOrUpdateProfile(profile.copy(gold = profile.gold - reward.cost))
+            dao.insertOrUpdateBalance(
+                currentBalance.copy(
+                    availableHours = currentBalance.availableHours + purchasedAmount,
+                    purchaseCount = currentBalance.purchaseCount + 1,
+                ),
+            )
+            RewardPurchaseStatus.Purchased
+        }
+
+    suspend fun useReward(rewardName: String, amountToUse: Float): Boolean =
+        database.withTransaction {
+            if (!amountToUse.isFinite() || amountToUse <= 0f) {
+                return@withTransaction false
+            }
+            val currentBalance = dao.getBalanceByName(rewardName)
+                ?: return@withTransaction false
+            if (currentBalance.availableHours < amountToUse) {
+                return@withTransaction false
+            }
+
+            dao.insertOrUpdateBalance(
+                currentBalance.copy(
+                    availableHours = currentBalance.availableHours - amountToUse,
+                ),
+            )
+            true
+        }
+
     suspend fun insertSession(session: StudySessionEntity): Long {
         return dao.insertSession(session)
     }
@@ -97,5 +151,11 @@ class SoloStudyingRepository(private val dao: SoloStudyingDao) {
 
     suspend fun deleteSkill(skill: SkillEntity) {
         dao.deleteSkill(skill)
+    }
+
+    suspend fun <T> runInTransaction(
+        block: suspend SoloStudyingRepository.() -> T,
+    ): T = database.withTransaction {
+        this@SoloStudyingRepository.block()
     }
 }

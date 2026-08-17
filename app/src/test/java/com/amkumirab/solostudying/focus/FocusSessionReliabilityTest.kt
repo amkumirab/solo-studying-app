@@ -22,6 +22,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -162,6 +165,77 @@ class FocusSessionReliabilityTest {
         assertEquals(1, sessions.size)
         assertEquals(1, profile.totalSessionCount)
         assertTrue(sessions.single().wasCompleted)
+    }
+
+    @Test
+    fun `session history stores the same rewards added to the profile`() = runBlocking {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Calendar.getInstance().time)
+        repository.insertOrUpdateProfile(
+            UserProfileEntity(
+                currentStreak = 1,
+                longestStreak = 1,
+                lastStudyDate = today,
+                redDungeonDays = 1,
+                isRedDungeonBoostActive = true,
+            ),
+        )
+        val boss = BossEntity(
+            id = 73,
+            name = "Reward Consistency Trial",
+            difficulty = "Medium",
+            requiredMinutes = 1,
+        )
+        repository.insertBoss(boss)
+        val viewModel = BattleViewModel(repository, context, store) { 4_000_000L }
+        battleViewModel = viewModel
+
+        viewModel.selectAndStartBattle(boss)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        viewModel.simulateStudySeconds(60L)
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+
+        val session = repository.allSessions.first().single()
+        val profile = repository.getProfileSync() ?: error("Profile was not saved")
+
+        assertEquals(270, session.xpEarned)
+        assertEquals(122, session.goldEarned)
+        assertEquals(session.xpEarned, profile.totalXpEarned)
+        assertEquals(session.goldEarned, profile.totalGoldEarned - 100)
+        assertEquals(222, profile.gold)
+    }
+
+    @Test
+    fun `streak milestone reward is granted only once per day`() = runBlocking {
+        val calendar = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+        val yesterday = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+        repository.insertOrUpdateProfile(
+            UserProfileEntity(
+                currentStreak = 2,
+                longestStreak = 2,
+                lastStudyDate = yesterday,
+            ),
+        )
+        val viewModel = BattleViewModel(repository, context, store) { 5_000_000L }
+        battleViewModel = viewModel
+
+        repeat(2) {
+            viewModel.selectAndStartFreeStudy(minutes = 1)
+            waitForCondition { if (viewModel.isBattleActive) true else null }
+            viewModel.simulateStudySeconds(10L)
+            waitForCondition { if (viewModel.battleTimeSpentSeconds == 10L) true else null }
+            viewModel.completeActiveBoss()
+            waitForCondition { if (!viewModel.isBattleActive) true else null }
+            Unit
+        }
+
+        val sessions = repository.allSessions.first()
+        val profile = repository.getProfileSync() ?: error("Profile was not saved")
+
+        assertEquals(listOf(1, 51), sessions.map { it.xpEarned }.sorted())
+        assertEquals(52, sessions.sumOf { it.xpEarned })
+        assertEquals(52, profile.totalXpEarned)
+        assertEquals(3, profile.currentStreak)
+        assertEquals(2, profile.totalSessionCount)
     }
 
     @Test

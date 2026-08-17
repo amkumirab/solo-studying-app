@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.data.entity.SkillEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
+import com.amkumirab.solostudying.domain.reward.SessionRewardCalculator
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.ui.theme.*
 
@@ -117,36 +118,21 @@ fun BeforeTheBattleScreen(
     // Calculations for summary estimates
     val isFreeStudy = boss == null
     val targetMins = freeStudyMins ?: boss?.requiredMinutes ?: 30
-    
-    // Penalties & Boosters check
     val redDungeonDays = userProfile.redDungeonDays
     val isXpBoostActive = userProfile.isRedDungeonBoostActive
-    
-    // Multipliers
-    val xpMultiplier = (if (redDungeonDays > 0) 0.8f else 1.0f) * (if (isXpBoostActive) 2.0f else 1.0f)
-    val goldMultiplier = if (redDungeonDays > 0) 0.8f else 1.0f
 
-    val baseRewardXp: Int
-    val baseRewardGold: Int
-
-    if (isFreeStudy) {
-        baseRewardXp = (targetMins * 1.5f).toInt().coerceAtLeast(1)
-        baseRewardGold = (targetMins * 0.8f).toInt()
+    val baseReward = if (isFreeStudy) {
+        SessionRewardCalculator.completedFreeStudy(targetMins.toLong() * 60L)
     } else {
-        val difficulty = boss?.difficulty ?: "Medium"
-        val difficultyRewards = when (difficulty) {
-            "Easy" -> Pair(75, 40)
-            "Medium" -> Pair(150, 80)
-            "Hard" -> Pair(350, 180)
-            "Legendary" -> Pair(750, 400)
-            else -> Pair(100, 50)
-        }
-        baseRewardXp = difficultyRewards.first
-        baseRewardGold = difficultyRewards.second
+        SessionRewardCalculator.completedBoss(boss?.difficulty ?: "Medium")
     }
-
-    val estimatedXp = (baseRewardXp * xpMultiplier).toInt()
-    val estimatedGold = (baseRewardGold * goldMultiplier).toInt()
+    val estimatedReward = SessionRewardCalculator.applyProgressionModifiers(
+        reward = baseReward,
+        redDungeonDays = userProfile.redDungeonDays,
+        isXpBoostActive = userProfile.isRedDungeonBoostActive,
+    )
+    val estimatedXp = estimatedReward.xp
+    val estimatedGold = estimatedReward.gold
 
     Surface(
         modifier = Modifier

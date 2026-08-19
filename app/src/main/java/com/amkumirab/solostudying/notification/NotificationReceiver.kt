@@ -36,6 +36,11 @@ class NotificationReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing notification", e)
             } finally {
+                try {
+                    NotificationHelper.scheduleDailyAlarms(context.applicationContext)
+                } catch (exception: Exception) {
+                    Log.e(TAG, "Unable to schedule the next reminder", exception)
+                }
                 pendingResult.finish()
             }
         }

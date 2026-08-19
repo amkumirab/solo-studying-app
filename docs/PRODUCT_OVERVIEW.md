@@ -32,9 +32,10 @@ public release must include explicit Room migrations.
 
 ### Notifications
 
-Daily alarms trigger local reminders. Message selection uses current progress,
-study-day configuration, streak state, and active bosses. Notification failures
-must not affect stored study progress.
+Users can enable each daily reminder independently and choose its local time.
+Alarms are restored after a reboot or clock change. Message selection uses
+current progress, study-day configuration, streak state, and active bosses.
+Notification failures must not affect stored study progress.
 
 ### Audio
 
@@ -57,7 +58,6 @@ app restarts.
 ## Planned work
 
 - Break large Compose files into feature-focused components.
-- Let users edit notification times and disable individual reminders.
 - Add JSON export and restore with schema versioning.
 - Add accessibility checks and end-to-end UI tests.
 - Add a migration test for every future database version.

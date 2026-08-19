@@ -16,7 +16,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - Independent skill progression based on focused time
 - Custom real-life rewards purchased with earned gold
 - Streaks, level progression, and recovery challenges
-- Local reminders based on schedule and current progress
+- Configurable local reminders based on schedule and current progress
 - Low-latency sci-fi interface sounds for study and progression feedback
 - Persistent sound enable and volume controls
 - Local persistence with Room
@@ -136,8 +136,6 @@ Product rules and implementation boundaries are documented in
 ## Current limitations
 
 - Data is stored on one device; export and sync are not implemented.
-- Reminder times are currently defined by the app rather than edited in a
-  dedicated settings screen.
 - Some Compose screens are still large and will be split into feature files as
   the UI evolves.
 - Release signing is intentionally left to the developer's local configuration.
@@ -145,7 +143,6 @@ Product rules and implementation boundaries are documented in
 ## Next steps
 
 - Split the main Compose screen by feature
-- Add editable reminder times
 - Add data export and restore
 - Improve accessibility labels and UI tests
 - Add screenshots and a short demo recording

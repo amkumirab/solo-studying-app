@@ -13,8 +13,11 @@ import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.sound.SoundSettings
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -133,5 +136,44 @@ class AccessibilitySemanticsTest {
 
         composeRule.onNodeWithTag("sound_volume_slider").assertIsNotEnabled()
         composeRule.onNodeWithTag("sound_preview_button").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `reminder controls expose time state and independent switches`() {
+        val settings = ReminderSettings()
+        var updatedSettings: ReminderSettings? = null
+        composeRule.setContent {
+            MaterialTheme {
+                ReminderSettingsCard(
+                    settings = settings,
+                    onSettingsChange = { updatedSettings = it },
+                    onPreview = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("morning_reminder_switch")
+            .assertContentDescriptionEquals("MORNING QUEST reminder")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "On",
+                ),
+            )
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+
+        composeRule.onNodeWithTag("morning_reminder_time_button")
+            .assertContentDescriptionEquals("Set MORNING QUEST time. Current time 09:00")
+
+        composeRule.onNodeWithTag("morning_reminder_preview_button")
+            .assertContentDescriptionEquals("Preview MORNING QUEST reminder")
+
+        composeRule.onNodeWithTag("morning_reminder_switch").performClick()
+        composeRule.runOnIdle {
+            assertEquals(false, updatedSettings?.morning?.enabled)
+            assertEquals(settings.beforeStudy, updatedSettings?.beforeStudy)
+            assertEquals(settings.evening, updatedSettings?.evening)
+        }
     }
 }

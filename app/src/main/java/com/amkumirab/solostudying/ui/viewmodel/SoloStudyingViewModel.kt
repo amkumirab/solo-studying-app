@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.notification.ReminderSettings
 
 class SoloStudyingViewModel(
     val statusViewModel: StatusViewModel,
@@ -22,6 +23,7 @@ class SoloStudyingViewModel(
     val rewards = shopViewModel.rewards
     val balances = shopViewModel.balances
     val sessions = statusViewModel.sessions
+    val reminderSettings = statusViewModel.reminderSettings
     val skills = skillViewModel.skills
     val tutorialState = tutorialViewModel.uiState
 
@@ -99,6 +101,10 @@ class SoloStudyingViewModel(
 
     fun simulateCompanionNotification(action: String) {
         statusViewModel.simulateCompanionNotification(action)
+    }
+
+    fun updateReminderSettings(settings: ReminderSettings) {
+        statusViewModel.updateReminderSettings(settings)
     }
 
     // --- Dungeon / Boss Management ---

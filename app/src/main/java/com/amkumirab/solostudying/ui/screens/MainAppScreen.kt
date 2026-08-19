@@ -1,6 +1,7 @@
 package com.amkumirab.solostudying.ui.screens
 
 import android.app.Activity
+import android.app.TimePickerDialog
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
@@ -56,6 +57,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.notification.NotificationReceiver
+import com.amkumirab.solostudying.notification.ReminderSchedule
+import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.sound.SoundSettings
 import com.amkumirab.solostudying.ui.theme.*
@@ -80,6 +83,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     val balances by viewModel.balances.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
     val skills by viewModel.skills.collectAsState()
+    val reminderSettings by viewModel.reminderSettings.collectAsState()
     val soundSettings by RpgSoundManager.settings.collectAsState()
 
     var currentTab by remember { mutableStateOf(Tab.Dungeons) }
@@ -248,6 +252,8 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onDeleteSkill = { skill -> viewModel.deleteSkill(skill) },
                         onUpdateSchedule = { days, mins, flex, weekdayMins -> viewModel.updateScheduleWithWeekdays(days, mins, flex, weekdayMins) },
                         onTriggerSimulatedNotification = { action -> viewModel.simulateCompanionNotification(action) },
+                        reminderSettings = reminderSettings,
+                        onReminderSettingsChange = viewModel::updateReminderSettings,
                         soundSettings = soundSettings,
                         onSoundEnabledChange = { enabled ->
                             RpgSoundManager.setSoundEnabled(enabled)
@@ -2392,6 +2398,8 @@ fun StatsTab(
     onDeleteSkill: (SkillEntity) -> Unit,
     onUpdateSchedule: (String, Int, String, String) -> Unit,
     onTriggerSimulatedNotification: (String) -> Unit,
+    reminderSettings: ReminderSettings,
+    onReminderSettingsChange: (ReminderSettings) -> Unit,
     soundSettings: SoundSettings,
     onSoundEnabledChange: (Boolean) -> Unit,
     onSoundVolumeChange: (Float) -> Unit,
@@ -2840,65 +2848,11 @@ fun StatsTab(
         }
 
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                border = BorderStroke(1.dp, DarkCardBorder)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        text = "Trigger context-aware RPG messages directly to your Android notifications based on your current schedule, active bosses, streaks, and goals.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                RpgSoundManager.playClickSound()
-                                onTriggerSimulatedNotification(NotificationReceiver.ACTION_MORNING_QUEST)
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF132238)),
-                            border = BorderStroke(1.dp, NeonBlueAccent.copy(alpha = 0.4f)),
-                            shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier.weight(1f).testTag("sim_morning_button")
-                        ) {
-                            Text("☀️ MORNING", color = NeonBlueAccent, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                        }
-
-                        Button(
-                            onClick = {
-                                RpgSoundManager.playClickSound()
-                                onTriggerSimulatedNotification(NotificationReceiver.ACTION_BEFORE_STUDY)
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF281C38)),
-                            border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.4f)),
-                            shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier.weight(1f).testTag("sim_before_button")
-                        ) {
-                            Text("🔔 RITUAL", color = RpgGold, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                        }
-
-                        Button(
-                            onClick = {
-                                RpgSoundManager.playClickSound()
-                                onTriggerSimulatedNotification(NotificationReceiver.ACTION_EVENING_CAMPAIGN)
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E191D)),
-                            border = BorderStroke(1.dp, RpgRuby.copy(alpha = 0.4f)),
-                            shape = RoundedCornerShape(6.dp),
-                            modifier = Modifier.weight(1f).testTag("sim_evening_button")
-                        ) {
-                            Text("⏳ TWILIGHT", color = RpgRuby, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                        }
-                    }
-                }
-            }
+            ReminderSettingsCard(
+                settings = reminderSettings,
+                onSettingsChange = onReminderSettingsChange,
+                onPreview = onTriggerSimulatedNotification,
+            )
         }
 
         // Replay Tutorial / System Controls Section
@@ -3474,6 +3428,156 @@ fun StatsTab(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ReminderSettingsCard(
+    settings: ReminderSettings,
+    onSettingsChange: (ReminderSettings) -> Unit,
+    onPreview: (String) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
+        border = BorderStroke(1.dp, DarkCardBorder),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "Choose when each companion message appears. Changes are saved and scheduled immediately.",
+                style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+            )
+            ReminderScheduleRow(
+                label = "MORNING QUEST",
+                schedule = settings.morning,
+                accent = NeonBlueAccent,
+                testTagPrefix = "morning_reminder",
+                onScheduleChange = { onSettingsChange(settings.copy(morning = it)) },
+                onPreview = {
+                    RpgSoundManager.playClickSound()
+                    onPreview(NotificationReceiver.ACTION_MORNING_QUEST)
+                },
+            )
+            HorizontalDivider(color = DarkCardBorder)
+            ReminderScheduleRow(
+                label = "STUDY RITUAL",
+                schedule = settings.beforeStudy,
+                accent = RpgGold,
+                testTagPrefix = "study_reminder",
+                onScheduleChange = { onSettingsChange(settings.copy(beforeStudy = it)) },
+                onPreview = {
+                    RpgSoundManager.playClickSound()
+                    onPreview(NotificationReceiver.ACTION_BEFORE_STUDY)
+                },
+            )
+            HorizontalDivider(color = DarkCardBorder)
+            ReminderScheduleRow(
+                label = "EVENING REVIEW",
+                schedule = settings.evening,
+                accent = RpgRuby,
+                testTagPrefix = "evening_reminder",
+                onScheduleChange = { onSettingsChange(settings.copy(evening = it)) },
+                onPreview = {
+                    RpgSoundManager.playClickSound()
+                    onPreview(NotificationReceiver.ACTION_EVENING_CAMPAIGN)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReminderScheduleRow(
+    label: String,
+    schedule: ReminderSchedule,
+    accent: Color,
+    testTagPrefix: String,
+    onScheduleChange: (ReminderSchedule) -> Unit,
+    onPreview: () -> Unit,
+) {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        color = TextWhite,
+                        fontWeight = FontWeight.Black,
+                    ),
+                )
+                Text(
+                    text = if (schedule.enabled) {
+                        "Active every day at ${schedule.formattedTime()}"
+                    } else {
+                        "Disabled"
+                    },
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = if (schedule.enabled) accent else TextMuted,
+                    ),
+                )
+            }
+            Switch(
+                checked = schedule.enabled,
+                onCheckedChange = { enabled ->
+                    onScheduleChange(schedule.copy(enabled = enabled))
+                },
+                modifier = Modifier
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("${testTagPrefix}_switch")
+                    .semantics {
+                        contentDescription = "$label reminder"
+                        stateDescription = if (schedule.enabled) "On" else "Off"
+                    },
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(
+                onClick = {
+                    TimePickerDialog(
+                        context,
+                        { _, hour, minute ->
+                            onScheduleChange(schedule.copy(hour = hour, minute = minute))
+                        },
+                        schedule.hour,
+                        schedule.minute,
+                        true,
+                    ).show()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("${testTagPrefix}_time_button")
+                    .semantics {
+                        contentDescription = "Set $label time. Current time ${schedule.formattedTime()}"
+                    },
+                border = BorderStroke(1.dp, accent.copy(alpha = 0.5f)),
+            ) {
+                Icon(Icons.Default.Schedule, contentDescription = null, tint = accent)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(schedule.formattedTime(), color = accent, fontWeight = FontWeight.Bold)
+            }
+            OutlinedButton(
+                onClick = onPreview,
+                modifier = Modifier
+                    .testTag("${testTagPrefix}_preview_button")
+                    .semantics { contentDescription = "Preview $label reminder" },
+                border = BorderStroke(1.dp, DarkCardBorder),
+            ) {
+                Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = TextMuted)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("TEST", color = TextMuted, fontWeight = FontWeight.Bold)
             }
         }
     }

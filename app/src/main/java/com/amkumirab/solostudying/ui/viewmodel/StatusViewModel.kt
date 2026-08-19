@@ -9,7 +9,10 @@ import androidx.lifecycle.viewModelScope
 import com.amkumirab.solostudying.data.entity.StudySessionEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.notification.NotificationHelper
 import com.amkumirab.solostudying.notification.NotificationReceiver
+import com.amkumirab.solostudying.notification.ReminderSettings
+import com.amkumirab.solostudying.notification.ReminderSettingsStore
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,6 +70,7 @@ class StatusViewModel(
 ) : ViewModel() {
 
     private val context = context.applicationContext
+    private val reminderSettingsStore = ReminderSettingsStore(this.context)
 
     val userProfile: StateFlow<UserProfileEntity?> = repository.userProfile.stateIn(
         scope = viewModelScope,
@@ -79,6 +83,8 @@ class StatusViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    val reminderSettings: StateFlow<ReminderSettings> = reminderSettingsStore.settings
 
     // Notification states for RPG-like banners
     var showStreakResetToast by mutableStateOf<String?>(null)
@@ -175,6 +181,11 @@ class StatusViewModel(
             }
             context.sendBroadcast(intent)
         }
+    }
+
+    fun updateReminderSettings(settings: ReminderSettings) {
+        reminderSettingsStore.save(settings)
+        NotificationHelper.scheduleDailyAlarms(context, settings)
     }
 
     // Basic XP/Gold modification interface for VM communication

@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import java.util.Calendar
+import java.util.TimeZone
 
 object NotificationHelper {
     const val CHANNEL_ID = "solo_studying_rpg_quests"
@@ -29,109 +30,97 @@ object NotificationHelper {
         }
     }
 
-    fun scheduleDailyAlarms(context: Context) {
+    fun scheduleDailyAlarms(
+        context: Context,
+        settings: ReminderSettings = ReminderSettingsStore(context).read(),
+    ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val nowMillis = System.currentTimeMillis()
+        scheduleOrCancel(
+            context = context,
+            alarmManager = alarmManager,
+            action = NotificationReceiver.ACTION_MORNING_QUEST,
+            requestCode = 1001,
+            label = "Morning",
+            schedule = settings.morning,
+            nowMillis = nowMillis,
+        )
+        scheduleOrCancel(
+            context = context,
+            alarmManager = alarmManager,
+            action = NotificationReceiver.ACTION_BEFORE_STUDY,
+            requestCode = 1003,
+            label = "Before-study",
+            schedule = settings.beforeStudy,
+            nowMillis = nowMillis,
+        )
+        scheduleOrCancel(
+            context = context,
+            alarmManager = alarmManager,
+            action = NotificationReceiver.ACTION_EVENING_CAMPAIGN,
+            requestCode = 1002,
+            label = "Evening",
+            schedule = settings.evening,
+            nowMillis = nowMillis,
+        )
+    }
 
-        // 1. Schedule Morning Alarm at 9:00 AM (local time)
-        val morningIntent = Intent(context, NotificationReceiver::class.java).apply {
-            action = NotificationReceiver.ACTION_MORNING_QUEST
+    private fun scheduleOrCancel(
+        context: Context,
+        alarmManager: AlarmManager,
+        action: String,
+        requestCode: Int,
+        label: String,
+        schedule: ReminderSchedule,
+        nowMillis: Long,
+    ) {
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            this.action = action
         }
-        val morningPendingIntent = PendingIntent.getBroadcast(
+        val pendingIntent = PendingIntent.getBroadcast(
             context,
-            1001,
-            morningIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val morningCalendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 9)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            // If the time is in the past today, add one day so it fires tomorrow morning instead of immediately
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
+        if (!schedule.enabled) {
+            alarmManager.cancel(pendingIntent)
+            Log.d(TAG, "$label alarm disabled")
+            return
         }
 
-        // Schedule repeating daily alarm indexer
-        try {
-            alarmManager.setInexactRepeating(
-                AlarmManager.RTC_WAKEUP,
-                morningCalendar.timeInMillis,
-                AlarmManager.INTERVAL_DAY,
-                morningPendingIntent
-            )
-            Log.d(TAG, "Morning alarm scheduled for: ${morningCalendar.time}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error scheduling morning alarm", e)
-        }
-
-        // 2. Schedule Evening Alarm at 9:00 PM (local time)
-        val eveningIntent = Intent(context, NotificationReceiver::class.java).apply {
-            action = NotificationReceiver.ACTION_EVENING_CAMPAIGN
-        }
-        val eveningPendingIntent = PendingIntent.getBroadcast(
-            context,
-            1002,
-            eveningIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val triggerAtMillis = calculateNextReminderTimeMillis(
+            schedule = schedule,
+            nowMillis = nowMillis,
         )
-
-        val eveningCalendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 21) // 9:00 PM
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            // If the time is in the past today, add one day so it fires tomorrow evening instead of immediately
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
-        }
-
         try {
-            alarmManager.setInexactRepeating(
+            alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                eveningCalendar.timeInMillis,
-                AlarmManager.INTERVAL_DAY,
-                eveningPendingIntent
+                triggerAtMillis,
+                pendingIntent,
             )
-            Log.d(TAG, "Evening alarm scheduled for: ${eveningCalendar.time}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error scheduling evening alarm", e)
-        }
-
-        // 3. Schedule Before Study Reminder Alarm at 6:00 PM (local time)
-        val beforeStudyIntent = Intent(context, NotificationReceiver::class.java).apply {
-            action = NotificationReceiver.ACTION_BEFORE_STUDY
-        }
-        val beforeStudyPendingIntent = PendingIntent.getBroadcast(
-            context,
-            1003,
-            beforeStudyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val beforeStudyCalendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 18) // 6:00 PM
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
-        }
-
-        try {
-            alarmManager.setInexactRepeating(
-                AlarmManager.RTC_WAKEUP,
-                beforeStudyCalendar.timeInMillis,
-                AlarmManager.INTERVAL_DAY,
-                beforeStudyPendingIntent
-            )
-            Log.d(TAG, "Before-study alarm scheduled for: ${beforeStudyCalendar.time}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error scheduling before-study alarm", e)
+            Log.d(TAG, "$label alarm scheduled for ${schedule.formattedTime()}")
+        } catch (exception: Exception) {
+            Log.e(TAG, "Unable to schedule $label alarm", exception)
         }
     }
+}
+
+internal fun calculateNextReminderTimeMillis(
+    schedule: ReminderSchedule,
+    nowMillis: Long,
+    timeZone: TimeZone = TimeZone.getDefault(),
+): Long {
+    val calendar = Calendar.getInstance(timeZone).apply {
+        timeInMillis = nowMillis
+        set(Calendar.HOUR_OF_DAY, schedule.hour)
+        set(Calendar.MINUTE, schedule.minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+        if (timeInMillis <= nowMillis) {
+            add(Calendar.DAY_OF_YEAR, 1)
+        }
+    }
+    return calendar.timeInMillis
 }

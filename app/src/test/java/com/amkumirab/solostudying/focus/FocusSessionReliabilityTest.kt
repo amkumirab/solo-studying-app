@@ -7,6 +7,7 @@ import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.ui.viewmodel.BattleViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -165,6 +166,14 @@ class FocusSessionReliabilityTest {
         assertEquals(1, sessions.size)
         assertEquals(1, profile.totalSessionCount)
         assertTrue(sessions.single().wasCompleted)
+        val summary = viewModel.sessionSummary ?: error("Session summary was not created")
+        assertEquals(sessions.single().id.toLong(), summary.sessionId)
+        assertEquals(sessions.single().durationSeconds, summary.durationSeconds)
+        assertEquals(sessions.single().xpEarned, summary.xpEarned)
+        assertEquals(SessionEndState.Completed, summary.endState)
+
+        viewModel.dismissSessionSummary()
+        assertNull(viewModel.sessionSummary)
     }
 
     @Test
@@ -202,6 +211,35 @@ class FocusSessionReliabilityTest {
         assertEquals(session.xpEarned, profile.totalXpEarned)
         assertEquals(session.goldEarned, profile.totalGoldEarned - 100)
         assertEquals(222, profile.gold)
+        val summary = viewModel.sessionSummary ?: error("Session summary was not created")
+        assertEquals("Reward Consistency Trial", summary.subject)
+        assertEquals(270, summary.xpEarned)
+        assertEquals(122, summary.goldEarned)
+        assertEquals(1, summary.previousLevel)
+        assertEquals(2, summary.currentLevel)
+        assertEquals(0f, summary.bossProgress?.progressBefore)
+        assertEquals(1f, summary.bossProgress?.progressAfter)
+    }
+
+    @Test
+    fun `suspended study creates a saved session summary`() = runBlocking {
+        val viewModel = BattleViewModel(repository, context, store) { 6_000_000L }
+        battleViewModel = viewModel
+        viewModel.selectAndStartFreeStudy(minutes = 1)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+
+        viewModel.simulateStudySeconds(12L)
+        waitForCondition { if (viewModel.battleTimeSpentSeconds == 12L) true else null }
+        viewModel.suspendCurrentSession()
+
+        val summary = viewModel.sessionSummary ?: error("Session summary was not created")
+        val session = repository.allSessions.first().single()
+        assertEquals(SessionEndState.Suspended, summary.endState)
+        assertEquals("Astral Free Study", summary.subject)
+        assertEquals(12L, summary.durationSeconds)
+        assertEquals(session.id.toLong(), summary.sessionId)
+        assertFalse(session.wasCompleted)
+        assertFalse(viewModel.isBattleActive)
     }
 
     @Test

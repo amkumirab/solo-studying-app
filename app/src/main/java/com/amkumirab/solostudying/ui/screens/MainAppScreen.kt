@@ -56,6 +56,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.amkumirab.solostudying.data.entity.*
+import com.amkumirab.solostudying.domain.session.ProgressSummary
+import com.amkumirab.solostudying.domain.session.SessionEndState
+import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.notification.NotificationReceiver
 import com.amkumirab.solostudying.notification.ReminderSchedule
 import com.amkumirab.solostudying.notification.ReminderSettings
@@ -157,7 +160,10 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                 .background(BlackFantasyBackground)
         ) {
             // Display active notification dialogs/banners
-            NotificationOverlays(viewModel = viewModel)
+            NotificationOverlays(
+                viewModel = viewModel,
+                onStartAnotherSession = { currentTab = Tab.Dungeons },
+            )
 
             AnimatedContent(
                 targetState = currentTab,
@@ -3788,7 +3794,22 @@ fun StatRow(label: String, value: String) {
 // COMPOSABLE: OVERLAYS (RPG REACTION DIALOGS)
 // ==========================================
 @Composable
-fun NotificationOverlays(viewModel: SoloStudyingViewModel) {
+fun NotificationOverlays(
+    viewModel: SoloStudyingViewModel,
+    onStartAnotherSession: () -> Unit = {},
+) {
+    viewModel.sessionSummary?.let { summary ->
+        SessionSummaryDialog(
+            summary = summary,
+            onDone = viewModel::dismissSessionSummary,
+            onStartAnotherSession = {
+                viewModel.dismissSessionSummary()
+                onStartAnotherSession()
+            },
+        )
+        return
+    }
+
     // Level Up Popup Dialog
     viewModel.showLevelUpToast?.let { pair ->
         Dialog(onDismissRequest = { viewModel.clearNotifications() }) {
@@ -3937,6 +3958,244 @@ fun NotificationOverlays(viewModel: SoloStudyingViewModel) {
             }
         }
     }
+}
+
+@Composable
+fun SessionSummaryDialog(
+    summary: SessionSummary,
+    onDone: () -> Unit,
+    onStartAnotherSession: () -> Unit,
+) {
+    val title = when (summary.endState) {
+        SessionEndState.Completed -> "SESSION COMPLETE"
+        SessionEndState.Suspended -> "SESSION SAVED"
+        SessionEndState.ManualConquest -> "BOSS CONQUERED"
+    }
+    val accent = when (summary.endState) {
+        SessionEndState.Suspended -> NeonBlueAccent
+        else -> RpgGold
+    }
+
+    Dialog(onDismissRequest = onDone) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 720.dp)
+                .testTag("session_summary_dialog")
+                .semantics {
+                    contentDescription = "$title for ${summary.subject}"
+                    isTraversalGroup = true
+                },
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF111A2C)),
+            border = BorderStroke(2.dp, accent),
+        ) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    imageVector = if (summary.endState == SessionEndState.Suspended) {
+                        Icons.Default.BookmarkAdded
+                    } else {
+                        Icons.Default.EmojiEvents
+                    },
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(52.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = title,
+                    color = accent,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 22.sp,
+                    letterSpacing = 1.2.sp,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    text = summary.subject,
+                    color = TextWhite,
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    SummaryMetric(
+                        label = "TIME",
+                        value = formatStudyTimeShort(summary.durationSeconds),
+                        modifier = Modifier.weight(1f),
+                    )
+                    SummaryMetric(
+                        label = "XP",
+                        value = "+${summary.xpEarned}",
+                        modifier = Modifier.weight(1f),
+                    )
+                    SummaryMetric(
+                        label = "GOLD",
+                        value = "+${summary.goldEarned}",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                summary.bossProgress?.let {
+                    Spacer(Modifier.height(16.dp))
+                    SessionProgressBlock(label = "BOSS PROGRESS", progress = it, accent = RpgRuby)
+                }
+                summary.skillProgress?.let {
+                    Spacer(Modifier.height(12.dp))
+                    SessionProgressBlock(label = "SKILL PROGRESS", progress = it, accent = NeonBlueAccent)
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val levelValue = if (summary.currentLevel > summary.previousLevel) {
+                        "${summary.previousLevel} → ${summary.currentLevel}"
+                    } else {
+                        summary.currentLevel.toString()
+                    }
+                    SummaryMetric(
+                        label = "LEVEL",
+                        value = levelValue,
+                        modifier = Modifier.weight(1f),
+                    )
+                    SummaryMetric(
+                        label = "STREAK",
+                        value = "${summary.currentStreak} days",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                if (summary.currentLevel > summary.previousLevel) {
+                    SummaryNotice(
+                        text = "Level up! ${summary.previousLevel} → ${summary.currentLevel}",
+                        color = RpgGold,
+                    )
+                }
+                summary.streakMessage?.let { SummaryNotice(text = it, color = RpgRuby) }
+                if (summary.skillUnlocked) {
+                    SummaryNotice(text = "New skill trait unlocked", color = NeonBlueAccent)
+                }
+
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = onStartAnotherSession,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("session_summary_start_another"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accent,
+                        contentColor = Color.Black,
+                    ),
+                ) {
+                    Text("START ANOTHER SESSION", fontWeight = FontWeight.Black)
+                }
+                TextButton(
+                    onClick = onDone,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("session_summary_done"),
+                ) {
+                    Text("DONE", color = TextWhite, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2740)),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(label, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = TextWhite, fontSize = 16.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun SessionProgressBlock(
+    label: String,
+    progress: ProgressSummary,
+    accent: Color,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF182238), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    progress.name,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                "+${formatStudyTimeShort(progress.gainedSeconds)}",
+                color = accent,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = { progress.progressAfter },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .semantics {
+                    stateDescription =
+                        "${(progress.progressBefore * 100).toInt()} to ${(progress.progressAfter * 100).toInt()} percent"
+                },
+            color = accent,
+            trackColor = Color(0xFF0D1424),
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "${(progress.progressBefore * 100).toInt()}% → ${(progress.progressAfter * 100).toInt()}%",
+            color = TextMuted,
+            fontSize = 11.sp,
+        )
+    }
+}
+
+@Composable
+private fun SummaryNotice(text: String, color: Color) {
+    Text(
+        text = text,
+        color = color,
+        textAlign = TextAlign.Center,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+    )
 }
 
 // ==========================================

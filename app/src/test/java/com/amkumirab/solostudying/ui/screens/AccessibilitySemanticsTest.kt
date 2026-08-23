@@ -14,7 +14,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
+import com.amkumirab.solostudying.domain.session.ProgressSummary
+import com.amkumirab.solostudying.domain.session.SessionEndState
+import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.sound.SoundSettings
 import org.junit.Assert.assertEquals
@@ -174,6 +178,55 @@ class AccessibilitySemanticsTest {
             assertEquals(false, updatedSettings?.morning?.enabled)
             assertEquals(settings.beforeStudy, updatedSettings?.beforeStudy)
             assertEquals(settings.evening, updatedSettings?.evening)
+        }
+    }
+
+    @Test
+    fun `session summary exposes results and reachable actions`() {
+        var doneClicks = 0
+        var startClicks = 0
+        val summary = SessionSummary(
+            sessionId = 8L,
+            subject = "Physics Revision",
+            durationSeconds = 1_500L,
+            xpEarned = 80,
+            goldEarned = 35,
+            endState = SessionEndState.Completed,
+            bossProgress = ProgressSummary("Physics Revision", 300L, 1_800L, 3_000L),
+            previousLevel = 3,
+            currentLevel = 4,
+            previousStreak = 4,
+            currentStreak = 5,
+            skillUnlocked = true,
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                SessionSummaryDialog(
+                    summary = summary,
+                    onDone = { doneClicks++ },
+                    onStartAnotherSession = { startClicks++ },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("session_summary_dialog")
+            .assertContentDescriptionEquals("SESSION COMPLETE for Physics Revision")
+        composeRule.onNodeWithText("+80").assertIsEnabled()
+        composeRule.onNodeWithText("3 → 4").assertIsEnabled()
+
+        composeRule.onNodeWithTag("session_summary_start_another")
+            .assertHeightIsAtLeast(48.dp)
+            .performScrollTo()
+            .performClick()
+        composeRule.onNodeWithTag("session_summary_done")
+            .assertHeightIsAtLeast(48.dp)
+            .performScrollTo()
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, startClicks)
+            assertEquals(1, doneClicks)
         }
     }
 }

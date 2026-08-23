@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.notification.ReminderSettings
 
 class SoloStudyingViewModel(
@@ -34,6 +35,7 @@ class SoloStudyingViewModel(
     val isFreeStudyActive: Boolean get() = battleViewModel.isFreeStudyActive
     val battleTimeLeftSeconds: Long get() = battleViewModel.battleTimeLeftSeconds
     val battleTimeSpentSeconds: Long get() = battleViewModel.battleTimeSpentSeconds
+    val sessionSummary: SessionSummary? get() = battleViewModel.sessionSummary
 
     var selectedSkillToTrain: SkillEntity?
         get() = battleViewModel.selectedSkillToTrain
@@ -97,6 +99,10 @@ class SoloStudyingViewModel(
     fun clearNotifications() {
         statusViewModel.clearNotifications()
         battleViewModel.clearNotifications()
+    }
+
+    fun dismissSessionSummary() {
+        battleViewModel.dismissSessionSummary()
     }
 
     fun simulateCompanionNotification(action: String) {

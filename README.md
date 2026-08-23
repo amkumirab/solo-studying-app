@@ -13,6 +13,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - Dungeons for grouping related goals
 - Boss battles and free-study sessions
 - Pause, resume, abandon, and completion flows
+- Post-session summaries for time, rewards, levels, streaks, and progress
 - Independent skill progression based on focused time
 - Custom real-life rewards purchased with earned gold
 - Streaks, level progression, and recovery challenges
@@ -95,7 +96,7 @@ Windows:
 ```
 
 The core test suite covers onboarding, persistence, boss progress, rewards,
-streak behavior, and tutorial completion.
+session summaries, streak behavior, and tutorial completion.
 
 ## Build and install a debug APK
 

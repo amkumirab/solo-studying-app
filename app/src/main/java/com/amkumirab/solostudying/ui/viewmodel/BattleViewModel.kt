@@ -10,6 +10,9 @@ import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.domain.reward.SessionReward
 import com.amkumirab.solostudying.domain.reward.SessionRewardCalculator
+import com.amkumirab.solostudying.domain.session.ProgressSummary
+import com.amkumirab.solostudying.domain.session.SessionEndState
+import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.reconcileFocusSession
@@ -61,6 +64,9 @@ class BattleViewModel(
     var showStreakResetToast by mutableStateOf<String?>(null)
     var showLevelUpToast by mutableStateOf<Pair<Int, Int>?>(null)
     var showPenaltyToast by mutableStateOf<String?>(null)
+
+    var sessionSummary by mutableStateOf<SessionSummary?>(null)
+        private set
 
     init {
         restoreSavedFocusSession()
@@ -285,6 +291,7 @@ class BattleViewModel(
                 }
                 var skillMastered = false
                 var completionResult: SessionCompletionResult? = null
+                var pendingSummary: SessionSummary? = null
 
                 repository.runInTransaction {
                     if (!completedFreeStudy && boss != null) {
@@ -316,7 +323,7 @@ class BattleViewModel(
                         isFreeStudy = completedFreeStudy,
                     )
                     completionResult = result
-                    insertSession(
+                    val sessionId = insertSession(
                         StudySessionEntity(
                             bossId = boss?.id,
                             bossName = if (completedFreeStudy) "Astral Free Study" else boss?.name,
@@ -327,16 +334,43 @@ class BattleViewModel(
                             isFreeStudy = completedFreeStudy,
                         ),
                     )
+                    pendingSummary = SessionSummary(
+                        sessionId = sessionId,
+                        subject = if (completedFreeStudy) "Astral Free Study" else checkNotNull(boss).name,
+                        durationSeconds = finalDuration,
+                        xpEarned = result.xpAwarded,
+                        goldEarned = result.goldAwarded,
+                        endState = SessionEndState.Completed,
+                        bossProgress = boss?.let {
+                            ProgressSummary(
+                                name = it.name,
+                                beforeSeconds = initialBossTimeSpent,
+                                afterSeconds = initialBossTimeSpent + finalDuration,
+                                targetSeconds = it.requiredMinutes * 60L,
+                            )
+                        },
+                        skillProgress = skill?.let {
+                            ProgressSummary(
+                                name = it.name,
+                                beforeSeconds = it.spentSeconds,
+                                afterSeconds = it.spentSeconds + finalDuration,
+                                targetSeconds = it.targetMinutes * 60L,
+                            )
+                        },
+                        previousLevel = result.previousLevel,
+                        currentLevel = result.currentLevel,
+                        previousStreak = result.previousStreak,
+                        currentStreak = result.currentStreak,
+                        streakMessage = result.streakMessage,
+                        skillUnlocked = skillMastered,
+                    )
                 }
 
                 if (skillMastered) {
                     RpgSoundManager.playSkillUnlockSound()
-                    selectedSkillToTrain?.let { skill ->
-                        showStreakResetToast =
-                            "SKILL MASTERED! You have unlocked passive trait [${skill.name.uppercase()}]!"
-                    }
                 }
                 completionResult?.let(::applyProfileCompletionFeedback)
+                sessionSummary = pendingSummary
 
                 resetActiveSession()
             } finally {
@@ -362,11 +396,15 @@ class BattleViewModel(
         timerJob?.cancel()
         val finalSpent = battleTimeSpentSeconds
         val boss = activeBoss
+        val wasFreeStudy = isFreeStudyActive
+        val skill = selectedSkillToTrain
         var completionResult: SessionCompletionResult? = null
+        var recordedSessionId: Long? = null
+        var skillMastered = false
         var penaltyFeedback: String? = null
 
         repository.runInTransaction {
-            if (isFreeStudyActive) {
+            if (wasFreeStudy) {
                 if (finalSpent > 5) {
                     val baseReward = SessionRewardCalculator.suspendedFreeStudy(finalSpent)
                     val result = updateProfileCompletingSession(
@@ -376,7 +414,7 @@ class BattleViewModel(
                         isFreeStudy = true,
                     )
                     completionResult = result
-                    insertSession(
+                    recordedSessionId = insertSession(
                         StudySessionEntity(
                             bossId = null,
                             bossName = "Astral Free Study (Suspended)",
@@ -402,7 +440,7 @@ class BattleViewModel(
                         isFreeStudy = false,
                     )
                     completionResult = result
-                    insertSession(
+                    recordedSessionId = insertSession(
                         StudySessionEntity(
                             bossId = boss.id,
                             bossName = boss.name,
@@ -420,7 +458,6 @@ class BattleViewModel(
                 }
             }
 
-            val skill = selectedSkillToTrain
             if (skill != null && finalSpent > 0) {
                 val updatedSpent = skill.spentSeconds + finalSpent
                 val isNowUnlocked = updatedSpent >= skill.targetMinutes * 60L
@@ -430,10 +467,45 @@ class BattleViewModel(
                         isUnlocked = skill.isUnlocked || isNowUnlocked
                     )
                 )
+                skillMastered = isNowUnlocked && !skill.isUnlocked
             }
         }
 
         completionResult?.let(::applyProfileCompletionFeedback)
+        val result = completionResult
+        val sessionId = recordedSessionId
+        if (result != null && sessionId != null) {
+            sessionSummary = SessionSummary(
+                sessionId = sessionId,
+                subject = if (wasFreeStudy) "Astral Free Study" else checkNotNull(boss).name,
+                durationSeconds = finalSpent,
+                xpEarned = result.xpAwarded,
+                goldEarned = result.goldAwarded,
+                endState = SessionEndState.Suspended,
+                bossProgress = boss?.let {
+                    ProgressSummary(
+                        name = it.name,
+                        beforeSeconds = initialBossTimeSpent,
+                        afterSeconds = initialBossTimeSpent + finalSpent,
+                        targetSeconds = it.requiredMinutes * 60L,
+                    )
+                },
+                skillProgress = skill?.let {
+                    ProgressSummary(
+                        name = it.name,
+                        beforeSeconds = it.spentSeconds,
+                        afterSeconds = it.spentSeconds + finalSpent,
+                        targetSeconds = it.targetMinutes * 60L,
+                    )
+                },
+                previousLevel = result.previousLevel,
+                currentLevel = result.currentLevel,
+                previousStreak = result.previousStreak,
+                currentStreak = if (applyHeavyPenalty && boss != null) 0 else result.currentStreak,
+                streakMessage = result.streakMessage,
+                skillUnlocked = skillMastered,
+            )
+        }
         penaltyFeedback?.let { showPenaltyToast = it }
         resetActiveSession()
     }
@@ -592,6 +664,8 @@ class BattleViewModel(
         return SessionCompletionResult(
             previousLevel = profile.level,
             currentLevel = currentLvl,
+            previousStreak = profile.currentStreak,
+            currentStreak = streakUpdated,
             streakMessage = streakMessage,
             studyCompleted = studyCompleted,
             xpAwarded = totalXpGained,
@@ -600,9 +674,7 @@ class BattleViewModel(
     }
 
     private fun applyProfileCompletionFeedback(feedback: SessionCompletionResult) {
-        feedback.streakMessage?.let { showStreakResetToast = it }
         if (feedback.currentLevel > feedback.previousLevel) {
-            showLevelUpToast = feedback.previousLevel to feedback.currentLevel
             if (feedback.studyCompleted) {
                 RpgSoundManager.playLevelUpSound()
             }
@@ -614,6 +686,7 @@ class BattleViewModel(
     fun conquerRealBossManual(boss: BossEntity) {
         viewModelScope.launch {
             var completionResult: SessionCompletionResult? = null
+            var pendingSummary: SessionSummary? = null
             val conquered = repository.runInTransaction {
                 val currentBoss = getBossById(boss.id) ?: return@runInTransaction false
                 if (currentBoss.isCompleted) return@runInTransaction false
@@ -632,7 +705,7 @@ class BattleViewModel(
                     isFreeStudy = false
                 )
                 completionResult = result
-                insertSession(
+                val sessionId = insertSession(
                     StudySessionEntity(
                         bossId = currentBoss.id,
                         bossName = currentBoss.name + " (Manual Conquest)",
@@ -643,16 +716,40 @@ class BattleViewModel(
                         isFreeStudy = false,
                     ),
                 )
+                pendingSummary = SessionSummary(
+                    sessionId = sessionId,
+                    subject = currentBoss.name,
+                    durationSeconds = durationSeconds,
+                    xpEarned = result.xpAwarded,
+                    goldEarned = result.goldAwarded,
+                    endState = SessionEndState.ManualConquest,
+                    bossProgress = ProgressSummary(
+                        name = currentBoss.name,
+                        beforeSeconds = currentBoss.timeSpentSeconds,
+                        afterSeconds = durationSeconds,
+                        targetSeconds = durationSeconds,
+                    ),
+                    previousLevel = result.previousLevel,
+                    currentLevel = result.currentLevel,
+                    previousStreak = result.previousStreak,
+                    currentStreak = result.currentStreak,
+                    streakMessage = result.streakMessage,
+                )
                 true
             }
             if (!conquered) return@launch
             completionResult?.let(::applyProfileCompletionFeedback)
+            sessionSummary = pendingSummary
 
             if (activeBoss?.id == boss.id) {
                 timerJob?.cancel()
                 resetActiveSession()
             }
         }
+    }
+
+    fun dismissSessionSummary() {
+        sessionSummary = null
     }
 
     fun clearNotifications() {
@@ -664,6 +761,8 @@ class BattleViewModel(
     private data class SessionCompletionResult(
         val previousLevel: Int,
         val currentLevel: Int,
+        val previousStreak: Int,
+        val currentStreak: Int,
         val streakMessage: String?,
         val studyCompleted: Boolean,
         val xpAwarded: Int,

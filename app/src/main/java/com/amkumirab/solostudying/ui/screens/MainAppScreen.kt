@@ -267,7 +267,9 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         },
                         onSoundVolumeChange = RpgSoundManager::setVolume,
                         onPreviewSound = RpgSoundManager::previewSound,
-                        onReplayTutorial = { viewModel.tutorialViewModel.replayTutorial() }
+                        onReplayTutorial = { viewModel.tutorialViewModel.replayTutorial() },
+                        breakSuggestionsEnabled = viewModel.breakSuggestionsEnabled,
+                        onBreakSuggestionsEnabledChange = viewModel::setBreakSuggestionsEnabled,
                     )
                 }
             }
@@ -520,6 +522,7 @@ private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.syncFocusSessionTime()
+                viewModel.syncBreakTime()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -2410,7 +2413,9 @@ fun StatsTab(
     onSoundEnabledChange: (Boolean) -> Unit,
     onSoundVolumeChange: (Float) -> Unit,
     onPreviewSound: () -> Unit,
-    onReplayTutorial: () -> Unit
+    onReplayTutorial: () -> Unit,
+    breakSuggestionsEnabled: Boolean,
+    onBreakSuggestionsEnabledChange: (Boolean) -> Unit,
 ) {
     val nonNullProfile = profile ?: UserProfileEntity()
     val rankText = getRankLabel(nonNullProfile.level)
@@ -2869,6 +2874,8 @@ fun StatsTab(
                 onSoundVolumeChange = onSoundVolumeChange,
                 onPreviewSound = onPreviewSound,
                 onReplayTutorial = onReplayTutorial,
+                breakSuggestionsEnabled = breakSuggestionsEnabled,
+                onBreakSuggestionsEnabledChange = onBreakSuggestionsEnabledChange,
             )
         }
 
@@ -3596,6 +3603,8 @@ internal fun SystemControlsCard(
     onSoundVolumeChange: (Float) -> Unit,
     onPreviewSound: () -> Unit,
     onReplayTutorial: () -> Unit,
+    breakSuggestionsEnabled: Boolean = true,
+    onBreakSuggestionsEnabledChange: (Boolean) -> Unit = {},
 ) {
     val volumePercent = (soundSettings.volume.coerceIn(0f, 1f) * 100).toInt()
 
@@ -3737,6 +3746,45 @@ internal fun SystemControlsCard(
 
                 HorizontalDivider(color = DarkCardBorder.copy(alpha = 0.6f))
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Coffee,
+                        contentDescription = null,
+                        tint = if (breakSuggestionsEnabled) RpgEmerald else TextMuted,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "POST-SESSION BREAKS",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                color = TextWhite,
+                                fontWeight = FontWeight.Black,
+                            ),
+                        )
+                        Text(
+                            text = "Offer a recovery timer after completed sessions",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+                        )
+                    }
+                    Switch(
+                        checked = breakSuggestionsEnabled,
+                        onCheckedChange = onBreakSuggestionsEnabledChange,
+                        modifier = Modifier
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .testTag("break_suggestions_switch")
+                            .semantics {
+                                contentDescription = "Post-session break suggestions"
+                                stateDescription = if (breakSuggestionsEnabled) "On" else "Off"
+                                traversalIndex = 3f
+                            },
+                    )
+                }
+
+                HorizontalDivider(color = DarkCardBorder.copy(alpha = 0.6f))
+
                 Text(
                     text = "Want to re-experience the immersive Hunter Awakening Ritual? You can replay the introductory covenant setup at any time.",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
@@ -3757,7 +3805,7 @@ internal fun SystemControlsCard(
                         .testTag("replay_tutorial_button")
                         .semantics {
                             contentDescription = "Replay onboarding tutorial"
-                            traversalIndex = 3f
+                            traversalIndex = 4f
                         },
                 ) {
                     Icon(
@@ -3798,10 +3846,50 @@ fun NotificationOverlays(
     viewModel: SoloStudyingViewModel,
     onStartAnotherSession: () -> Unit = {},
 ) {
+    var showBreakDurationDialog by remember { mutableStateOf(false) }
+
+    viewModel.activeBreak?.let { activeBreak ->
+        BreakTimerDialog(
+            durationSeconds = activeBreak.durationSeconds,
+            remainingSeconds = viewModel.breakTimeLeftSeconds,
+            onSkipBreak = {
+                viewModel.skipBreak()
+                onStartAnotherSession()
+            },
+        )
+        return
+    }
+
+    if (viewModel.showBreakComplete) {
+        BreakCompleteDialog(
+            onDone = viewModel::dismissBreakComplete,
+            onStartNextSession = {
+                viewModel.dismissBreakComplete()
+                onStartAnotherSession()
+            },
+        )
+        return
+    }
+
+    if (showBreakDurationDialog) {
+        BreakDurationDialog(
+            onDismiss = { showBreakDurationDialog = false },
+            onStartBreak = { minutes ->
+                viewModel.dismissSessionSummary()
+                viewModel.startBreak(minutes)
+                showBreakDurationDialog = false
+            },
+        )
+        return
+    }
+
     viewModel.sessionSummary?.let { summary ->
         SessionSummaryDialog(
             summary = summary,
             onDone = viewModel::dismissSessionSummary,
+            showBreakOption = viewModel.breakSuggestionsEnabled &&
+                summary.endState != SessionEndState.Suspended,
+            onTakeBreak = { showBreakDurationDialog = true },
             onStartAnotherSession = {
                 viewModel.dismissSessionSummary()
                 onStartAnotherSession()
@@ -3965,6 +4053,8 @@ fun SessionSummaryDialog(
     summary: SessionSummary,
     onDone: () -> Unit,
     onStartAnotherSession: () -> Unit,
+    showBreakOption: Boolean = true,
+    onTakeBreak: () -> Unit = {},
 ) {
     val title = when (summary.endState) {
         SessionEndState.Completed -> "SESSION COMPLETE"
@@ -4087,6 +4177,24 @@ fun SessionSummaryDialog(
                 }
 
                 Spacer(Modifier.height(20.dp))
+                if (showBreakOption) {
+                    Button(
+                        onClick = onTakeBreak,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("session_summary_take_break"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = RpgEmerald,
+                            contentColor = Color.Black,
+                        ),
+                    ) {
+                        Icon(Icons.Default.Coffee, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("TAKE A BREAK", fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
                 Button(
                     onClick = onStartAnotherSession,
                     modifier = Modifier

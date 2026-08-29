@@ -14,6 +14,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - Boss battles and free-study sessions
 - Pause, resume, abandon, and completion flows
 - Post-session summaries for time, rewards, levels, streaks, and progress
+- Optional post-session break timers with persistent countdowns and completion alerts
 - Independent skill progression based on focused time
 - Custom real-life rewards purchased with earned gold
 - Streaks, level progression, and recovery challenges

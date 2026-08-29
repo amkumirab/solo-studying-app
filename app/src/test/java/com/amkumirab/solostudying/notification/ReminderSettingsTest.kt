@@ -4,6 +4,8 @@ import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
+import com.amkumirab.solostudying.breaks.BreakSessionSnapshot
+import com.amkumirab.solostudying.breaks.BreakSessionStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -31,6 +33,7 @@ class ReminderSettingsTest {
             .edit()
             .clear()
             .commit()
+        context.deleteSharedPreferences(BreakSessionStore.PREFERENCES_NAME)
         ShadowAlarmManager.reset()
     }
 
@@ -40,6 +43,7 @@ class ReminderSettingsTest {
             .edit()
             .clear()
             .commit()
+        context.deleteSharedPreferences(BreakSessionStore.PREFERENCES_NAME)
         ShadowAlarmManager.reset()
     }
 
@@ -137,6 +141,29 @@ class ReminderSettingsTest {
         val alarms = shadowOf(alarmManager).scheduledAlarms
         assertEquals(1, alarms.size)
         assertFalse(alarms.single().getTriggerAtMs() <= System.currentTimeMillis())
+    }
+
+    @Test
+    fun `boot receiver restores an active break alarm`() {
+        val disabledReminders = ReminderSettings(
+            morning = ReminderSchedule(false, 8, 0),
+            beforeStudy = ReminderSchedule(false, 17, 0),
+            evening = ReminderSchedule(false, 22, 0),
+        )
+        ReminderSettingsStore(context).save(disabledReminders)
+        BreakSessionStore(context).saveSession(
+            BreakSessionSnapshot(
+                durationSeconds = 600L,
+                endTimeMillis = System.currentTimeMillis() + 300_000L,
+            ),
+        )
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        ReminderRescheduleReceiver().onReceive(context, Intent(Intent.ACTION_BOOT_COMPLETED))
+
+        val alarms = shadowOf(alarmManager).scheduledAlarms
+        assertEquals(1, alarms.size)
+        assertTrue(alarms.single().getTriggerAtMs() > System.currentTimeMillis())
     }
 
     private fun utcMillis(

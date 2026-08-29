@@ -1,6 +1,7 @@
 package com.amkumirab.solostudying.ui.screens
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -68,16 +69,23 @@ class AccessibilitySemanticsTest {
     }
 
     @Test
-    fun `sound controls expose labels states and minimum touch targets`() {
+    fun `system controls expose labels states and minimum touch targets`() {
+        var breakSuggestionsUpdate: Boolean? = null
         composeRule.setContent {
             MaterialTheme {
-                SystemControlsCard(
-                    soundSettings = SoundSettings(enabled = true, volume = 0.7f),
-                    onSoundEnabledChange = {},
-                    onSoundVolumeChange = {},
-                    onPreviewSound = {},
-                    onReplayTutorial = {},
-                )
+                LazyColumn {
+                    item {
+                        SystemControlsCard(
+                            soundSettings = SoundSettings(enabled = true, volume = 0.7f),
+                            onSoundEnabledChange = {},
+                            onSoundVolumeChange = {},
+                            onPreviewSound = {},
+                            onReplayTutorial = {},
+                            breakSuggestionsEnabled = false,
+                            onBreakSuggestionsEnabledChange = { breakSuggestionsUpdate = it },
+                        )
+                    }
+                }
             }
         }
 
@@ -113,7 +121,21 @@ class AccessibilitySemanticsTest {
 
         composeRule.onNodeWithTag("replay_tutorial_button")
             .assertContentDescriptionEquals("Replay onboarding tutorial")
+            .performScrollTo()
             .assertHeightIsAtLeast(48.dp)
+
+        composeRule.onNodeWithTag("break_suggestions_switch")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Post-session break suggestions")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Off",
+                ),
+            )
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle { assertEquals(true, breakSuggestionsUpdate) }
     }
 
     @Test
@@ -185,6 +207,7 @@ class AccessibilitySemanticsTest {
     fun `session summary exposes results and reachable actions`() {
         var doneClicks = 0
         var startClicks = 0
+        var breakClicks = 0
         val summary = SessionSummary(
             sessionId = 8L,
             subject = "Physics Revision",
@@ -206,6 +229,7 @@ class AccessibilitySemanticsTest {
                     summary = summary,
                     onDone = { doneClicks++ },
                     onStartAnotherSession = { startClicks++ },
+                    onTakeBreak = { breakClicks++ },
                 )
             }
         }
@@ -214,6 +238,11 @@ class AccessibilitySemanticsTest {
             .assertContentDescriptionEquals("SESSION COMPLETE for Physics Revision")
         composeRule.onNodeWithText("+80").assertIsEnabled()
         composeRule.onNodeWithText("3 → 4").assertIsEnabled()
+
+        composeRule.onNodeWithTag("session_summary_take_break")
+            .assertHeightIsAtLeast(48.dp)
+            .performScrollTo()
+            .performClick()
 
         composeRule.onNodeWithTag("session_summary_start_another")
             .assertHeightIsAtLeast(48.dp)
@@ -227,6 +256,77 @@ class AccessibilitySemanticsTest {
         composeRule.runOnIdle {
             assertEquals(1, startClicks)
             assertEquals(1, doneClicks)
+            assertEquals(1, breakClicks)
         }
+    }
+
+    @Test
+    fun `break duration picker exposes presets and cancellation`() {
+        var selectedMinutes: Int? = null
+        var cancelClicks = 0
+        composeRule.setContent {
+            MaterialTheme {
+                BreakDurationDialog(
+                    onDismiss = { cancelClicks++ },
+                    onStartBreak = { selectedMinutes = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("break_duration_dialog")
+            .assertContentDescriptionEquals("Choose break duration")
+        composeRule.onNodeWithTag("break_10_minutes")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.onNodeWithTag("break_duration_cancel")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(10, selectedMinutes)
+            assertEquals(1, cancelClicks)
+        }
+    }
+
+    @Test
+    fun `active break announces remaining time and exposes skip action`() {
+        var skipClicks = 0
+        composeRule.setContent {
+            MaterialTheme {
+                BreakTimerDialog(
+                    durationSeconds = 300L,
+                    remainingSeconds = 245L,
+                    onSkipBreak = { skipClicks++ },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("break_timer_dialog")
+            .assertContentDescriptionEquals("Break timer, 04:05 remaining")
+        composeRule.onNodeWithText("04:05").assertIsEnabled()
+        composeRule.onNodeWithTag("skip_break_button")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle { assertEquals(1, skipClicks) }
+    }
+
+    @Test
+    fun `completed break offers the next session`() {
+        var nextClicks = 0
+        composeRule.setContent {
+            MaterialTheme {
+                BreakCompleteDialog(
+                    onDone = {},
+                    onStartNextSession = { nextClicks++ },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("break_complete_dialog")
+            .assertContentDescriptionEquals("Break complete")
+        composeRule.onNodeWithTag("break_start_next_session")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle { assertEquals(1, nextClicks) }
     }
 }

@@ -14,7 +14,8 @@ class SoloStudyingViewModel(
     val battleViewModel: BattleViewModel,
     val skillViewModel: SkillViewModel,
     val shopViewModel: ShopViewModel,
-    val tutorialViewModel: TutorialViewModel
+    val tutorialViewModel: TutorialViewModel,
+    val breakViewModel: BreakViewModel,
 ) : ViewModel() {
 
     // --- StateFlow Delegation to Feature ViewModels ---
@@ -36,6 +37,10 @@ class SoloStudyingViewModel(
     val battleTimeLeftSeconds: Long get() = battleViewModel.battleTimeLeftSeconds
     val battleTimeSpentSeconds: Long get() = battleViewModel.battleTimeSpentSeconds
     val sessionSummary: SessionSummary? get() = battleViewModel.sessionSummary
+    val activeBreak get() = breakViewModel.activeBreak
+    val breakTimeLeftSeconds: Long get() = breakViewModel.breakTimeLeftSeconds
+    val showBreakComplete: Boolean get() = breakViewModel.showBreakComplete
+    val breakSuggestionsEnabled: Boolean get() = breakViewModel.breakSuggestionsEnabled
 
     var selectedSkillToTrain: SkillEntity?
         get() = battleViewModel.selectedSkillToTrain
@@ -103,6 +108,26 @@ class SoloStudyingViewModel(
 
     fun dismissSessionSummary() {
         battleViewModel.dismissSessionSummary()
+    }
+
+    fun startBreak(minutes: Int) {
+        breakViewModel.startBreak(minutes)
+    }
+
+    fun syncBreakTime() {
+        breakViewModel.syncBreakTime()
+    }
+
+    fun skipBreak() {
+        breakViewModel.skipBreak()
+    }
+
+    fun dismissBreakComplete() {
+        breakViewModel.dismissBreakComplete()
+    }
+
+    fun setBreakSuggestionsEnabled(enabled: Boolean) {
+        breakViewModel.updateBreakSuggestions(enabled)
     }
 
     fun simulateCompanionNotification(action: String) {
@@ -219,8 +244,17 @@ class SoloStudyingViewModelFactory(
             val skillVM = SkillViewModel(repository, context)
             val shopVM = ShopViewModel(repository)
             val tutorialVM = TutorialViewModel(repository, context)
+            val breakVM = BreakViewModel(context)
             @Suppress("UNCHECKED_CAST")
-            return SoloStudyingViewModel(statusVM, dungeonVM, battleVM, skillVM, shopVM, tutorialVM) as T
+            return SoloStudyingViewModel(
+                statusVM,
+                dungeonVM,
+                battleVM,
+                skillVM,
+                shopVM,
+                tutorialVM,
+                breakVM,
+            ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

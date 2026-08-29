@@ -14,11 +14,12 @@ import java.util.TimeZone
 object NotificationHelper {
     const val CHANNEL_ID = "solo_studying_rpg_quests"
     private const val TAG = "NotificationHelper"
+    private const val BREAK_REQUEST_CODE = 2001
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Epic RPG Study Quests"
-            val descriptionText = "Notifies you of morning daily focus quests and evening twilight warnings."
+            val name = "Solo Studying reminders"
+            val descriptionText = "Study reminders, progress updates, and break completion alerts."
             val importance = NotificationManager.IMPORTANCE_DEFAULT
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
@@ -62,6 +63,38 @@ object NotificationHelper {
             label = "Evening",
             schedule = settings.evening,
             nowMillis = nowMillis,
+        )
+    }
+
+    fun scheduleBreakAlarm(context: Context, endTimeMillis: Long) {
+        if (endTimeMillis <= System.currentTimeMillis()) return
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        try {
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                endTimeMillis,
+                breakPendingIntent(context),
+            )
+            Log.d(TAG, "Break alarm scheduled")
+        } catch (exception: Exception) {
+            Log.e(TAG, "Unable to schedule break alarm", exception)
+        }
+    }
+
+    fun cancelBreakAlarm(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(breakPendingIntent(context))
+    }
+
+    private fun breakPendingIntent(context: Context): PendingIntent {
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            action = NotificationReceiver.ACTION_BREAK_COMPLETE
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            BREAK_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
 

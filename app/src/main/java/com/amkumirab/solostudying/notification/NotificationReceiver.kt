@@ -22,12 +22,22 @@ class NotificationReceiver : BroadcastReceiver() {
         const val ACTION_MORNING_QUEST = "com.amkumirab.solostudying.ACTION_MORNING_QUEST"
         const val ACTION_BEFORE_STUDY = "com.amkumirab.solostudying.ACTION_BEFORE_STUDY"
         const val ACTION_EVENING_CAMPAIGN = "com.amkumirab.solostudying.ACTION_EVENING_CAMPAIGN"
+        const val ACTION_BREAK_COMPLETE = "com.amkumirab.solostudying.ACTION_BREAK_COMPLETE"
         private const val TAG = "NotificationReceiver"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         Log.d(TAG, "Notification Received: action=$action")
+
+        if (action == ACTION_BREAK_COMPLETE) {
+            showNotification(
+                context = context,
+                title = "Break complete",
+                message = "Recovery complete. You are ready for the next focus session.",
+            )
+            return
+        }
 
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {

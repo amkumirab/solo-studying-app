@@ -119,3 +119,19 @@ data class StudySessionEntity(
     val wasCompleted: Boolean,
     val isFreeStudy: Boolean = false // Indicates if session was spent on Free Study
 )
+
+@Entity(
+    tableName = "daily_quests",
+    indices = [androidx.room.Index(value = ["scheduledDate"])],
+)
+data class DailyQuestEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val title: String,
+    val durationMinutes: Int,
+    val skillId: Int? = null,
+    val scheduledDate: String,
+    val priority: Int = 1,
+    val isCompleted: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    val completedAt: Long? = null,
+)

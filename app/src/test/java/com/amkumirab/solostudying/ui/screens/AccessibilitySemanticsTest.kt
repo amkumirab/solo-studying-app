@@ -17,13 +17,16 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import com.amkumirab.solostudying.data.entity.SkillEntity
+import com.amkumirab.solostudying.data.entity.DailyQuestEntity
 import com.amkumirab.solostudying.data.entity.StudySessionEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.domain.session.ProgressSummary
 import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionSummary
+import com.amkumirab.solostudying.domain.quest.QuestPriority
 import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.quickstart.QuickStartSelection
 import com.amkumirab.solostudying.sound.SoundSettings
@@ -404,6 +407,71 @@ class AccessibilitySemanticsTest {
         composeRule.runOnIdle {
             assertEquals(QuickStartSelection(durationMinutes = 45, skillId = 7), startedWith)
             assertEquals(1, customClicks)
+        }
+    }
+
+    @Test
+    fun `daily quest board exposes progress actions and a validated editor`() {
+        val quest = DailyQuestEntity(
+            id = 12,
+            title = "Solve physics problems",
+            durationMinutes = 25,
+            scheduledDate = "2026-09-01",
+            priority = QuestPriority.High.value,
+        )
+        var toggled: Pair<Int, Boolean>? = null
+        var startedQuestId: Int? = null
+        var createdQuest: Pair<String, Int>? = null
+
+        composeRule.setContent {
+            MaterialTheme {
+                LazyColumn {
+                    item {
+                        DailyQuestBoard(
+                            quests = listOf(quest),
+                            allQuests = listOf(quest),
+                            skills = emptyList(),
+                            today = "2026-09-01",
+                            activeQuestId = null,
+                            isSessionActive = false,
+                            onCreateQuest = { title, duration, _, _ ->
+                                createdQuest = title to duration
+                            },
+                            onUpdateQuest = { _, _, _, _, _ -> },
+                            onSetCompleted = { selected, completed ->
+                                toggled = selected.id to completed
+                            },
+                            onDeleteQuest = {},
+                            onStartQuest = { startedQuestId = it.id },
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("daily_quest_progress")
+            .assertContentDescriptionEquals("0 of 1 daily quests completed")
+        composeRule.onNodeWithTag("toggle_daily_quest_12").performClick()
+        composeRule.onNodeWithTag("start_daily_quest_12").performClick()
+        composeRule.runOnIdle {
+            assertEquals(12 to true, toggled)
+            assertEquals(12, startedQuestId)
+        }
+
+        composeRule.onNodeWithTag("daily_quest_history_button").performClick()
+        composeRule.onNodeWithTag("daily_quest_history_dialog").assertExists()
+        composeRule.onNodeWithText("CLOSE").performClick()
+
+        composeRule.onNodeWithTag("add_daily_quest_button").performClick()
+        composeRule.onNodeWithTag("daily_quest_editor").assertExists()
+        composeRule.onNodeWithTag("daily_quest_title_input").performTextInput("Read chapter four")
+        composeRule.onNodeWithTag("daily_quest_duration_45").performClick()
+        composeRule.onNodeWithTag("save_daily_quest_button")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        composeRule.runOnIdle {
+            assertEquals("Read chapter four" to 45, createdQuest)
         }
     }
 }

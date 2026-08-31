@@ -95,4 +95,20 @@ interface SoloStudyingDao {
 
     @Delete
     suspend fun deleteSkill(skill: SkillEntity)
+
+    // --- Daily Quests ---
+    @Query("SELECT * FROM daily_quests ORDER BY scheduledDate DESC, isCompleted ASC, priority DESC, createdAt ASC")
+    fun getAllDailyQuests(): Flow<List<DailyQuestEntity>>
+
+    @Query("SELECT * FROM daily_quests WHERE id = :id LIMIT 1")
+    suspend fun getDailyQuestById(id: Int): DailyQuestEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDailyQuest(quest: DailyQuestEntity): Long
+
+    @Update
+    suspend fun updateDailyQuest(quest: DailyQuestEntity)
+
+    @Delete
+    suspend fun deleteDailyQuest(quest: DailyQuestEntity)
 }

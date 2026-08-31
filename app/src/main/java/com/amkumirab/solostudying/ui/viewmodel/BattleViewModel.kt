@@ -49,6 +49,12 @@ class BattleViewModel(
 
     var selectedSkillToTrain by mutableStateOf<SkillEntity?>(null)
 
+    var activeDailyQuestId by mutableStateOf<Int?>(null)
+        private set
+
+    var activeDailyQuestTitle by mutableStateOf<String?>(null)
+        private set
+
     var battleTimeLeftSeconds by mutableStateOf(0L)
         private set
 
@@ -89,6 +95,8 @@ class BattleViewModel(
                 lastTickTimeMillis = lastTickTimeMillis,
                 bossId = activeBoss?.id,
                 skillId = selectedSkillToTrain?.id,
+                dailyQuestId = activeDailyQuestId,
+                dailyQuestTitle = activeDailyQuestTitle,
             ),
         )
     }
@@ -111,6 +119,13 @@ class BattleViewModel(
             }
             if (restoredSnapshot.skillId != null) {
                 selectedSkillToTrain = repository.getSkillById(restoredSnapshot.skillId)
+            }
+            restoredSnapshot.dailyQuestId?.let { questId ->
+                val quest = repository.getDailyQuestById(questId)
+                if (quest != null && !quest.isCompleted) {
+                    activeDailyQuestId = quest.id
+                    activeDailyQuestTitle = quest.title
+                }
             }
 
             initialBossTimeSpent = restoredSnapshot.initialBossTimeSpentSeconds
@@ -141,6 +156,8 @@ class BattleViewModel(
             if (isBattleActive) {
                 suspendCurrentSession(applyHeavyPenalty = false)
             }
+            activeDailyQuestId = null
+            activeDailyQuestTitle = null
             activeBoss = boss
             if (boss.isCompleted) {
                 initialBossTimeSpent = 0L
@@ -160,21 +177,51 @@ class BattleViewModel(
     }
 
     fun selectAndStartFreeStudy(minutes: Int) {
+        val selectedSkillId = selectedSkillToTrain?.id
         viewModelScope.launch {
-            if (isBattleActive) {
-                suspendCurrentSession(applyHeavyPenalty = false)
-            }
-            activeBoss = null
-            battleTimeLeftSeconds = minutes * 60L
-            battleTimeSpentSeconds = 0L
-            initialBossTimeSpent = 0L
-            isFreeStudyActive = true
-            isBattleActive = true
-            isBattlePaused = false
-            saveFocusSessionState()
-            startTimer()
-            RpgSoundManager.playBeginBattleSound()
+            beginFreeStudy(
+                minutes = minutes,
+                skillId = selectedSkillId,
+                dailyQuestId = null,
+                dailyQuestTitle = null,
+            )
         }
+    }
+
+    fun selectAndStartDailyQuest(quest: DailyQuestEntity) {
+        viewModelScope.launch {
+            beginFreeStudy(
+                minutes = quest.durationMinutes,
+                skillId = quest.skillId,
+                dailyQuestId = quest.id,
+                dailyQuestTitle = quest.title,
+            )
+        }
+    }
+
+    private suspend fun beginFreeStudy(
+        minutes: Int,
+        skillId: Int?,
+        dailyQuestId: Int?,
+        dailyQuestTitle: String?,
+    ) {
+        require(minutes in 1..480) { "Study duration must be between 1 and 480 minutes" }
+        if (isBattleActive) {
+            suspendCurrentSession(applyHeavyPenalty = false)
+        }
+        selectedSkillToTrain = skillId?.let { repository.getSkillById(it) }
+        activeDailyQuestId = dailyQuestId
+        activeDailyQuestTitle = dailyQuestTitle
+        activeBoss = null
+        battleTimeLeftSeconds = minutes * 60L
+        battleTimeSpentSeconds = 0L
+        initialBossTimeSpent = 0L
+        isFreeStudyActive = true
+        isBattleActive = true
+        isBattlePaused = false
+        saveFocusSessionState()
+        startTimer()
+        RpgSoundManager.playBeginBattleSound()
     }
 
     fun pauseBattle(onPaused: () -> Unit = {}) {
@@ -278,8 +325,11 @@ class BattleViewModel(
             try {
                 advanceSessionClock(clock(), forceBossSync = true)
                 val finalDuration = battleTimeSpentSeconds
+                val completedFullTarget = battleTimeLeftSeconds == 0L
                 val boss = activeBoss
                 val completedFreeStudy = isFreeStudyActive
+                val dailyQuestId = activeDailyQuestId
+                val dailyQuestTitle = activeDailyQuestTitle
                 if (!completedFreeStudy && boss == null) {
                     resetActiveSession()
                     return@launch
@@ -326,7 +376,11 @@ class BattleViewModel(
                     val sessionId = insertSession(
                         StudySessionEntity(
                             bossId = boss?.id,
-                            bossName = if (completedFreeStudy) "Astral Free Study" else boss?.name,
+                            bossName = if (completedFreeStudy) {
+                                dailyQuestTitle ?: skill?.name ?: "Astral Free Study"
+                            } else {
+                                boss?.name
+                            },
                             durationSeconds = finalDuration,
                             xpEarned = result.xpAwarded,
                             goldEarned = result.goldAwarded,
@@ -336,7 +390,11 @@ class BattleViewModel(
                     )
                     pendingSummary = SessionSummary(
                         sessionId = sessionId,
-                        subject = if (completedFreeStudy) "Astral Free Study" else checkNotNull(boss).name,
+                        subject = if (completedFreeStudy) {
+                            dailyQuestTitle ?: skill?.name ?: "Astral Free Study"
+                        } else {
+                            checkNotNull(boss).name
+                        },
                         durationSeconds = finalDuration,
                         xpEarned = result.xpAwarded,
                         goldEarned = result.goldAwarded,
@@ -364,6 +422,9 @@ class BattleViewModel(
                         streakMessage = result.streakMessage,
                         skillUnlocked = skillMastered,
                     )
+                    if (dailyQuestId != null && completedFullTarget) {
+                        completeDailyQuest(dailyQuestId, clock())
+                    }
                 }
 
                 if (skillMastered) {
@@ -385,6 +446,8 @@ class BattleViewModel(
         isBattlePaused = false
         isFreeStudyActive = false
         selectedSkillToTrain = null
+        activeDailyQuestId = null
+        activeDailyQuestTitle = null
         battleTimeLeftSeconds = 0L
         battleTimeSpentSeconds = 0L
         initialBossTimeSpent = 0L
@@ -398,6 +461,7 @@ class BattleViewModel(
         val boss = activeBoss
         val wasFreeStudy = isFreeStudyActive
         val skill = selectedSkillToTrain
+        val dailyQuestTitle = activeDailyQuestTitle
         var completionResult: SessionCompletionResult? = null
         var recordedSessionId: Long? = null
         var skillMastered = false
@@ -417,7 +481,7 @@ class BattleViewModel(
                     recordedSessionId = insertSession(
                         StudySessionEntity(
                             bossId = null,
-                            bossName = "Astral Free Study (Suspended)",
+                            bossName = "${dailyQuestTitle ?: skill?.name ?: "Astral Free Study"} (Suspended)",
                             durationSeconds = finalSpent,
                             xpEarned = result.xpAwarded,
                             goldEarned = result.goldAwarded,
@@ -477,7 +541,11 @@ class BattleViewModel(
         if (result != null && sessionId != null) {
             sessionSummary = SessionSummary(
                 sessionId = sessionId,
-                subject = if (wasFreeStudy) "Astral Free Study" else checkNotNull(boss).name,
+                subject = if (wasFreeStudy) {
+                    dailyQuestTitle ?: skill?.name ?: "Astral Free Study"
+                } else {
+                    checkNotNull(boss).name
+                },
                 durationSeconds = finalSpent,
                 xpEarned = result.xpAwarded,
                 goldEarned = result.goldAwarded,

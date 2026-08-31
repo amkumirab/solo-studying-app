@@ -62,6 +62,9 @@ import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.notification.NotificationReceiver
 import com.amkumirab.solostudying.notification.ReminderSchedule
 import com.amkumirab.solostudying.notification.ReminderSettings
+import com.amkumirab.solostudying.quickstart.QuickStartPreferences
+import com.amkumirab.solostudying.quickstart.QuickStartSelection
+import com.amkumirab.solostudying.quickstart.normalizeQuickStartSelection
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.sound.SoundSettings
 import com.amkumirab.solostudying.ui.theme.*
@@ -105,6 +108,16 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     // Navigation fallback: If a battle is active, user can stay in any tab, but we flash the timer tab.
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
+    val quickStartPreferences = remember(context) { QuickStartPreferences(context) }
+    var quickStartSelection by remember { mutableStateOf(quickStartPreferences.read()) }
+    val updateQuickStartSelection: (QuickStartSelection) -> Unit = { selection ->
+        val normalized = normalizeQuickStartSelection(
+            durationMinutes = selection.durationMinutes,
+            skillId = selection.skillId,
+        )
+        quickStartSelection = normalized
+        quickStartPreferences.save(normalized)
+    }
 
     FocusSessionLifecycleEffect(viewModel = viewModel)
 
@@ -202,7 +215,24 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onEnterFreeStudyClicked = {
                             RpgSoundManager.playClickSound()
                             showFreeStudyDialog = true
-                        }
+                        },
+                        quickStartSelection = quickStartSelection,
+                        onQuickStartSelectionChange = updateQuickStartSelection,
+                        onQuickStart = { selection ->
+                            if (!viewModel.isBattleActive) {
+                                val selectedSkill = skills.firstOrNull {
+                                    it.id == selection.skillId
+                                }
+                                updateQuickStartSelection(selection.copy(skillId = selectedSkill?.id))
+                                viewModel.selectedSkillToTrain = selectedSkill
+                                viewModel.selectAndStartFreeStudy(selection.durationMinutes)
+                                currentTab = Tab.Battle
+                            }
+                        },
+                        onCustomQuickStart = {
+                            RpgSoundManager.playClickSound()
+                            showFreeStudyDialog = true
+                        },
                     )
                     Tab.Battle -> {
                         if (prepBoss != null || prepFreeStudyMins != null) {
@@ -297,9 +327,13 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     }
 
     if (showFreeStudyDialog) {
-        var durationInput by remember { mutableStateOf("30") }
+        var durationInput by remember {
+            mutableStateOf(quickStartSelection.durationMinutes.toString())
+        }
         var dropdownExpanded by remember { mutableStateOf(false) }
-        var studySkillSelected by remember { mutableStateOf<SkillEntity?>(null) }
+        var studySkillSelected by remember {
+            mutableStateOf(skills.firstOrNull { it.id == quickStartSelection.skillId })
+        }
 
         Dialog(onDismissRequest = { showFreeStudyDialog = false }) {
             Card(
@@ -400,10 +434,18 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                             Text("BACK")
                         }
 
-                        val fMins = durationInput.toIntOrNull() ?: 30
+                        val fMins = durationInput.toIntOrNull()
+                        val isValidDuration = fMins != null &&
+                            fMins in QuickStartPreferences.MIN_DURATION_MINUTES..QuickStartPreferences.MAX_DURATION_MINUTES
                         Button(
                             onClick = {
-                                if (fMins > 0) {
+                                if (isValidDuration) {
+                                    updateQuickStartSelection(
+                                        QuickStartSelection(
+                                            durationMinutes = fMins,
+                                            skillId = studySkillSelected?.id,
+                                        ),
+                                    )
                                     prepBoss = null
                                     prepFreeStudyMins = fMins
                                     prepSelectedSkill = studySkillSelected
@@ -411,7 +453,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                                     currentTab = Tab.Battle
                                 }
                             },
-                            enabled = fMins > 0,
+                            enabled = isValidDuration,
                             colors = ButtonDefaults.buttonColors(containerColor = NeonBlueAccent),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.weight(2f)
@@ -812,7 +854,11 @@ fun DungeonTab(
     onFightBoss: (BossEntity) -> Unit,
     onDeleteBoss: (BossEntity) -> Unit,
     onConquerRealBoss: (BossEntity) -> Unit,
-    onEnterFreeStudyClicked: () -> Unit
+    onEnterFreeStudyClicked: () -> Unit,
+    quickStartSelection: QuickStartSelection,
+    onQuickStartSelectionChange: (QuickStartSelection) -> Unit,
+    onQuickStart: (QuickStartSelection) -> Unit,
+    onCustomQuickStart: () -> Unit,
 ) {
     var selectedDungeonCategory by remember { mutableStateOf("All") }
     
@@ -864,6 +910,17 @@ fun DungeonTab(
                 Text("Summon Boss", fontWeight = FontWeight.Bold)
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        QuickStartCard(
+            skills = skills,
+            selection = quickStartSelection,
+            isSessionActive = isBattleActive,
+            onSelectionChange = onQuickStartSelectionChange,
+            onStart = onQuickStart,
+            onCustomDuration = onCustomQuickStart,
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -2778,6 +2835,13 @@ fun StatsTab(
                     }
                 }
             }
+        }
+
+        item {
+            StudyInsightsCard(
+                sessions = sessions,
+                profile = nonNullProfile,
+            )
         }
 
         // System 8: DYNAMIC STUDY SCHEDULE GUILD CONTRACT DISPLAY

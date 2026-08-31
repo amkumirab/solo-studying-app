@@ -12,9 +12,11 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - First-run setup for goals, study days, and daily targets
 - Dungeons for grouping related goals
 - Boss battles and free-study sessions
+- One-tap focus presets that remember the last duration and skill
 - Pause, resume, abandon, and completion flows
 - Post-session summaries for time, rewards, levels, streaks, and progress
 - Optional post-session break timers with persistent countdowns and completion alerts
+- Weekly, monthly, and lifetime study insights with goal and period comparisons
 - Independent skill progression based on focused time
 - Custom real-life rewards purchased with earned gold
 - Streaks, level progression, and recovery challenges

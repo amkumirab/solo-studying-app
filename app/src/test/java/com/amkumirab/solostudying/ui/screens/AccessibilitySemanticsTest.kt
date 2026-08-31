@@ -2,6 +2,7 @@ package com.amkumirab.solostudying.ui.screens
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -17,10 +18,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
+import com.amkumirab.solostudying.data.entity.SkillEntity
+import com.amkumirab.solostudying.data.entity.StudySessionEntity
+import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.domain.session.ProgressSummary
 import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.notification.ReminderSettings
+import com.amkumirab.solostudying.quickstart.QuickStartSelection
 import com.amkumirab.solostudying.sound.SoundSettings
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -328,5 +333,77 @@ class AccessibilitySemanticsTest {
             .assertHeightIsAtLeast(48.dp)
             .performClick()
         composeRule.runOnIdle { assertEquals(1, nextClicks) }
+    }
+
+    @Test
+    fun `study insights expose range controls and chart summary`() {
+        val session = StudySessionEntity(
+            bossId = 1,
+            bossName = "Physics",
+            durationSeconds = 1_800L,
+            xpEarned = 20,
+            goldEarned = 10,
+            timestamp = System.currentTimeMillis(),
+            wasCompleted = true,
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                StudyInsightsCard(
+                    sessions = listOf(session),
+                    profile = UserProfileEntity(),
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("study_insights_card").assertExists()
+        composeRule.onNodeWithTag("insights_range_Last7Days").assertIsSelected()
+        composeRule.onNodeWithTag("insights_chart")
+            .assertContentDescriptionEquals("7 focus periods. 10 percent of target completed")
+
+        composeRule.onNodeWithTag("insights_range_AllTime").performClick().assertIsSelected()
+        composeRule.onNodeWithText("Top subject: Physics · 30m").assertExists()
+    }
+
+    @Test
+    fun `quick start updates presets and starts with the selected skill`() {
+        val selection = mutableStateOf(QuickStartSelection(durationMinutes = 25))
+        var startedWith: QuickStartSelection? = null
+        var customClicks = 0
+        val physics = SkillEntity(
+            id = 7,
+            name = "Physics",
+            targetMinutes = 600,
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                QuickStartCard(
+                    skills = listOf(physics),
+                    selection = selection.value,
+                    isSessionActive = false,
+                    onSelectionChange = { selection.value = it },
+                    onStart = { startedWith = it },
+                    onCustomDuration = { customClicks++ },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("quick_start_duration_25").assertIsSelected()
+        composeRule.onNodeWithTag("quick_start_duration_45").performClick().assertIsSelected()
+        composeRule.onNodeWithTag("quick_start_skill_selector").performClick()
+        composeRule.onNodeWithTag("quick_start_skill_7").performClick()
+        composeRule.onNodeWithTag("quick_start_skill_selector")
+            .assertContentDescriptionEquals("Skill focus, Physics")
+        composeRule.onNodeWithTag("quick_start_button")
+            .assertContentDescriptionEquals("Start 45 minute focus session for Physics")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.onNodeWithTag("quick_start_custom").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(QuickStartSelection(durationMinutes = 45, skillId = 7), startedWith)
+            assertEquals(1, customClicks)
+        }
     }
 }

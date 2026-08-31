@@ -233,6 +233,9 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                             RpgSoundManager.playClickSound()
                             showFreeStudyDialog = true
                         },
+                        onDailyQuestStarted = {
+                            currentTab = Tab.Battle
+                        },
                     )
                     Tab.Battle -> {
                         if (prepBoss != null || prepFreeStudyMins != null) {
@@ -565,6 +568,7 @@ private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.syncFocusSessionTime()
                 viewModel.syncBreakTime()
+                viewModel.refreshDailyQuests()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -859,8 +863,11 @@ fun DungeonTab(
     onQuickStartSelectionChange: (QuickStartSelection) -> Unit,
     onQuickStart: (QuickStartSelection) -> Unit,
     onCustomQuickStart: () -> Unit,
+    onDailyQuestStarted: () -> Unit,
 ) {
     var selectedDungeonCategory by remember { mutableStateOf("All") }
+    val dailyQuests by viewModel.dailyQuests.collectAsState()
+    val allDailyQuests by viewModel.allDailyQuests.collectAsState()
     
     // Accumulate all distinct dungeon categories created by the player
     val dungeonsList = remember(bosses) {
@@ -910,6 +917,27 @@ fun DungeonTab(
                 Text("Summon Boss", fontWeight = FontWeight.Bold)
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        DailyQuestBoard(
+            quests = dailyQuests,
+            allQuests = allDailyQuests,
+            skills = skills,
+            today = viewModel.dailyQuestViewModel.todayDate,
+            activeQuestId = viewModel.activeDailyQuestId,
+            isSessionActive = isBattleActive,
+            onCreateQuest = viewModel::createDailyQuest,
+            onUpdateQuest = viewModel::updateDailyQuest,
+            onSetCompleted = viewModel::setDailyQuestCompleted,
+            onDeleteQuest = viewModel::deleteDailyQuest,
+            onStartQuest = { quest ->
+                if (!viewModel.isBattleActive) {
+                    viewModel.selectAndStartDailyQuest(quest)
+                    onDailyQuestStarted()
+                }
+            },
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -1604,13 +1632,13 @@ fun BattleTab(
         val damagePercent = 1f - hpPercent
 
         val categoryText = if (isFreeStudy) {
-            "ASTRAL PLANE FOCUS"
+            if (viewModel.activeDailyQuestId != null) "DAILY QUEST FOCUS" else "ASTRAL PLANE FOCUS"
         } else {
             "DUNGEON: ${(boss?.dungeonName ?: "Main Realm").uppercase()}"
         }
 
         val nameText = if (isFreeStudy) {
-            "ASTRAL FREE STUDY ZONE"
+            viewModel.activeDailyQuestTitle?.uppercase() ?: "ASTRAL FREE STUDY ZONE"
         } else {
             boss?.name?.uppercase() ?: ""
         }
@@ -1630,7 +1658,11 @@ fun BattleTab(
         ) {
             item {
                 Text(
-                    text = if (isFreeStudy) "🌌 CASUAL MEDITATION PORTAL" else "⚔️ ACTIVE BOSS ENCOUNTER",
+                    text = when {
+                        viewModel.activeDailyQuestId != null -> "📜 ACTIVE DAILY QUEST"
+                        isFreeStudy -> "🌌 CASUAL MEDITATION PORTAL"
+                        else -> "⚔️ ACTIVE BOSS ENCOUNTER"
+                    },
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = if (isFreeStudy) NeonBlueAccent else RpgRuby,

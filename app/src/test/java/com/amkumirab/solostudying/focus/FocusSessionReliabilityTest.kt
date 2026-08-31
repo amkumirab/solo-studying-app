@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.BossEntity
+import com.amkumirab.solostudying.data.entity.DailyQuestEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.domain.session.SessionEndState
@@ -240,6 +241,54 @@ class FocusSessionReliabilityTest {
         assertEquals(session.id.toLong(), summary.sessionId)
         assertFalse(session.wasCompleted)
         assertFalse(viewModel.isBattleActive)
+    }
+
+    @Test
+    fun `finishing the full quest timer completes the daily quest`() = runBlocking {
+        val questId = repository.insertDailyQuest(
+            DailyQuestEntity(
+                title = "Review electromagnetics",
+                durationMinutes = 1,
+                scheduledDate = "2026-09-01",
+            ),
+        ).toInt()
+        val quest = repository.getDailyQuestById(questId) ?: error("Quest was not saved")
+        val viewModel = BattleViewModel(repository, context, store) { 7_000_000L }
+        battleViewModel = viewModel
+
+        viewModel.selectAndStartDailyQuest(quest)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        viewModel.simulateStudySeconds(60L)
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+
+        val completed = repository.getDailyQuestById(questId) ?: error("Quest disappeared")
+        assertTrue(completed.isCompleted)
+        assertEquals("Review electromagnetics", viewModel.sessionSummary?.subject)
+        assertEquals("Review electromagnetics", repository.allSessions.first().single().bossName)
+    }
+
+    @Test
+    fun `finishing a quest early keeps it pending`() = runBlocking {
+        val questId = repository.insertDailyQuest(
+            DailyQuestEntity(
+                title = "Read chapter four",
+                durationMinutes = 1,
+                scheduledDate = "2026-09-01",
+            ),
+        ).toInt()
+        val quest = repository.getDailyQuestById(questId) ?: error("Quest was not saved")
+        val viewModel = BattleViewModel(repository, context, store) { 8_000_000L }
+        battleViewModel = viewModel
+
+        viewModel.selectAndStartDailyQuest(quest)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        viewModel.simulateStudySeconds(10L)
+        waitForCondition { if (viewModel.battleTimeSpentSeconds == 10L) true else null }
+        viewModel.completeActiveBoss()
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+
+        val pending = repository.getDailyQuestById(questId) ?: error("Quest disappeared")
+        assertFalse(pending.isCompleted)
     }
 
     @Test

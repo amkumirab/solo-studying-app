@@ -18,9 +18,10 @@ import com.amkumirab.solostudying.data.entity.*
         StudySessionEntity::class,
         SkillEntity::class,
         DungeonEntity::class,
-        BossSkillEntity::class
+        BossSkillEntity::class,
+        DailyQuestEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class SoloStudyingDatabase : RoomDatabase() {
@@ -44,7 +45,7 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
                 }
 
                 // Add prepared migrations for release versions
-                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6)
+                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
                 val instance = builder.build()
                 INSTANCE = instance
@@ -103,6 +104,28 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
                 } catch (ignored: Exception) {
                     // Column might already exist in some dev setups
                 }
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `daily_quests` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`title` TEXT NOT NULL, " +
+                        "`durationMinutes` INTEGER NOT NULL, " +
+                        "`skillId` INTEGER, " +
+                        "`scheduledDate` TEXT NOT NULL, " +
+                        "`priority` INTEGER NOT NULL, " +
+                        "`isCompleted` INTEGER NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL, " +
+                        "`completedAt` INTEGER" +
+                        ")",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_daily_quests_scheduledDate` " +
+                        "ON `daily_quests` (`scheduledDate`)",
+                )
             }
         }
     }

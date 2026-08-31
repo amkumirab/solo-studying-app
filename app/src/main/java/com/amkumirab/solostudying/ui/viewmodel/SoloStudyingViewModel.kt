@@ -16,6 +16,7 @@ class SoloStudyingViewModel(
     val shopViewModel: ShopViewModel,
     val tutorialViewModel: TutorialViewModel,
     val breakViewModel: BreakViewModel,
+    val dailyQuestViewModel: DailyQuestViewModel,
 ) : ViewModel() {
 
     // --- StateFlow Delegation to Feature ViewModels ---
@@ -28,6 +29,8 @@ class SoloStudyingViewModel(
     val reminderSettings = statusViewModel.reminderSettings
     val skills = skillViewModel.skills
     val tutorialState = tutorialViewModel.uiState
+    val dailyQuests = dailyQuestViewModel.todayQuests
+    val allDailyQuests = dailyQuestViewModel.allQuests
 
     // --- Active Timer State Delegation ---
     val activeBoss: BossEntity? get() = battleViewModel.activeBoss
@@ -37,6 +40,8 @@ class SoloStudyingViewModel(
     val battleTimeLeftSeconds: Long get() = battleViewModel.battleTimeLeftSeconds
     val battleTimeSpentSeconds: Long get() = battleViewModel.battleTimeSpentSeconds
     val sessionSummary: SessionSummary? get() = battleViewModel.sessionSummary
+    val activeDailyQuestId: Int? get() = battleViewModel.activeDailyQuestId
+    val activeDailyQuestTitle: String? get() = battleViewModel.activeDailyQuestTitle
     val activeBreak get() = breakViewModel.activeBreak
     val breakTimeLeftSeconds: Long get() = breakViewModel.breakTimeLeftSeconds
     val showBreakComplete: Boolean get() = breakViewModel.showBreakComplete
@@ -167,6 +172,10 @@ class SoloStudyingViewModel(
         battleViewModel.selectAndStartFreeStudy(minutes)
     }
 
+    fun selectAndStartDailyQuest(quest: DailyQuestEntity) {
+        battleViewModel.selectAndStartDailyQuest(quest)
+    }
+
     fun pauseBattle(onPaused: () -> Unit = {}) {
         battleViewModel.pauseBattle(onPaused)
     }
@@ -230,6 +239,38 @@ class SoloStudyingViewModel(
     }
 
     fun getSkillsForBoss(bossId: Int) = skillViewModel.getSkillsForBoss(bossId)
+
+    // --- Daily Quest Operations ---
+    fun createDailyQuest(
+        title: String,
+        durationMinutes: Int,
+        skillId: Int?,
+        priority: com.amkumirab.solostudying.domain.quest.QuestPriority,
+    ) {
+        dailyQuestViewModel.createQuest(title, durationMinutes, skillId, priority)
+    }
+
+    fun setDailyQuestCompleted(quest: DailyQuestEntity, completed: Boolean) {
+        dailyQuestViewModel.setQuestCompleted(quest, completed)
+    }
+
+    fun updateDailyQuest(
+        quest: DailyQuestEntity,
+        title: String,
+        durationMinutes: Int,
+        skillId: Int?,
+        priority: com.amkumirab.solostudying.domain.quest.QuestPriority,
+    ) {
+        dailyQuestViewModel.updateQuest(quest, title, durationMinutes, skillId, priority)
+    }
+
+    fun deleteDailyQuest(quest: DailyQuestEntity) {
+        dailyQuestViewModel.deleteQuest(quest)
+    }
+
+    fun refreshDailyQuests() {
+        dailyQuestViewModel.refreshToday()
+    }
 }
 
 class SoloStudyingViewModelFactory(
@@ -245,6 +286,7 @@ class SoloStudyingViewModelFactory(
             val shopVM = ShopViewModel(repository)
             val tutorialVM = TutorialViewModel(repository, context)
             val breakVM = BreakViewModel(context)
+            val dailyQuestVM = DailyQuestViewModel(repository)
             @Suppress("UNCHECKED_CAST")
             return SoloStudyingViewModel(
                 statusVM,
@@ -254,6 +296,7 @@ class SoloStudyingViewModelFactory(
                 shopVM,
                 tutorialVM,
                 breakVM,
+                dailyQuestVM,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

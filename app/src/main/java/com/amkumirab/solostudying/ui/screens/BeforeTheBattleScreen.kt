@@ -444,8 +444,8 @@ fun BeforeTheBattleScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0xFF0F172A), Color.Black)))
-                    .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                    .background(Brush.verticalGradient(listOf(SurfaceElevated, SurfaceSubtle)))
+                    .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -483,8 +483,11 @@ fun BeforeTheBattleScreen(
                         RpgSoundManager.playClickSound()
                         onCancel()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E191D)),
-                    border = BorderStroke(1.dp, RpgRuby.copy(alpha = 0.3f)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DangerContainer,
+                        contentColor = RpgRuby,
+                    ),
+                    border = BorderStroke(1.dp, RpgRuby.copy(alpha = 0.65f)),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.weight(1f)
                 ) {
@@ -496,12 +499,18 @@ fun BeforeTheBattleScreen(
                         RpgSoundManager.playClickSound()
                         onBeginBattle()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = if (isFreeStudy) NeonBlueSecondary else RpgRuby),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isFreeStudy) NeonBlueAccent else RpgRuby,
+                        contentColor = OnAccent,
+                    ),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .weight(1.8f)
                         .testTag("begin_battle_button"),
-                    border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.15f))
+                    border = BorderStroke(
+                        1.5.dp,
+                        if (isFreeStudy) NeonBlueAccent else RpgRuby,
+                    )
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

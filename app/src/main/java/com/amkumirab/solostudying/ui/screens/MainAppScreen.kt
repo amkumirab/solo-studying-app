@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.pm.ApplicationInfo
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
@@ -624,7 +625,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                         .clip(CircleShape)
                         .background(
                             Brush.linearGradient(
-                                listOf(Color(0xFF1E293B), Color(0xFF0F172A))
+                                listOf(SurfaceInteractive, SurfaceSubtle)
                             )
                         )
                         .border(2.dp, NeonBlueAccent, CircleShape),
@@ -696,8 +697,8 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF0F172A).copy(alpha = 0.8f))
-                        .border(1.dp, Color(0xFF334155), RoundedCornerShape(20.dp))
+                        .background(SurfaceSubtle)
+                        .border(1.dp, StrongCardBorder, RoundedCornerShape(20.dp))
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -742,7 +743,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                     .weight(1f)
                     .height(6.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF1E293B))
+                    .background(SurfaceInteractive)
             ) {
                 Box(
                     modifier = Modifier
@@ -775,8 +776,8 @@ fun RPGTopBar(profile: UserProfileEntity?) {
 @Composable
 fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: Boolean) {
     NavigationBar(
-        containerColor = DarkFantasySurface,
-        tonalElevation = 8.dp,
+        containerColor = SurfaceElevated,
+        tonalElevation = 0.dp,
         modifier = Modifier
             .drawBehind {
                 drawLine(
@@ -812,7 +813,7 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
                         Icon(
                             imageVector = tab.icon,
                             contentDescription = null,
-                            tint = if (isSelected) NeonBlueAccent else TextMuted
+                            tint = if (isSelected) NeonBlueAccent else TextSubtle
                         )
                         if (tab == Tab.Battle && isBattleActive) {
                             // Flash a red indicator on battle tab when studying
@@ -831,12 +832,18 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
                         text = tab.title,
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) NeonBlueAccent else TextMuted
-                        )
+                            color = if (isSelected) NeonBlueAccent else TextSubtle,
+                            fontSize = 11.sp,
+                        ),
+                        maxLines = 1,
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = Color(0xFF1C2237)
+                    selectedIconColor = NeonBlueAccent,
+                    selectedTextColor = NeonBlueAccent,
+                    unselectedIconColor = TextSubtle,
+                    unselectedTextColor = TextSubtle,
+                    indicatorColor = InfoContainer,
                 )
             )
         }
@@ -1573,6 +1580,8 @@ fun BattleTab(
 ) {
     val boss = viewModel.activeBoss
     val isFreeStudy = viewModel.isFreeStudyActive
+    var showTestControls by remember { mutableStateOf(false) }
+    val isDebugBuild = LocalContext.current.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 
     if (boss == null && !isFreeStudy) {
         // No Quest Empty State
@@ -1724,7 +1733,7 @@ fun BattleTab(
                                     radius = 350f
                                 )
                             )
-                            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(24.dp)),
+                            .border(1.dp, DarkCardBorder, RoundedCornerShape(24.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -1764,10 +1773,10 @@ fun BattleTab(
                                         .clip(RoundedCornerShape(18.dp))
                                         .background(
                                             Brush.verticalGradient(
-                                                listOf(Color(0xFF1E293B), Color(0xFF0F172A))
+                                                listOf(SurfaceElevated, SurfaceSubtle)
                                             )
                                         )
-                                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(18.dp)),
+                                        .border(1.dp, StrongCardBorder, RoundedCornerShape(18.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (isFreeStudy) {
@@ -1873,8 +1882,8 @@ fun BattleTab(
                             .fillMaxWidth()
                             .height(14.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF0F172A).copy(alpha = 0.8f))
-                            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(10.dp))
+                            .background(SurfaceInteractive)
+                            .border(1.dp, DarkCardBorder, RoundedCornerShape(10.dp))
                             .padding(2.dp)
                     ) {
                         // Health sliding Red to Cyan Gradient
@@ -1899,7 +1908,7 @@ fun BattleTab(
                             text = categoryText,
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = TextMuted,
-                                fontSize = 9.sp,
+                                fontSize = 11.sp,
                                 fontFamily = FontFamily.Monospace
                               )
                         )
@@ -1912,7 +1921,7 @@ fun BattleTab(
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = if (isFreeStudy) NeonBlueAccent else RpgRuby,
-                                fontSize = 10.sp
+                                fontSize = 11.sp
                             )
                         )
                     }
@@ -1925,8 +1934,8 @@ fun BattleTab(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color.Black.copy(alpha = 0.4f))
-                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(20.dp))
+                        .background(SurfaceSubtle)
+                        .border(1.dp, DarkCardBorder, RoundedCornerShape(20.dp))
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1973,134 +1982,209 @@ fun BattleTab(
 
             // Real Interactive Controls
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (viewModel.isBattleActive && !viewModel.isBattlePaused) {
-                        Button(
-                            onClick = {
-                                RpgSoundManager.playClickSound()
-                                viewModel.pauseBattle()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2B3047)),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Pause, contentDescription = "Pause fight")
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("PAUSE BATTLE", fontWeight = FontWeight.Bold)
-                        }
-                    } else if (viewModel.isBattlePaused) {
-                        Button(
-                            onClick = {
-                                RpgSoundManager.playClickSound()
-                                viewModel.resumeBattle()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonBlueSecondary),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Resume fight")
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("RESUME BATTLE", fontWeight = FontWeight.Bold)
-                        }
-                    }
+                BattleActionControls(
+                    isPaused = viewModel.isBattlePaused,
+                    isFreeStudy = isFreeStudy,
+                    onPause = {
+                        RpgSoundManager.playClickSound()
+                        viewModel.pauseBattle()
+                    },
+                    onResume = {
+                        RpgSoundManager.playClickSound()
+                        viewModel.resumeBattle()
+                    },
+                    onFinish = viewModel::completeActiveBoss,
+                    onRetreat = {
+                        RpgSoundManager.playClickSound()
+                        viewModel.abandonActiveBoss()
+                    },
+                )
+            }
 
-                    // CONQUER action directly on the Active Battle Screen
-                    Button(
-                        onClick = { viewModel.completeActiveBoss() },
-                        colors = ButtonDefaults.buttonColors(containerColor = if (isFreeStudy) Color(0xFF1F2F2D) else Color(0xFF2E2315)),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1.1f),
-                        border = BorderStroke(1.dp, if (isFreeStudy) RpgEmerald else RpgGold)
-                    ) {
-                        Icon(
-                            imageVector = if (isFreeStudy) Icons.Default.CheckCircleOutline else Icons.Default.Celebration,
-                            contentDescription = "Complete active session",
-                            tint = if (isFreeStudy) RpgEmerald else RpgGold
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isFreeStudy) "FINISH STUDY" else "CONQUER",
-                            color = if (isFreeStudy) RpgEmerald else RpgGold,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                    }
-
-                    // Retreat/Abandon action
-                    Button(
-                        onClick = {
-                            RpgSoundManager.playClickSound()
-                            viewModel.abandonActiveBoss()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF321B21)),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.OutlinedFlag, contentDescription = "Flee battle", tint = RpgRuby)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("RETREAT", color = RpgRuby, fontWeight = FontWeight.Bold)
+            if (isDebugBuild) {
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        TextButton(
+                            onClick = { showTestControls = !showTestControls },
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .testTag("toggle_test_controls"),
+                        ) {
+                            Icon(
+                                imageVector = if (showTestControls) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = TextSubtle,
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = if (showTestControls) "HIDE TEST CONTROLS" else "SHOW TEST CONTROLS",
+                                color = TextSubtle,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                        AnimatedVisibility(visible = showTestControls) {
+                            BattleTestControls(
+                                onAddFiveMinutes = { viewModel.simulateStudySeconds(300L) },
+                                onAddTwentyMinutes = { viewModel.simulateStudySeconds(1200L) },
+                                onComplete = viewModel::completeActiveBoss,
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
 
-            // Fast Emulator Simulation helpers
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF131422)),
-                    border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.25f)),
-                    shape = RoundedCornerShape(12.dp)
+@Composable
+fun BattleActionControls(
+    isPaused: Boolean,
+    isFreeStudy: Boolean,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onFinish: () -> Unit,
+    onRetreat: () -> Unit,
+) {
+    val finishAccent = if (isFreeStudy) RpgEmerald else RpgGold
+    val finishContainer = if (isFreeStudy) SuccessContainer else WarningContainer
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Button(
+            onClick = if (isPaused) onResume else onPause,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isPaused) NeonBlueAccent else InfoContainer,
+                contentColor = if (isPaused) OnAccent else TextWhite,
+            ),
+            border = BorderStroke(1.dp, NeonBlueAccent.copy(alpha = 0.75f)),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .testTag("battle_pause_resume_button"),
+        ) {
+            Icon(
+                imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                contentDescription = null,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = if (isPaused) "RESUME TIMER" else "PAUSE TIMER",
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Button(
+                onClick = onFinish,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = finishContainer,
+                    contentColor = finishAccent,
+                ),
+                border = BorderStroke(1.dp, finishAccent.copy(alpha = 0.8f)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 56.dp)
+                    .testTag("battle_finish_button"),
+            ) {
+                Icon(
+                    imageVector = if (isFreeStudy) Icons.Default.CheckCircleOutline else Icons.Default.Celebration,
+                    contentDescription = null,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = if (isFreeStudy) "FINISH" else "CONQUER",
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                )
+            }
+
+            Button(
+                onClick = onRetreat,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DangerContainer,
+                    contentColor = RpgRuby,
+                ),
+                border = BorderStroke(1.dp, RpgRuby.copy(alpha = 0.65f)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 56.dp)
+                    .testTag("battle_retreat_button"),
+            ) {
+                Icon(Icons.Default.OutlinedFlag, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("RETREAT", fontWeight = FontWeight.Black, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BattleTestControls(
+    onAddFiveMinutes: () -> Unit,
+    onAddTwentyMinutes: () -> Unit,
+    onComplete: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("battle_test_controls"),
+        colors = CardDefaults.cardColors(containerColor = SurfaceSubtle),
+        border = BorderStroke(1.dp, DarkCardBorder),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "DEVELOPER TEST CONTROLS",
+                color = TextSubtle,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onAddFiveMinutes,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = InfoContainer,
+                        contentColor = NeonBlueAccent,
+                    ),
+                    modifier = Modifier.weight(1f),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "⚡ ADVENTURER REVELATION CODES (EMULATOR BYPASS)",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = RpgGold,
-                                fontSize = 9.sp
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = { viewModel.simulateStudySeconds(300L) }, // +5 min
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B293A)),
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
-                            ) {
-                                Text("+5 MIN DEALT", color = NeonBlueAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Button(
-                                onClick = { viewModel.simulateStudySeconds(1200L) }, // +20 min
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C1E3F)),
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
-                            ) {
-                                Text("+20 MIN DEALT", color = Color(0xFFC582FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Button(
-                                onClick = { viewModel.completeActiveBoss() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B3024)),
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
-                            ) {
-                                Text("AUTO-SLAY", color = RpgEmerald, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
+                    Text("+5 MIN", fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+                Button(
+                    onClick = onAddTwentyMinutes,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SurfaceInteractive,
+                        contentColor = Color(0xFFE9B7FF),
+                    ),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("+20 MIN", fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+                Button(
+                    onClick = onComplete,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SuccessContainer,
+                        contentColor = RpgEmerald,
+                    ),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("COMPLETE", fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
         }

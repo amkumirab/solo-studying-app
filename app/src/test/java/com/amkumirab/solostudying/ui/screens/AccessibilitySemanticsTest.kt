@@ -77,6 +77,71 @@ class AccessibilitySemanticsTest {
     }
 
     @Test
+    fun `battle actions stay readable reachable and independent`() {
+        var pauseClicks = 0
+        var finishClicks = 0
+        var retreatClicks = 0
+        composeRule.setContent {
+            MaterialTheme {
+                BattleActionControls(
+                    isPaused = false,
+                    isFreeStudy = false,
+                    onPause = { pauseClicks++ },
+                    onResume = {},
+                    onFinish = { finishClicks++ },
+                    onRetreat = { retreatClicks++ },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("battle_pause_resume_button")
+            .assertHeightIsAtLeast(48.dp)
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithText("PAUSE TIMER").assertExists()
+
+        composeRule.onNodeWithTag("battle_finish_button")
+            .assertHeightIsAtLeast(48.dp)
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithText("CONQUER").assertExists()
+
+        composeRule.onNodeWithTag("battle_retreat_button")
+            .assertHeightIsAtLeast(48.dp)
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithText("RETREAT").assertExists()
+
+        composeRule.runOnIdle {
+            assertEquals(1, pauseClicks)
+            assertEquals(1, finishClicks)
+            assertEquals(1, retreatClicks)
+        }
+    }
+
+    @Test
+    fun `paused battle exposes a clear resume action`() {
+        var resumeClicks = 0
+        composeRule.setContent {
+            MaterialTheme {
+                BattleActionControls(
+                    isPaused = true,
+                    isFreeStudy = true,
+                    onPause = {},
+                    onResume = { resumeClicks++ },
+                    onFinish = {},
+                    onRetreat = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("RESUME TIMER").assertExists()
+        composeRule.onNodeWithText("FINISH").assertExists()
+        composeRule.onNodeWithTag("battle_pause_resume_button").performClick()
+        composeRule.runOnIdle { assertEquals(1, resumeClicks) }
+    }
+
+    @Test
     fun `system controls expose labels states and minimum touch targets`() {
         var breakSuggestionsUpdate: Boolean? = null
         composeRule.setContent {

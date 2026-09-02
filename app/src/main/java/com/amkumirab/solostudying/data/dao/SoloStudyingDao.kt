@@ -80,6 +80,9 @@ interface SoloStudyingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: StudySessionEntity): Long
 
+    @Query("UPDATE study_sessions SET note = :note WHERE id = :sessionId")
+    suspend fun updateSessionNote(sessionId: Long, note: String?): Int
+
     // --- Skills (Time-Based) ---
     @Query("SELECT * FROM skills ORDER BY name ASC")
     fun getAllSkills(): Flow<List<SkillEntity>>

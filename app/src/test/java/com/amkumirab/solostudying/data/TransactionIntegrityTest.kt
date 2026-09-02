@@ -134,4 +134,28 @@ class TransactionIntegrityTest {
         assertEquals(1, results.count { !it })
         assertEquals(0.25f, repository.getBalanceByName("Gaming Time")?.availableHours ?: 0f, 0f)
     }
+
+    @Test
+    fun `session notes are normalized updated and removable`() = runBlocking {
+        val sessionId = repository.insertSession(
+            StudySessionEntity(
+                bossId = null,
+                bossName = "Physics Review",
+                durationSeconds = 1_500,
+                xpEarned = 40,
+                goldEarned = 15,
+                wasCompleted = true,
+            ),
+        )
+
+        assertTrue(repository.updateSessionNote(sessionId, "  Review wave equations next time.  "))
+        assertEquals(
+            "Review wave equations next time.",
+            repository.allSessions.first().single().note,
+        )
+
+        assertTrue(repository.updateSessionNote(sessionId, "   "))
+        assertEquals(null, repository.allSessions.first().single().note)
+        assertFalse(repository.updateSessionNote(-1L, "Invalid session"))
+    }
 }

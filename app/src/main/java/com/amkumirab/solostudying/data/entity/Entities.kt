@@ -117,7 +117,8 @@ data class StudySessionEntity(
     val goldEarned: Int,
     val timestamp: Long = System.currentTimeMillis(),
     val wasCompleted: Boolean,
-    val isFreeStudy: Boolean = false // Indicates if session was spent on Free Study
+    val isFreeStudy: Boolean = false, // Indicates if session was spent on Free Study
+    val note: String? = null,
 )
 
 @Entity(

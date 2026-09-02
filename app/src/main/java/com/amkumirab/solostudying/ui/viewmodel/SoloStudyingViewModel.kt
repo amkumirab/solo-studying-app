@@ -143,6 +143,10 @@ class SoloStudyingViewModel(
         statusViewModel.updateReminderSettings(settings)
     }
 
+    fun updateSessionNote(sessionId: Long, note: String) {
+        statusViewModel.updateSessionNote(sessionId, note)
+    }
+
     // --- Dungeon / Boss Management ---
     fun createBoss(
         name: String,

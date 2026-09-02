@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import com.amkumirab.solostudying.data.entity.SkillEntity
@@ -331,6 +332,113 @@ class AccessibilitySemanticsTest {
             assertEquals(1, doneClicks)
             assertEquals(1, breakClicks)
         }
+    }
+
+    @Test
+    fun `session summary saves a journal note before closing`() {
+        val note = mutableStateOf("")
+        var savedNote: String? = null
+        val summary = SessionSummary(
+            sessionId = 14L,
+            subject = "Electromagnetic Waves",
+            durationSeconds = 2_700L,
+            xpEarned = 90,
+            goldEarned = 40,
+            endState = SessionEndState.Completed,
+            previousLevel = 3,
+            currentLevel = 3,
+            previousStreak = 5,
+            currentStreak = 6,
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                SessionSummaryDialog(
+                    summary = summary,
+                    note = note.value,
+                    onNoteChange = { note.value = it },
+                    onSaveNote = { savedNote = it },
+                    onDone = {},
+                    onStartAnotherSession = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("session_summary_note")
+            .performScrollTo()
+            .performTextInput("Revisit boundary conditions next session.")
+        composeRule.onNodeWithTag("session_summary_done")
+            .performScrollTo()
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals("Revisit boundary conditions next session.", savedNote)
+        }
+    }
+
+    @Test
+    fun `session journal edits an existing history note`() {
+        var savedNote: String? = null
+        val session = StudySessionEntity(
+            id = 22,
+            bossId = null,
+            bossName = "Linear Algebra",
+            durationSeconds = 1_500L,
+            xpEarned = 50,
+            goldEarned = 20,
+            wasCompleted = true,
+            note = "Review eigenvectors",
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                SessionNoteDialog(
+                    session = session,
+                    onDismiss = {},
+                    onSave = { savedNote = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("session_note_editor").performTextClearance()
+        composeRule.onNodeWithTag("session_note_editor")
+            .performTextInput("Practice diagonalization problems")
+        composeRule.onNodeWithTag("save_session_note").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals("Practice diagonalization problems", savedNote)
+        }
+    }
+
+    @Test
+    fun `session history shows its note and exposes the edit action`() {
+        var editClicks = 0
+        val session = StudySessionEntity(
+            id = 31,
+            bossId = null,
+            bossName = "Python Practice",
+            durationSeconds = 2_100L,
+            xpEarned = 65,
+            goldEarned = 25,
+            wasCompleted = true,
+            note = "Refactor the data cleaning pipeline next.",
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                SessionHistoryCard(
+                    session = session,
+                    onEditNote = { editClicks++ },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("session_note_preview_31").assertExists()
+        composeRule.onNodeWithText("Refactor the data cleaning pipeline next.").assertExists()
+        composeRule.onNodeWithTag("edit_session_note_31")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle { assertEquals(1, editClicks) }
     }
 
     @Test

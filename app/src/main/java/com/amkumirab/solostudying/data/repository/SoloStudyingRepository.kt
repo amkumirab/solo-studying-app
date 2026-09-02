@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.amkumirab.solostudying.data.dao.SoloStudyingDao
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.*
+import com.amkumirab.solostudying.domain.session.SessionNotePolicy
 import kotlinx.coroutines.flow.Flow
 
 enum class RewardPurchaseStatus {
@@ -135,6 +136,14 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
 
     suspend fun insertSession(session: StudySessionEntity): Long {
         return dao.insertSession(session)
+    }
+
+    suspend fun updateSessionNote(sessionId: Long, note: String): Boolean {
+        if (sessionId <= 0L) return false
+        return dao.updateSessionNote(
+            sessionId = sessionId,
+            note = SessionNotePolicy.normalize(note),
+        ) == 1
     }
 
     // --- Skills CRUD ---

@@ -188,6 +188,12 @@ class StatusViewModel(
         NotificationHelper.scheduleDailyAlarms(context, settings)
     }
 
+    fun updateSessionNote(sessionId: Long, note: String) {
+        viewModelScope.launch {
+            repository.updateSessionNote(sessionId, note)
+        }
+    }
+
     // Basic XP/Gold modification interface for VM communication
     fun awardRewards(xpGained: Int, goldGained: Int) {
         viewModelScope.launch {

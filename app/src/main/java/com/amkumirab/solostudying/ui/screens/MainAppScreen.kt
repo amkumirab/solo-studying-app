@@ -1,6 +1,7 @@
 package com.amkumirab.solostudying.ui.screens
 
 import android.app.Activity
+import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.ContextWrapper
@@ -75,6 +76,8 @@ import com.amkumirab.solostudying.ui.theme.*
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 enum class Tab(val title: String, val icon: ImageVector) {
@@ -317,8 +320,16 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     if (showCreateBossDialog) {
         CreateBossDialog(
             onDismiss = { showCreateBossDialog = false },
-            onConfirm = { name, difficulty, minutesOption, dungeonName, isRealBoss ->
-                viewModel.createBoss(name, difficulty, minutesOption, null, dungeonName, isRealBoss)
+            onConfirm = { name, difficulty, minutesOption, dungeonName, isRealBoss, deadlineDate ->
+                viewModel.createBoss(
+                    name = name,
+                    difficulty = difficulty,
+                    durationMinutes = minutesOption,
+                    imagePath = null,
+                    dungeonName = dungeonName,
+                    isRealBoss = isRealBoss,
+                    deadlineDate = deadlineDate,
+                )
                 showCreateBossDialog = false
             }
         )
@@ -963,6 +974,16 @@ fun DungeonTab(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        DeadlineGoalsCard(
+            bosses = bosses,
+            scheduleDays = profile?.scheduleDays.orEmpty(),
+            isSessionActive = isBattleActive,
+            onCreateGoal = onCreateBossClicked,
+            onStartGoal = onFightBoss,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // System 7: RED DUNGEON (PENALTY SYSTEM) VISUAL STRESS INDICATOR
         val redDungeonDays = profile?.redDungeonDays ?: 0
         val isBoostActive = profile?.isRedDungeonBoostActive == true
@@ -1436,6 +1457,18 @@ fun BossCard(
                                 )
                             }
                         }
+                        boss.deadlineDate
+                            ?.let { value -> runCatching { LocalDate.parse(value) }.getOrNull() }
+                            ?.let { deadline ->
+                                Text(
+                                    text = "📅 DEADLINE: ${deadline.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH))}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = RpgGold,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    modifier = Modifier.padding(top = 3.dp),
+                                )
+                            }
                     }
                 }
             }
@@ -4740,13 +4773,16 @@ private fun SummaryNotice(text: String, color: Color) {
 @Composable
 fun CreateBossDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, Int, String, Boolean) -> Unit
+    onConfirm: (String, String, Int, String, Boolean, String?) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var difficulty by remember { mutableStateOf("Medium") }
     var minutesInput by remember { mutableStateOf("30") }
     var dungeonNameInput by remember { mutableStateOf("Main Realm") }
     var isRealBoss by remember { mutableStateOf(false) }
+    var hasDeadline by remember { mutableStateOf(false) }
+    var deadlineDate by remember { mutableStateOf(LocalDate.now().plusDays(7)) }
+    val context = LocalContext.current
 
     val options = listOf("Easy", "Medium", "Hard", "Legendary")
     val defaultMinutesPreset = listOf(15, 25, 30, 45, 60, 90, 120)
@@ -4829,6 +4865,82 @@ fun CreateBossDialog(
                             text = "Represents real Exams/Assignments. Enables Manual Pass capability bypass.",
                             style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
                         )
+                    }
+                }
+
+                // Optional exam or assignment deadline
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (hasDeadline) InfoContainer else SurfaceSubtle)
+                            .border(
+                                1.dp,
+                                if (hasDeadline) NeonBlueAccent else DarkCardBorder,
+                                RoundedCornerShape(8.dp),
+                            )
+                            .clickable { hasDeadline = !hasDeadline }
+                            .padding(12.dp)
+                            .testTag("deadline_goal_toggle"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Checkbox(
+                            checked = hasDeadline,
+                            onCheckedChange = { hasDeadline = it },
+                            colors = CheckboxDefaults.colors(checkedColor = NeonBlueAccent),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "📅 ADD EXAM OR ASSIGNMENT DEADLINE",
+                                color = if (hasDeadline) NeonBlueAccent else TextWhite,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = "Build a daily plan from the remaining focus time",
+                                color = TextMuted,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+
+                    if (hasDeadline) {
+                        OutlinedButton(
+                            onClick = {
+                                DatePickerDialog(
+                                    context,
+                                    { _, year, month, day ->
+                                        deadlineDate = LocalDate.of(year, month + 1, day)
+                                    },
+                                    deadlineDate.year,
+                                    deadlineDate.monthValue - 1,
+                                    deadlineDate.dayOfMonth,
+                                ).apply {
+                                    datePicker.minDate = System.currentTimeMillis() - 1_000L
+                                }.show()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .testTag("deadline_date_button"),
+                            border = BorderStroke(1.dp, NeonBlueAccent),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                tint = NeonBlueAccent,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = deadlineDate.format(
+                                    DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH),
+                                ),
+                                color = NeonBlueAccent,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
                 }
 
@@ -4949,7 +5061,14 @@ fun CreateBossDialog(
                     Button(
                         onClick = {
                             if (name.isNotEmpty() && finalMinutes > 0) {
-                                onConfirm(name, difficulty, finalMinutes, dungeonNameInput.trim(), isRealBoss)
+                                onConfirm(
+                                    name,
+                                    difficulty,
+                                    finalMinutes,
+                                    dungeonNameInput.trim(),
+                                    isRealBoss,
+                                    deadlineDate.toString().takeIf { hasDeadline },
+                                )
                             }
                         },
                         enabled = name.isNotEmpty() && finalMinutes > 0,

@@ -51,7 +51,15 @@ class DungeonViewModel(
         defaults.forEach { repository.insertDungeon(it) }
     }
 
-    fun createBoss(name: String, difficulty: String, durationMinutes: Int, imagePath: String?, dungeonName: String = "Main Realm", isRealBoss: Boolean = false) {
+    fun createBoss(
+        name: String,
+        difficulty: String,
+        durationMinutes: Int,
+        imagePath: String?,
+        dungeonName: String = "Main Realm",
+        isRealBoss: Boolean = false,
+        deadlineDate: String? = null,
+    ) {
         viewModelScope.launch {
             repository.insertBoss(
                 BossEntity(
@@ -60,7 +68,8 @@ class DungeonViewModel(
                     requiredMinutes = durationMinutes,
                     imagePath = imagePath,
                     dungeonName = dungeonName,
-                    isRealBoss = isRealBoss
+                    isRealBoss = isRealBoss,
+                    deadlineDate = deadlineDate,
                 )
             )
         }

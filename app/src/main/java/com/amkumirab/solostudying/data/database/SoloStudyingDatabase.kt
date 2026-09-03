@@ -21,7 +21,7 @@ import com.amkumirab.solostudying.data.entity.*
         BossSkillEntity::class,
         DailyQuestEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class SoloStudyingDatabase : RoomDatabase() {
@@ -45,7 +45,13 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
                 }
 
                 // Add prepared migrations for release versions
-                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                builder.addMigrations(
+                    MIGRATION_4_5,
+                    MIGRATION_5_6,
+                    MIGRATION_6_7,
+                    MIGRATION_7_8,
+                    MIGRATION_8_9,
+                )
 
                 val instance = builder.build()
                 INSTANCE = instance
@@ -132,6 +138,12 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
         internal val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `study_sessions` ADD COLUMN `note` TEXT")
+            }
+        }
+
+        internal val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `bosses` ADD COLUMN `deadlineDate` TEXT")
             }
         }
     }

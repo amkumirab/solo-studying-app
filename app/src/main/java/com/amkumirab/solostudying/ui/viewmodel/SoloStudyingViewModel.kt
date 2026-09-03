@@ -154,9 +154,18 @@ class SoloStudyingViewModel(
         durationMinutes: Int,
         imagePath: String?,
         dungeonName: String = "Main Realm",
-        isRealBoss: Boolean = false
+        isRealBoss: Boolean = false,
+        deadlineDate: String? = null,
     ) {
-        dungeonViewModel.createBoss(name, difficulty, durationMinutes, imagePath, dungeonName, isRealBoss)
+        dungeonViewModel.createBoss(
+            name = name,
+            difficulty = difficulty,
+            durationMinutes = durationMinutes,
+            imagePath = imagePath,
+            dungeonName = dungeonName,
+            isRealBoss = isRealBoss,
+            deadlineDate = deadlineDate,
+        )
     }
 
     fun deleteBoss(boss: BossEntity) {

@@ -22,6 +22,7 @@ data class BossEntity(
     val timeSpentSeconds: Long = 0,
     val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
+    val deadlineDate: String? = null,
     val dungeonName: String = "Main Realm", // Category folder like Semester 5, Java Course, Life Goals
     val isRealBoss: Boolean = false // Real-life goals (exams, deliverables) requiring manual confirmation
 )

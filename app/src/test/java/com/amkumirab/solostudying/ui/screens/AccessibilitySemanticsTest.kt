@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
+import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.data.entity.SkillEntity
 import com.amkumirab.solostudying.data.entity.DailyQuestEntity
 import com.amkumirab.solostudying.data.entity.StudySessionEntity
@@ -32,11 +33,15 @@ import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.quickstart.QuickStartSelection
 import com.amkumirab.solostudying.sound.SoundSettings
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -645,6 +650,96 @@ class AccessibilitySemanticsTest {
             .performClick()
         composeRule.runOnIdle {
             assertEquals("Read chapter four" to 45, createdQuest)
+        }
+    }
+
+    @Test
+    fun `deadline planner shows the daily target and starts its goal`() {
+        var startedBoss: BossEntity? = null
+        val today = LocalDate.of(2026, 9, 7)
+        val boss = BossEntity(
+            id = 44,
+            name = "Physics Exam",
+            difficulty = "Hard",
+            requiredMinutes = 300,
+            timeSpentSeconds = 60 * 60L,
+            createdAt = today.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+            deadlineDate = "2026-09-11",
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                DeadlineGoalsCard(
+                    bosses = listOf(boss),
+                    scheduleDays = "Mon,Wed,Fri",
+                    isSessionActive = false,
+                    onCreateGoal = {},
+                    onStartGoal = { startedBoss = it },
+                    today = today,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("deadline_goal_44").assertExists()
+        composeRule.onNodeWithText("ON TRACK").assertExists()
+        composeRule.onNodeWithText("80 min per study day").assertExists()
+        composeRule.onNodeWithTag("start_deadline_goal_44")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle { assertEquals(boss, startedBoss) }
+    }
+
+    @Test
+    fun `empty deadline planner opens goal creation`() {
+        var createClicks = 0
+        composeRule.setContent {
+            MaterialTheme {
+                DeadlineGoalsCard(
+                    bosses = emptyList(),
+                    scheduleDays = "Mon,Wed,Fri",
+                    isSessionActive = false,
+                    onCreateGoal = { createClicks++ },
+                    onStartGoal = {},
+                    today = LocalDate.of(2026, 9, 7),
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("create_deadline_goal")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle { assertEquals(1, createClicks) }
+    }
+
+    @Test
+    fun `boss creation includes an optional valid deadline`() {
+        var savedName: String? = null
+        var savedDeadline: String? = null
+        composeRule.setContent {
+            MaterialTheme {
+                CreateBossDialog(
+                    onDismiss = {},
+                    onConfirm = { name, _, _, _, _, deadline ->
+                        savedName = name
+                        savedDeadline = deadline
+                    },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("boss_name_input").performTextInput("Calculus Exam")
+        composeRule.onNodeWithTag("deadline_goal_toggle")
+            .performScrollTo()
+            .performClick()
+        composeRule.onNodeWithTag("deadline_date_button").assertExists()
+        composeRule.onNodeWithTag("conclude_boss_summon_button")
+            .performScrollTo()
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals("Calculus Exam", savedName)
+            assertNotNull(savedDeadline)
+            assertTrue(LocalDate.parse(savedDeadline).isAfter(LocalDate.now()))
         }
     }
 }

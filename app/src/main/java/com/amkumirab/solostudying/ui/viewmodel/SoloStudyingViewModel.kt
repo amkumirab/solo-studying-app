@@ -21,6 +21,7 @@ class SoloStudyingViewModel(
 
     // --- StateFlow Delegation to Feature ViewModels ---
     val bosses = dungeonViewModel.bosses
+    val bossSteps = dungeonViewModel.bossSteps
     val dungeons = dungeonViewModel.dungeons
     val userProfile = statusViewModel.userProfile
     val rewards = shopViewModel.rewards
@@ -42,6 +43,8 @@ class SoloStudyingViewModel(
     val sessionSummary: SessionSummary? get() = battleViewModel.sessionSummary
     val activeDailyQuestId: Int? get() = battleViewModel.activeDailyQuestId
     val activeDailyQuestTitle: String? get() = battleViewModel.activeDailyQuestTitle
+    val activeBossStepId: Int? get() = battleViewModel.activeBossStepId
+    val activeBossStepTitle: String? get() = battleViewModel.activeBossStepTitle
     val activeBreak get() = breakViewModel.activeBreak
     val breakTimeLeftSeconds: Long get() = breakViewModel.breakTimeLeftSeconds
     val showBreakComplete: Boolean get() = breakViewModel.showBreakComplete
@@ -172,6 +175,22 @@ class SoloStudyingViewModel(
         dungeonViewModel.deleteBoss(boss)
     }
 
+    fun createBossStep(bossId: Int, title: String, estimatedMinutes: Int) {
+        dungeonViewModel.createBossStep(bossId, title, estimatedMinutes)
+    }
+
+    fun updateBossStep(step: BossStepEntity, title: String, estimatedMinutes: Int) {
+        dungeonViewModel.updateBossStep(step, title, estimatedMinutes)
+    }
+
+    fun setBossStepCompleted(step: BossStepEntity, completed: Boolean) {
+        dungeonViewModel.setBossStepCompleted(step, completed)
+    }
+
+    fun deleteBossStep(step: BossStepEntity) {
+        dungeonViewModel.deleteBossStep(step)
+    }
+
     fun activateRedDungeonXpBoost() {
         dungeonViewModel.activateRedDungeonXpBoost()
     }
@@ -179,6 +198,10 @@ class SoloStudyingViewModel(
     // --- Focus Battle / Free Study Operations ---
     fun selectAndStartBattle(boss: BossEntity) {
         battleViewModel.selectAndStartBattle(boss)
+    }
+
+    fun selectAndStartBossStep(boss: BossEntity, step: BossStepEntity) {
+        battleViewModel.selectAndStartBossStep(boss, step)
     }
 
     fun selectAndStartFreeStudy(minutes: Int) {
@@ -207,6 +230,10 @@ class SoloStudyingViewModel(
 
     fun completeActiveBoss() {
         battleViewModel.completeActiveBoss()
+    }
+
+    fun endBossStepEarly() {
+        battleViewModel.endBossStepEarly()
     }
 
     fun simulateStudySeconds(seconds: Long) {

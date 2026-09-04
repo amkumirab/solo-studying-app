@@ -18,6 +18,7 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
     private val dao: SoloStudyingDao = database.soloStudyingDao()
 
     val allBosses: Flow<List<BossEntity>> = dao.getAllBosses()
+    val allBossSteps: Flow<List<BossStepEntity>> = dao.getAllBossSteps()
     val allDungeons: Flow<List<DungeonEntity>> = dao.getAllDungeons()
     val userProfile: Flow<UserProfileEntity?> = dao.getUserProfile()
     val allRewards: Flow<List<RewardItemEntity>> = dao.getAllRewards()
@@ -40,6 +41,26 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
 
     suspend fun deleteBoss(boss: BossEntity) {
         dao.deleteBoss(boss)
+    }
+
+    suspend fun getBossStepById(id: Int): BossStepEntity? {
+        return dao.getBossStepById(id)
+    }
+
+    suspend fun getNextBossStepOrder(bossId: Int): Int {
+        return dao.getNextBossStepOrder(bossId)
+    }
+
+    suspend fun insertBossStep(step: BossStepEntity): Long {
+        return dao.insertBossStep(step)
+    }
+
+    suspend fun updateBossStep(step: BossStepEntity) {
+        dao.updateBossStep(step)
+    }
+
+    suspend fun deleteBossStep(step: BossStepEntity) {
+        dao.deleteBossStep(step)
     }
 
     // --- Dungeon Operations ---

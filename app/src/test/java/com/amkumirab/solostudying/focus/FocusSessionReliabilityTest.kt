@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.BossEntity
+import com.amkumirab.solostudying.data.entity.BossStepEntity
 import com.amkumirab.solostudying.data.entity.DailyQuestEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
@@ -289,6 +290,84 @@ class FocusSessionReliabilityTest {
 
         val pending = repository.getDailyQuestById(questId) ?: error("Quest disappeared")
         assertFalse(pending.isCompleted)
+    }
+
+    @Test
+    fun `finishing a study step completes it and adds time to its boss`() = runBlocking {
+        val bossId = repository.insertBoss(
+            BossEntity(
+                name = "Physics Exam",
+                difficulty = "Hard",
+                requiredMinutes = 120,
+            ),
+        ).toInt()
+        val boss = repository.getBossById(bossId) ?: error("Boss was not saved")
+        val stepId = repository.insertBossStep(
+            BossStepEntity(
+                bossId = bossId,
+                title = "Review electromagnetic waves",
+                estimatedMinutes = 1,
+                sortOrder = 0,
+            ),
+        ).toInt()
+        val step = repository.getBossStepById(stepId) ?: error("Step was not saved")
+        val viewModel = BattleViewModel(repository, context, store) { 9_000_000L }
+        battleViewModel = viewModel
+
+        viewModel.selectAndStartBossStep(boss, step)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        assertEquals(stepId, viewModel.activeBossStepId)
+        assertEquals(60L, viewModel.battleTimeLeftSeconds)
+
+        viewModel.simulateStudySeconds(60L)
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+
+        val completedStep = repository.getBossStepById(stepId) ?: error("Step disappeared")
+        val updatedBoss = repository.getBossById(bossId) ?: error("Boss disappeared")
+        assertTrue(completedStep.isCompleted)
+        assertEquals(60L, updatedBoss.timeSpentSeconds)
+        assertFalse(updatedBoss.isCompleted)
+        assertEquals("Review electromagnetic waves", viewModel.sessionSummary?.subject)
+        assertEquals(
+            "Physics Exam: Review electromagnetic waves",
+            repository.allSessions.first().single().bossName,
+        )
+    }
+
+    @Test
+    fun `ending a study step early leaves it pending`() = runBlocking {
+        val bossId = repository.insertBoss(
+            BossEntity(
+                name = "Calculus Exam",
+                difficulty = "Medium",
+                requiredMinutes = 90,
+            ),
+        ).toInt()
+        val boss = repository.getBossById(bossId) ?: error("Boss was not saved")
+        val stepId = repository.insertBossStep(
+            BossStepEntity(
+                bossId = bossId,
+                title = "Solve integration exercises",
+                estimatedMinutes = 10,
+                sortOrder = 0,
+            ),
+        ).toInt()
+        val step = repository.getBossStepById(stepId) ?: error("Step was not saved")
+        val viewModel = BattleViewModel(repository, context, store) { 10_000_000L }
+        battleViewModel = viewModel
+
+        viewModel.selectAndStartBossStep(boss, step)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        viewModel.simulateStudySeconds(20L)
+        waitForCondition { if (viewModel.battleTimeSpentSeconds == 20L) true else null }
+        viewModel.endBossStepEarly()
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+
+        val pendingStep = repository.getBossStepById(stepId) ?: error("Step disappeared")
+        assertFalse(pendingStep.isCompleted)
+        assertEquals(20L, repository.getBossById(bossId)?.timeSpentSeconds)
+        assertFalse(repository.allSessions.first().single().wasCompleted)
+        assertEquals(SessionEndState.Suspended, viewModel.sessionSummary?.endState)
     }
 
     @Test

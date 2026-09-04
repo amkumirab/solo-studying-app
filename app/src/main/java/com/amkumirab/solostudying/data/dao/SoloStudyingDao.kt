@@ -23,6 +23,25 @@ interface SoloStudyingDao {
     @Delete
     suspend fun deleteBoss(boss: BossEntity)
 
+    // --- Boss study steps ---
+    @Query("SELECT * FROM boss_steps ORDER BY bossId ASC, sortOrder ASC, createdAt ASC")
+    fun getAllBossSteps(): Flow<List<BossStepEntity>>
+
+    @Query("SELECT * FROM boss_steps WHERE id = :id LIMIT 1")
+    suspend fun getBossStepById(id: Int): BossStepEntity?
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM boss_steps WHERE bossId = :bossId")
+    suspend fun getNextBossStepOrder(bossId: Int): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBossStep(step: BossStepEntity): Long
+
+    @Update
+    suspend fun updateBossStep(step: BossStepEntity)
+
+    @Delete
+    suspend fun deleteBossStep(step: BossStepEntity)
+
     // --- Dungeons ---
     @Query("SELECT * FROM dungeons ORDER BY id ASC")
     fun getAllDungeons(): Flow<List<DungeonEntity>>

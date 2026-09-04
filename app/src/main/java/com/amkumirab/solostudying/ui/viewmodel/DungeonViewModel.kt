@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amkumirab.solostudying.data.entity.BossEntity
+import com.amkumirab.solostudying.data.entity.BossStepEntity
 import com.amkumirab.solostudying.data.entity.DungeonEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
@@ -23,6 +24,12 @@ class DungeonViewModel(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
+    )
+
+    val bossSteps: StateFlow<List<BossStepEntity>> = repository.allBossSteps.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList(),
     )
 
     val dungeons: StateFlow<List<DungeonEntity>> = repository.allDungeons.stateIn(
@@ -78,6 +85,48 @@ class DungeonViewModel(
     fun deleteBoss(boss: BossEntity) {
         viewModelScope.launch {
             repository.deleteBoss(boss)
+        }
+    }
+
+    fun createBossStep(bossId: Int, title: String, estimatedMinutes: Int) {
+        val cleanTitle = title.trim()
+        if (bossId <= 0 || cleanTitle.isEmpty() || estimatedMinutes !in 1..480) return
+        viewModelScope.launch {
+            repository.insertBossStep(
+                BossStepEntity(
+                    bossId = bossId,
+                    title = cleanTitle,
+                    estimatedMinutes = estimatedMinutes,
+                    sortOrder = repository.getNextBossStepOrder(bossId),
+                ),
+            )
+        }
+    }
+
+    fun updateBossStep(step: BossStepEntity, title: String, estimatedMinutes: Int) {
+        val cleanTitle = title.trim()
+        if (cleanTitle.isEmpty() || estimatedMinutes !in 1..480) return
+        viewModelScope.launch {
+            repository.updateBossStep(
+                step.copy(title = cleanTitle, estimatedMinutes = estimatedMinutes),
+            )
+        }
+    }
+
+    fun setBossStepCompleted(step: BossStepEntity, completed: Boolean) {
+        viewModelScope.launch {
+            repository.updateBossStep(
+                step.copy(
+                    isCompleted = completed,
+                    completedAt = if (completed) System.currentTimeMillis() else null,
+                ),
+            )
+        }
+    }
+
+    fun deleteBossStep(step: BossStepEntity) {
+        viewModelScope.launch {
+            repository.deleteBossStep(step)
         }
     }
 

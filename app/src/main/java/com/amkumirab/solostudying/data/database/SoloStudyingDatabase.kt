@@ -12,6 +12,7 @@ import com.amkumirab.solostudying.data.entity.*
 @Database(
     entities = [
         BossEntity::class,
+        BossStepEntity::class,
         UserProfileEntity::class,
         RewardItemEntity::class,
         RewardBalanceEntity::class,
@@ -21,7 +22,7 @@ import com.amkumirab.solostudying.data.entity.*
         BossSkillEntity::class,
         DailyQuestEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class SoloStudyingDatabase : RoomDatabase() {
@@ -51,6 +52,7 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
                     MIGRATION_6_7,
                     MIGRATION_7_8,
                     MIGRATION_8_9,
+                    MIGRATION_9_10,
                 )
 
                 val instance = builder.build()
@@ -144,6 +146,28 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
         internal val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `bosses` ADD COLUMN `deadlineDate` TEXT")
+            }
+        }
+
+        internal val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `boss_steps` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`bossId` INTEGER NOT NULL, " +
+                        "`title` TEXT NOT NULL, " +
+                        "`estimatedMinutes` INTEGER NOT NULL, " +
+                        "`sortOrder` INTEGER NOT NULL, " +
+                        "`isCompleted` INTEGER NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL, " +
+                        "`completedAt` INTEGER, " +
+                        "FOREIGN KEY(`bossId`) REFERENCES `bosses`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_boss_steps_bossId` " +
+                        "ON `boss_steps` (`bossId`)",
+                )
             }
         }
     }

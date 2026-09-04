@@ -91,6 +91,7 @@ enum class Tab(val title: String, val icon: ImageVector) {
 @Composable
 fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     val bosses by viewModel.bosses.collectAsState()
+    val bossSteps by viewModel.bossSteps.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val rewards by viewModel.rewards.collectAsState()
     val balances by viewModel.balances.collectAsState()
@@ -108,6 +109,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
 
     // Before the Battle preparation states
     var prepBoss by remember { mutableStateOf<BossEntity?>(null) }
+    var prepStudyStep by remember { mutableStateOf<BossStepEntity?>(null) }
     var prepFreeStudyMins by remember { mutableStateOf<Int?>(null) }
     var prepSelectedSkill by remember { mutableStateOf<SkillEntity?>(null) }
 
@@ -195,7 +197,9 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                 when (targetTab) {
                     Tab.Dungeons -> DungeonTab(
                         bosses = bosses,
+                        bossSteps = bossSteps,
                         activeBoss = viewModel.activeBoss,
+                        activeStepId = viewModel.activeBossStepId,
                         isBattleActive = viewModel.isBattleActive,
                         profile = userProfile,
                         skills = skills,
@@ -207,6 +211,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onFightBoss = { boss ->
                             RpgSoundManager.playClickSound()
                             prepBoss = boss
+                            prepStudyStep = null
                             prepFreeStudyMins = null
                             prepSelectedSkill = viewModel.selectedSkillToTrain
                             currentTab = Tab.Battle
@@ -243,28 +248,43 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onDailyQuestStarted = {
                             currentTab = Tab.Battle
                         },
+                        onStartBossStep = { boss, step ->
+                            RpgSoundManager.playClickSound()
+                            prepBoss = boss
+                            prepStudyStep = step
+                            prepFreeStudyMins = null
+                            prepSelectedSkill = viewModel.selectedSkillToTrain
+                            currentTab = Tab.Battle
+                        },
                     )
                     Tab.Battle -> {
                         if (prepBoss != null || prepFreeStudyMins != null) {
                             BeforeTheBattleScreen(
                                 boss = prepBoss,
+                                studyStep = prepStudyStep,
                                 freeStudyMins = prepFreeStudyMins,
                                 selectedSkill = prepSelectedSkill,
                                 userProfile = userProfile ?: UserProfileEntity(),
                                 onBeginBattle = {
                                     if (prepBoss != null) {
                                         viewModel.selectedSkillToTrain = prepSelectedSkill
-                                        viewModel.selectAndStartBattle(prepBoss!!)
+                                        if (prepStudyStep != null) {
+                                            viewModel.selectAndStartBossStep(prepBoss!!, prepStudyStep!!)
+                                        } else {
+                                            viewModel.selectAndStartBattle(prepBoss!!)
+                                        }
                                     } else if (prepFreeStudyMins != null) {
                                         viewModel.selectedSkillToTrain = prepSelectedSkill
                                         viewModel.selectAndStartFreeStudy(prepFreeStudyMins!!)
                                     }
                                     prepBoss = null
+                                    prepStudyStep = null
                                     prepFreeStudyMins = null
                                     prepSelectedSkill = null
                                 },
                                 onCancel = {
                                     prepBoss = null
+                                    prepStudyStep = null
                                     prepFreeStudyMins = null
                                     prepSelectedSkill = null
                                     currentTab = Tab.Dungeons
@@ -466,6 +486,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                                         ),
                                     )
                                     prepBoss = null
+                                    prepStudyStep = null
                                     prepFreeStudyMins = fMins
                                     prepSelectedSkill = studySkillSelected
                                     showFreeStudyDialog = false
@@ -871,7 +892,9 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
 @Composable
 fun DungeonTab(
     bosses: List<BossEntity>,
+    bossSteps: List<BossStepEntity>,
     activeBoss: BossEntity?,
+    activeStepId: Int?,
     isBattleActive: Boolean,
     profile: UserProfileEntity?,
     skills: List<SkillEntity>,
@@ -886,8 +909,10 @@ fun DungeonTab(
     onQuickStart: (QuickStartSelection) -> Unit,
     onCustomQuickStart: () -> Unit,
     onDailyQuestStarted: () -> Unit,
+    onStartBossStep: (BossEntity, BossStepEntity) -> Unit,
 ) {
     var selectedDungeonCategory by remember { mutableStateOf("All") }
+    var stepsBoss by remember { mutableStateOf<BossEntity?>(null) }
     val dailyQuests by viewModel.dailyQuests.collectAsState()
     val allDailyQuests by viewModel.allDailyQuests.collectAsState()
     
@@ -1284,15 +1309,37 @@ fun DungeonTab(
                 filteredBosses.forEach { boss ->
                     BossCard(
                         boss = boss,
+                        steps = bossSteps.filter { it.bossId == boss.id },
                         activeBoss = activeBoss,
                         isBattleActive = isBattleActive,
                         onFightBoss = { onFightBoss(boss) },
                         onDeleteBoss = { onDeleteBoss(boss) },
-                        onConquerRealBoss = { onConquerRealBoss(boss) }
+                        onConquerRealBoss = { onConquerRealBoss(boss) },
+                        onManageSteps = { stepsBoss = boss },
                     )
                 }
             }
         }
+    }
+
+    stepsBoss?.let { boss ->
+        BossStudyStepsDialog(
+            boss = boss,
+            steps = bossSteps.filter { it.bossId == boss.id },
+            isSessionActive = isBattleActive,
+            activeStepId = activeStepId,
+            onDismiss = { stepsBoss = null },
+            onCreateStep = { title, minutes ->
+                viewModel.createBossStep(boss.id, title, minutes)
+            },
+            onUpdateStep = viewModel::updateBossStep,
+            onSetCompleted = viewModel::setBossStepCompleted,
+            onDeleteStep = viewModel::deleteBossStep,
+            onStartStep = { step ->
+                stepsBoss = null
+                onStartBossStep(boss, step)
+            },
+        )
     }
 }
 
@@ -1300,11 +1347,13 @@ fun DungeonTab(
 @Composable
 fun BossCard(
     boss: BossEntity,
+    steps: List<BossStepEntity> = emptyList(),
     activeBoss: BossEntity?,
     isBattleActive: Boolean,
     onFightBoss: () -> Unit,
     onDeleteBoss: () -> Unit,
-    onConquerRealBoss: () -> Unit
+    onConquerRealBoss: () -> Unit,
+    onManageSteps: () -> Unit = {},
 ) {
     val isCurrentlyFightingThis = activeBoss?.id == boss.id
     val difficultyColor = getDifficultyColor(boss.difficulty)
@@ -1530,6 +1579,48 @@ fun BossCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                val completedSteps = steps.count { it.isCompleted }
+                OutlinedButton(
+                    onClick = onManageSteps,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("manage_boss_steps_${boss.id}"),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (steps.isNotEmpty() && completedSteps == steps.size) RpgEmerald else NeonBlueAccent,
+                    ),
+                ) {
+                    Icon(Icons.Default.Route, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text(
+                        text = if (steps.isEmpty()) {
+                            "PLAN STUDY STEPS"
+                        } else {
+                            "STUDY STEPS  $completedSteps / ${steps.size}"
+                        },
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                if (steps.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { completedSteps.toFloat() / steps.size },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .semantics {
+                                contentDescription = "$completedSteps of ${steps.size} study steps completed"
+                            },
+                        color = if (completedSteps == steps.size) RpgEmerald else NeonBlueAccent,
+                        trackColor = SurfaceElevated,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1667,7 +1758,7 @@ fun BattleTab(
         }
     } else {
         // Battle Screen Layout - supporting both Boss and Casual Meditation
-        val targetSeconds = if (isFreeStudy) {
+        val targetSeconds = if (isFreeStudy || viewModel.activeBossStepId != null) {
             (viewModel.battleTimeLeftSeconds + viewModel.battleTimeSpentSeconds).coerceAtLeast(60L)
         } else {
             (boss?.requiredMinutes ?: 30) * 60L
@@ -1679,17 +1770,21 @@ fun BattleTab(
 
         val categoryText = if (isFreeStudy) {
             if (viewModel.activeDailyQuestId != null) "DAILY QUEST FOCUS" else "ASTRAL PLANE FOCUS"
+        } else if (viewModel.activeBossStepId != null) {
+            "STUDY STEP · ${(boss?.name ?: "Goal").uppercase()}"
         } else {
             "DUNGEON: ${(boss?.dungeonName ?: "Main Realm").uppercase()}"
         }
 
         val nameText = if (isFreeStudy) {
             viewModel.activeDailyQuestTitle?.uppercase() ?: "ASTRAL FREE STUDY ZONE"
+        } else if (viewModel.activeBossStepId != null) {
+            viewModel.activeBossStepTitle?.uppercase() ?: boss?.name?.uppercase().orEmpty()
         } else {
             boss?.name?.uppercase() ?: ""
         }
 
-        val requiredMins = if (isFreeStudy) {
+        val requiredMins = if (isFreeStudy || viewModel.activeBossStepId != null) {
             (targetSeconds / 60).toInt()
         } else {
             boss?.requiredMinutes ?: 30
@@ -1706,6 +1801,7 @@ fun BattleTab(
                 Text(
                     text = when {
                         viewModel.activeDailyQuestId != null -> "📜 ACTIVE DAILY QUEST"
+                        viewModel.activeBossStepId != null -> "🧭 ACTIVE STUDY STEP"
                         isFreeStudy -> "🌌 CASUAL MEDITATION PORTAL"
                         else -> "⚔️ ACTIVE BOSS ENCOUNTER"
                     },
@@ -2022,6 +2118,7 @@ fun BattleTab(
                 BattleActionControls(
                     isPaused = viewModel.isBattlePaused,
                     isFreeStudy = isFreeStudy,
+                    isStudyStep = viewModel.activeBossStepId != null,
                     onPause = {
                         RpgSoundManager.playClickSound()
                         viewModel.pauseBattle()
@@ -2030,7 +2127,13 @@ fun BattleTab(
                         RpgSoundManager.playClickSound()
                         viewModel.resumeBattle()
                     },
-                    onFinish = viewModel::completeActiveBoss,
+                    onFinish = {
+                        if (viewModel.activeBossStepId != null) {
+                            viewModel.endBossStepEarly()
+                        } else {
+                            viewModel.completeActiveBoss()
+                        }
+                    },
                     onRetreat = {
                         RpgSoundManager.playClickSound()
                         viewModel.abandonActiveBoss()
@@ -2077,6 +2180,7 @@ fun BattleTab(
 fun BattleActionControls(
     isPaused: Boolean,
     isFreeStudy: Boolean,
+    isStudyStep: Boolean = false,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onFinish: () -> Unit,
@@ -2132,12 +2236,20 @@ fun BattleActionControls(
                     .testTag("battle_finish_button"),
             ) {
                 Icon(
-                    imageVector = if (isFreeStudy) Icons.Default.CheckCircleOutline else Icons.Default.Celebration,
+                    imageVector = if (isFreeStudy || isStudyStep) {
+                        Icons.Default.CheckCircleOutline
+                    } else {
+                        Icons.Default.Celebration
+                    },
                     contentDescription = null,
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = if (isFreeStudy) "FINISH" else "CONQUER",
+                    text = when {
+                        isStudyStep -> "END EARLY"
+                        isFreeStudy -> "FINISH"
+                        else -> "CONQUER"
+                    },
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
                 )

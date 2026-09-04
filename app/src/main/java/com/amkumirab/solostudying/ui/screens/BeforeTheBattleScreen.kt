@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amkumirab.solostudying.data.entity.BossEntity
+import com.amkumirab.solostudying.data.entity.BossStepEntity
 import com.amkumirab.solostudying.data.entity.SkillEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.domain.reward.SessionRewardCalculator
@@ -32,6 +33,7 @@ import com.amkumirab.solostudying.ui.theme.*
 @Composable
 fun BeforeTheBattleScreen(
     boss: BossEntity?,
+    studyStep: BossStepEntity? = null,
     freeStudyMins: Int?,
     selectedSkill: SkillEntity?,
     userProfile: UserProfileEntity,
@@ -117,7 +119,7 @@ fun BeforeTheBattleScreen(
 
     // Calculations for summary estimates
     val isFreeStudy = boss == null
-    val targetMins = freeStudyMins ?: boss?.requiredMinutes ?: 30
+    val targetMins = freeStudyMins ?: studyStep?.estimatedMinutes ?: boss?.requiredMinutes ?: 30
     val redDungeonDays = userProfile.redDungeonDays
     val isXpBoostActive = userProfile.isRedDungeonBoostActive
 
@@ -252,7 +254,14 @@ fun BeforeTheBattleScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            SummaryItem("TARGET", if (isFreeStudy) "Astral Free Study" else boss?.name ?: "Encounter")
+                            SummaryItem(
+                                "TARGET",
+                                if (isFreeStudy) {
+                                    "Astral Free Study"
+                                } else {
+                                    studyStep?.title ?: boss?.name ?: "Encounter"
+                                },
+                            )
                             SummaryItem("LOCATION", if (isFreeStudy) "Astral Plane Portal" else "Dungeon: ${boss?.dungeonName ?: "Realm"}")
                             SummaryItem("FOCUS DURATION", "$targetMins Minutes")
                         }

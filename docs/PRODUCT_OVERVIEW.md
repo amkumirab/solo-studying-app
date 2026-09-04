@@ -10,10 +10,11 @@ spent studying and actions explicitly confirmed by the user.
 
 1. Create a dungeon for a subject or long-running goal.
 2. Add a boss with an estimated number of focus minutes.
-3. Select an optional skill and start a timed session.
-4. Apply the completed time to boss health and skill progress.
-5. Award experience and gold.
-6. Spend gold on a user-defined real-life reward.
+3. Break large goals into timed study steps and focus on one clear action at a time.
+4. Select an optional skill and start a timed session.
+5. Apply the completed time to boss health and skill progress.
+6. Award experience and gold.
+7. Spend gold on a user-defined real-life reward.
 
 ## Implemented systems
 

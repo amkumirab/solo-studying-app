@@ -1,6 +1,8 @@
 package com.amkumirab.solostudying.data.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "dungeons")
@@ -25,6 +27,29 @@ data class BossEntity(
     val deadlineDate: String? = null,
     val dungeonName: String = "Main Realm", // Category folder like Semester 5, Java Course, Life Goals
     val isRealBoss: Boolean = false // Real-life goals (exams, deliverables) requiring manual confirmation
+)
+
+@Entity(
+    tableName = "boss_steps",
+    foreignKeys = [
+        ForeignKey(
+            entity = BossEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["bossId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["bossId"])],
+)
+data class BossStepEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val bossId: Int,
+    val title: String,
+    val estimatedMinutes: Int,
+    val sortOrder: Int,
+    val isCompleted: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    val completedAt: Long? = null,
 )
 
 @Entity(tableName = "boss_skills", primaryKeys = ["bossId", "skillId"])

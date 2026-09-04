@@ -14,6 +14,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - Boss battles and free-study sessions
 - One-tap focus presets that remember the last duration and skill
 - Daily study quests with priorities, rollover, history, and timer integration
+- Goal checklists with timed study steps, progress tracking, and automatic completion
 - Pause, resume, abandon, and completion flows
 - Post-session summaries for time, rewards, levels, streaks, and progress
 - Optional post-session break timers with persistent countdowns and completion alerts

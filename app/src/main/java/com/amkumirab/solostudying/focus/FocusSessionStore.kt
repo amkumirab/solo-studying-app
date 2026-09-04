@@ -16,6 +16,8 @@ data class FocusSessionSnapshot(
     val skillId: Int?,
     val dailyQuestId: Int? = null,
     val dailyQuestTitle: String? = null,
+    val bossStepId: Int? = null,
+    val bossStepTitle: String? = null,
 )
 
 class FocusSessionStore(context: Context) {
@@ -41,6 +43,8 @@ class FocusSessionStore(context: Context) {
             skillId = preferences.getInt(KEY_SKILL_ID, NO_ID).takeUnless { it == NO_ID },
             dailyQuestId = preferences.getInt(KEY_DAILY_QUEST_ID, NO_ID).takeUnless { it == NO_ID },
             dailyQuestTitle = preferences.getString(KEY_DAILY_QUEST_TITLE, null),
+            bossStepId = preferences.getInt(KEY_BOSS_STEP_ID, NO_ID).takeUnless { it == NO_ID },
+            bossStepTitle = preferences.getString(KEY_BOSS_STEP_TITLE, null),
         )
     }
 
@@ -60,6 +64,8 @@ class FocusSessionStore(context: Context) {
             putInt(KEY_SKILL_ID, snapshot.skillId ?: NO_ID)
             putInt(KEY_DAILY_QUEST_ID, snapshot.dailyQuestId ?: NO_ID)
             putString(KEY_DAILY_QUEST_TITLE, snapshot.dailyQuestTitle)
+            putInt(KEY_BOSS_STEP_ID, snapshot.bossStepId ?: NO_ID)
+            putString(KEY_BOSS_STEP_TITLE, snapshot.bossStepTitle)
         }
     }
 
@@ -81,6 +87,8 @@ class FocusSessionStore(context: Context) {
         private const val KEY_SKILL_ID = "session_skill_id"
         private const val KEY_DAILY_QUEST_ID = "session_daily_quest_id"
         private const val KEY_DAILY_QUEST_TITLE = "session_daily_quest_title"
+        private const val KEY_BOSS_STEP_ID = "session_boss_step_id"
+        private const val KEY_BOSS_STEP_TITLE = "session_boss_step_title"
         private const val NO_ID = -1
     }
 }

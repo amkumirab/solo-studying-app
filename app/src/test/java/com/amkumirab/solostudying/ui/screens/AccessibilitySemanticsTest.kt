@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import com.amkumirab.solostudying.data.entity.BossEntity
+import com.amkumirab.solostudying.data.entity.BossStepEntity
 import com.amkumirab.solostudying.data.entity.SkillEntity
 import com.amkumirab.solostudying.data.entity.DailyQuestEntity
 import com.amkumirab.solostudying.data.entity.StudySessionEntity
@@ -740,6 +741,62 @@ class AccessibilitySemanticsTest {
             assertEquals("Calculus Exam", savedName)
             assertNotNull(savedDeadline)
             assertTrue(LocalDate.parse(savedDeadline).isAfter(LocalDate.now()))
+        }
+    }
+
+    @Test
+    fun `study steps can be completed started and created`() {
+        val boss = BossEntity(
+            id = 8,
+            name = "Physics Exam",
+            difficulty = "Hard",
+            requiredMinutes = 180,
+        )
+        val step = BossStepEntity(
+            id = 21,
+            bossId = boss.id,
+            title = "Review wave propagation",
+            estimatedMinutes = 35,
+            sortOrder = 0,
+        )
+        var toggled: Pair<Int, Boolean>? = null
+        var startedStep: BossStepEntity? = null
+        var createdStep: Pair<String, Int>? = null
+
+        composeRule.setContent {
+            MaterialTheme {
+                BossStudyStepsDialog(
+                    boss = boss,
+                    steps = listOf(step),
+                    isSessionActive = false,
+                    activeStepId = null,
+                    onDismiss = {},
+                    onCreateStep = { title, minutes -> createdStep = title to minutes },
+                    onUpdateStep = { _, _, _ -> },
+                    onSetCompleted = { item, completed -> toggled = item.id to completed },
+                    onDeleteStep = {},
+                    onStartStep = { startedStep = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("boss_steps_progress")
+            .assertContentDescriptionEquals("0 of 1 study steps completed")
+        composeRule.onNodeWithTag("toggle_boss_step_21").performClick()
+        composeRule.onNodeWithTag("start_boss_step_21")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle {
+            assertEquals(21 to true, toggled)
+            assertEquals(step, startedStep)
+        }
+
+        composeRule.onNodeWithTag("add_boss_step").performClick()
+        composeRule.onNodeWithTag("boss_step_editor").assertExists()
+        composeRule.onNodeWithTag("boss_step_title_input").performTextInput("Solve practice set")
+        composeRule.onNodeWithTag("save_boss_step").performClick()
+        composeRule.runOnIdle {
+            assertEquals("Solve practice set" to 25, createdStep)
         }
     }
 }

@@ -29,6 +29,10 @@ import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.domain.session.ProgressSummary
 import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionSummary
+import com.amkumirab.solostudying.domain.today.TodayPlan
+import com.amkumirab.solostudying.domain.today.TodayPlanItem
+import com.amkumirab.solostudying.domain.today.TodayPlanItemType
+import com.amkumirab.solostudying.domain.today.TodayPlanUrgency
 import com.amkumirab.solostudying.domain.quest.QuestPriority
 import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.quickstart.QuickStartSelection
@@ -798,5 +802,47 @@ class AccessibilitySemanticsTest {
         composeRule.runOnIdle {
             assertEquals("Solve practice set" to 25, createdStep)
         }
+    }
+
+    @Test
+    fun `today dashboard exposes progress and starts the next action`() {
+        val nextItem = TodayPlanItem(
+            type = TodayPlanItemType.DailyQuest,
+            sourceId = 17,
+            title = "Review electromagnetics",
+            context = "Today's daily quest",
+            durationMinutes = 30,
+            urgency = TodayPlanUrgency.High,
+            rank = 20,
+        )
+        var startedItem: TodayPlanItem? = null
+
+        composeRule.setContent {
+            MaterialTheme {
+                TodayDashboardCard(
+                    plan = TodayPlan(
+                        targetMinutes = 60,
+                        studiedSeconds = 20 * 60L,
+                        remainingMinutes = 40,
+                        progress = 1f / 3f,
+                        isRestDay = false,
+                        items = listOf(nextItem),
+                    ),
+                    isSessionActive = false,
+                    onStartItem = { startedItem = it },
+                    today = LocalDate.of(2026, 9, 6),
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("today_dashboard").assertExists()
+        composeRule.onNodeWithTag("today_target_progress")
+            .assertContentDescriptionEquals("20 of 60 target minutes studied today")
+        composeRule.onNodeWithText("NEXT UP").assertExists()
+        composeRule.onNodeWithTag("start_today_plan_dailyquest_17")
+            .assertHeightIsAtLeast(48.dp)
+            .assertIsEnabled()
+            .performClick()
+        composeRule.runOnIdle { assertEquals(nextItem, startedItem) }
     }
 }

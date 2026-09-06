@@ -64,6 +64,8 @@ import com.amkumirab.solostudying.domain.session.ProgressSummary
 import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionNotePolicy
 import com.amkumirab.solostudying.domain.session.SessionSummary
+import com.amkumirab.solostudying.domain.today.TodayPlanItemType
+import com.amkumirab.solostudying.domain.today.buildTodayPlan
 import com.amkumirab.solostudying.notification.NotificationReceiver
 import com.amkumirab.solostudying.notification.ReminderSchedule
 import com.amkumirab.solostudying.notification.ReminderSettings
@@ -198,6 +200,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                     Tab.Dungeons -> DungeonTab(
                         bosses = bosses,
                         bossSteps = bossSteps,
+                        sessions = sessions,
                         activeBoss = viewModel.activeBoss,
                         activeStepId = viewModel.activeBossStepId,
                         isBattleActive = viewModel.isBattleActive,
@@ -893,6 +896,7 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
 fun DungeonTab(
     bosses: List<BossEntity>,
     bossSteps: List<BossStepEntity>,
+    sessions: List<StudySessionEntity>,
     activeBoss: BossEntity?,
     activeStepId: Int?,
     isBattleActive: Boolean,
@@ -915,6 +919,22 @@ fun DungeonTab(
     var stepsBoss by remember { mutableStateOf<BossEntity?>(null) }
     val dailyQuests by viewModel.dailyQuests.collectAsState()
     val allDailyQuests by viewModel.allDailyQuests.collectAsState()
+    val dashboardDate = remember(viewModel.dailyQuestViewModel.todayDate) {
+        runCatching { LocalDate.parse(viewModel.dailyQuestViewModel.todayDate) }
+            .getOrDefault(LocalDate.now())
+    }
+    val todayPlan = remember(profile, sessions, dailyQuests, bosses, bossSteps, dashboardDate) {
+        profile?.let {
+            buildTodayPlan(
+                profile = it,
+                sessions = sessions,
+                quests = dailyQuests,
+                bosses = bosses,
+                steps = bossSteps,
+                today = dashboardDate,
+            )
+        }
+    }
     
     // Accumulate all distinct dungeon categories created by the player
     val dungeonsList = remember(bosses) {
@@ -966,6 +986,47 @@ fun DungeonTab(
         }
 
         Spacer(modifier = Modifier.height(12.dp))
+
+        todayPlan?.let { plan ->
+            TodayDashboardCard(
+                plan = plan,
+                isSessionActive = isBattleActive,
+                today = dashboardDate,
+                onStartItem = { item ->
+                    when (item.type) {
+                        TodayPlanItemType.DailyQuest -> {
+                            dailyQuests.firstOrNull { it.id == item.sourceId }?.let { quest ->
+                                if (!viewModel.isBattleActive) {
+                                    viewModel.selectAndStartDailyQuest(quest)
+                                    onDailyQuestStarted()
+                                }
+                            }
+                        }
+
+                        TodayPlanItemType.BossStep -> {
+                            val boss = bosses.firstOrNull { it.id == item.bossId }
+                            val step = bossSteps.firstOrNull { it.id == item.sourceId }
+                            if (boss != null && step != null && !viewModel.isBattleActive) {
+                                onStartBossStep(boss, step)
+                            }
+                        }
+
+                        TodayPlanItemType.Boss -> {
+                            bosses.firstOrNull { it.id == item.sourceId }?.let(onFightBoss)
+                        }
+
+                        TodayPlanItemType.QuickFocus -> {
+                            if (!viewModel.isBattleActive) {
+                                viewModel.selectedSkillToTrain = null
+                                viewModel.selectAndStartFreeStudy(item.durationMinutes)
+                                onDailyQuestStarted()
+                            }
+                        }
+                    }
+                },
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         DailyQuestBoard(
             quests = dailyQuests,

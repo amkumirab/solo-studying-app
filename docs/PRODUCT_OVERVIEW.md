@@ -16,6 +16,9 @@ spent studying and actions explicitly confirmed by the user.
 6. Award experience and gold.
 7. Spend gold on a user-defined real-life reward.
 
+The Today dashboard combines the daily time target, unfinished quests, upcoming
+deadlines, and the next incomplete goal step into a short prioritized plan.
+
 ## Implemented systems
 
 ### Progression

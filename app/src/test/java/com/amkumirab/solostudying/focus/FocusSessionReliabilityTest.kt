@@ -99,6 +99,100 @@ class FocusSessionReliabilityTest {
     }
 
     @Test
+    fun `notification pause accounts for elapsed time before freezing session`() {
+        val snapshot = runningSnapshot(
+            timeLeftSeconds = 300L,
+            timeSpentSeconds = 30L,
+            lastTickTimeMillis = 1_000_000L,
+        )
+
+        val paused = applyFocusSessionControl(
+            snapshot = snapshot,
+            action = FocusSessionControlAction.Pause,
+            nowMillis = 1_025_000L,
+        )
+
+        assertTrue(paused.isPaused)
+        assertEquals(275L, paused.timeLeftSeconds)
+        assertEquals(55L, paused.timeSpentSeconds)
+        assertEquals(1_025_000L, paused.lastTickTimeMillis)
+    }
+
+    @Test
+    fun `notification resume starts from current time without adding paused time`() {
+        val snapshot = runningSnapshot(
+            isPaused = true,
+            timeLeftSeconds = 275L,
+            timeSpentSeconds = 55L,
+            lastTickTimeMillis = 1_025_000L,
+        )
+
+        val resumed = applyFocusSessionControl(
+            snapshot = snapshot,
+            action = FocusSessionControlAction.Resume,
+            nowMillis = 1_900_000L,
+        )
+
+        assertFalse(resumed.isPaused)
+        assertEquals(275L, resumed.timeLeftSeconds)
+        assertEquals(55L, resumed.timeSpentSeconds)
+        assertEquals(1_900_000L, resumed.lastTickTimeMillis)
+    }
+
+    @Test
+    fun `finish request is persisted and consumed only once`() {
+        assertFalse(store.requestFinish())
+        store.write(runningSnapshot())
+
+        assertTrue(store.requestFinish())
+        assertTrue(store.consumeFinishRequest())
+        assertFalse(store.consumeFinishRequest())
+    }
+
+    @Test
+    fun `finish request completes a restored session once`() = runBlocking {
+        store.write(
+            runningSnapshot(
+                isPaused = true,
+                bossId = null,
+                timeLeftSeconds = 40L,
+                timeSpentSeconds = 20L,
+            ),
+        )
+        assertTrue(store.requestFinish())
+
+        val viewModel = BattleViewModel(repository, context, store) { 1_000_000L }
+        battleViewModel = viewModel
+
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+        val sessions = waitForCondition {
+            repository.allSessions.first().takeIf { it.size == 1 }
+        }
+        assertEquals(20L, sessions.single().durationSeconds)
+        assertTrue(sessions.single().wasCompleted)
+        assertFalse(store.consumeFinishRequest())
+    }
+
+    @Test
+    fun `notification title uses the most specific session label`() {
+        assertEquals(
+            "Solve wave equations",
+            runningSnapshot().copy(
+                bossTitle = "Electromagnetics",
+                bossStepTitle = "Solve wave equations",
+            ).displayTitle(),
+        )
+        assertEquals(
+            "Review calculus",
+            runningSnapshot(bossId = null).copy(
+                skillTitle = "Mathematics",
+                dailyQuestTitle = "Review calculus",
+            ).displayTitle(),
+        )
+        assertEquals("Free study", runningSnapshot(bossId = null).displayTitle())
+    }
+
+    @Test
     fun `battle view model restores boss progress using offline elapsed time`() = runBlocking {
         val boss = BossEntity(
             id = 42,

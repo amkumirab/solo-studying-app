@@ -41,6 +41,12 @@ Alarms are restored after a reboot or clock change. Message selection uses
 current progress, study-day configuration, streak state, and active bosses.
 Notification failures must not affect stored study progress.
 
+An active focus session appears as an ongoing notification with a system
+countdown and pause, resume, and finish controls. Notification actions update
+the same persisted session snapshot used by the in-app timer. A scheduled alarm
+shows a completion alert if the app is in the background, while reopening the
+app reconciles any elapsed time before progress and rewards are finalized.
+
 ### Audio
 
 Short feedback sounds are preloaded and played with `SoundPool` to keep button,

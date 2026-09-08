@@ -1,6 +1,9 @@
 package com.amkumirab.solostudying.ui.viewmodel
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.amkumirab.solostudying.data.entity.*
@@ -18,6 +21,9 @@ class SoloStudyingViewModel(
     val breakViewModel: BreakViewModel,
     val dailyQuestViewModel: DailyQuestViewModel,
 ) : ViewModel() {
+
+    var focusNavigationRequest by mutableIntStateOf(0)
+        private set
 
     // --- StateFlow Delegation to Feature ViewModels ---
     val bosses = dungeonViewModel.bosses
@@ -124,6 +130,14 @@ class SoloStudyingViewModel(
 
     fun syncBreakTime() {
         breakViewModel.syncBreakTime()
+    }
+
+    fun processPendingFocusAction() {
+        battleViewModel.processPendingFocusAction()
+    }
+
+    fun requestFocusScreen() {
+        focusNavigationRequest += 1
     }
 
     fun skipBreak() {

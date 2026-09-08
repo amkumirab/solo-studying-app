@@ -4,6 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.amkumirab.solostudying.breaks.BreakSessionStore
+import com.amkumirab.solostudying.focus.FocusSessionStore
+import com.amkumirab.solostudying.focus.displayTitle
+import com.amkumirab.solostudying.focus.reconcileFocusSession
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -17,6 +20,19 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
                 val triggerAtMillis = activeBreak.endTimeMillis.takeIf { it > nowMillis }
                     ?: (nowMillis + 1_000L)
                 NotificationHelper.scheduleBreakAlarm(applicationContext, triggerAtMillis)
+            }
+
+            val focusStore = FocusSessionStore(applicationContext)
+            focusStore.read()?.let { saved ->
+                val current = reconcileFocusSession(saved, System.currentTimeMillis())
+                focusStore.write(current)
+                if (current.timeLeftSeconds <= 0L) {
+                    FocusSessionNotifier.showCompleted(applicationContext, current.displayTitle())
+                } else {
+                    FocusSessionNotifier.createChannel(applicationContext)
+                    FocusSessionNotifier.show(applicationContext, current)
+                    FocusSessionNotifier.scheduleCompletion(applicationContext, current)
+                }
             }
         }
     }

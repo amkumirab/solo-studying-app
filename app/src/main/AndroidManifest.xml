@@ -31,6 +31,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".notification.FocusSessionActionReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".notification.ReminderRescheduleReceiver"
             android:enabled="true"
             android:exported="false">

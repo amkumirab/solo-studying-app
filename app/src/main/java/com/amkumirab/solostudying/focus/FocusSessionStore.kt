@@ -18,6 +18,8 @@ data class FocusSessionSnapshot(
     val dailyQuestTitle: String? = null,
     val bossStepId: Int? = null,
     val bossStepTitle: String? = null,
+    val bossTitle: String? = null,
+    val skillTitle: String? = null,
 )
 
 class FocusSessionStore(context: Context) {
@@ -45,6 +47,8 @@ class FocusSessionStore(context: Context) {
             dailyQuestTitle = preferences.getString(KEY_DAILY_QUEST_TITLE, null),
             bossStepId = preferences.getInt(KEY_BOSS_STEP_ID, NO_ID).takeUnless { it == NO_ID },
             bossStepTitle = preferences.getString(KEY_BOSS_STEP_TITLE, null),
+            bossTitle = preferences.getString(KEY_BOSS_TITLE, null),
+            skillTitle = preferences.getString(KEY_SKILL_TITLE, null),
         )
     }
 
@@ -66,7 +70,23 @@ class FocusSessionStore(context: Context) {
             putString(KEY_DAILY_QUEST_TITLE, snapshot.dailyQuestTitle)
             putInt(KEY_BOSS_STEP_ID, snapshot.bossStepId ?: NO_ID)
             putString(KEY_BOSS_STEP_TITLE, snapshot.bossStepTitle)
+            putString(KEY_BOSS_TITLE, snapshot.bossTitle)
+            putString(KEY_SKILL_TITLE, snapshot.skillTitle)
         }
+    }
+
+    fun requestFinish(): Boolean {
+        if (read() == null) return false
+        preferences.edit { putBoolean(KEY_FINISH_REQUESTED, true) }
+        return true
+    }
+
+    fun consumeFinishRequest(): Boolean {
+        val requested = preferences.getBoolean(KEY_FINISH_REQUESTED, false)
+        if (requested) {
+            preferences.edit { remove(KEY_FINISH_REQUESTED) }
+        }
+        return requested
     }
 
     fun clear() {
@@ -89,8 +109,52 @@ class FocusSessionStore(context: Context) {
         private const val KEY_DAILY_QUEST_TITLE = "session_daily_quest_title"
         private const val KEY_BOSS_STEP_ID = "session_boss_step_id"
         private const val KEY_BOSS_STEP_TITLE = "session_boss_step_title"
+        private const val KEY_BOSS_TITLE = "session_boss_title"
+        private const val KEY_SKILL_TITLE = "session_skill_title"
+        private const val KEY_FINISH_REQUESTED = "session_finish_requested"
         private const val NO_ID = -1
     }
+}
+
+enum class FocusSessionControlAction {
+    Pause,
+    Resume,
+}
+
+fun applyFocusSessionControl(
+    snapshot: FocusSessionSnapshot,
+    action: FocusSessionControlAction,
+    nowMillis: Long,
+): FocusSessionSnapshot {
+    if (!snapshot.isActive) return snapshot
+
+    val current = reconcileFocusSession(snapshot, nowMillis)
+    if (current.timeLeftSeconds <= 0L) return current
+
+    return when (action) {
+        FocusSessionControlAction.Pause -> {
+            if (current.isPaused) current else current.copy(
+                isPaused = true,
+                lastTickTimeMillis = nowMillis,
+            )
+        }
+
+        FocusSessionControlAction.Resume -> {
+            if (!current.isPaused) current else current.copy(
+                isPaused = false,
+                lastTickTimeMillis = nowMillis,
+            )
+        }
+    }
+}
+
+fun FocusSessionSnapshot.displayTitle(): String = when {
+    !bossStepTitle.isNullOrBlank() -> bossStepTitle
+    !dailyQuestTitle.isNullOrBlank() -> dailyQuestTitle
+    !bossTitle.isNullOrBlank() -> bossTitle
+    !skillTitle.isNullOrBlank() -> skillTitle
+    isFreeStudy -> "Free study"
+    else -> "Focus session"
 }
 
 fun reconcileFocusSession(

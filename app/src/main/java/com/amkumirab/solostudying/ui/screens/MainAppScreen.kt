@@ -138,6 +138,12 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
         }
     }
 
+    LaunchedEffect(viewModel.focusNavigationRequest) {
+        if (viewModel.focusNavigationRequest > 0) {
+            currentTab = Tab.Battle
+        }
+    }
+
     BackHandler(enabled = viewModel.isBattleActive) {
         showExitFocusDialog = true
     }

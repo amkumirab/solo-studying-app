@@ -16,6 +16,8 @@ import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.reconcileFocusSession
+import com.amkumirab.solostudying.notification.FocusSessionActionEvents
+import com.amkumirab.solostudying.notification.FocusSessionNotifier
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -82,6 +84,11 @@ class BattleViewModel(
 
     init {
         restoreSavedFocusSession()
+        viewModelScope.launch {
+            FocusSessionActionEvents.changes.collect {
+                syncFocusSessionTime()
+            }
+        }
     }
 
     private fun saveFocusSessionState() {
@@ -105,12 +112,27 @@ class BattleViewModel(
                 dailyQuestTitle = activeDailyQuestTitle,
                 bossStepId = activeBossStepId,
                 bossStepTitle = activeBossStepTitle,
+                bossTitle = activeBoss?.name,
+                skillTitle = selectedSkillToTrain?.name,
             ),
         )
     }
 
+    private fun publishFocusSessionState() {
+        saveFocusSessionState()
+        val snapshot = focusSessionStore.read() ?: return
+        FocusSessionNotifier.show(context, snapshot)
+        if (snapshot.isPaused) {
+            FocusSessionNotifier.cancelCompletionAlarm(context)
+        } else {
+            FocusSessionNotifier.scheduleCompletion(context, snapshot)
+        }
+    }
+
     private fun clearFocusSessionState() {
         focusSessionStore.clear()
+        FocusSessionNotifier.cancelActive(context)
+        FocusSessionNotifier.cancelCompletionAlarm(context)
     }
 
     private fun restoreSavedFocusSession() {
@@ -152,12 +174,10 @@ class BattleViewModel(
             if (restoredSnapshot != savedSnapshot && activeBoss != null) {
                 saveIncrementalBossProgress()
             }
-            saveFocusSessionState()
-
-            if (battleTimeLeftSeconds > 0) {
-                if (!isBattlePaused) {
-                    startTimer()
-                }
+            if (focusSessionStore.consumeFinishRequest()) {
+                finishSessionFromNotification()
+            } else if (battleTimeLeftSeconds > 0) {
+                if (isBattlePaused) publishFocusSessionState() else startTimer()
             } else {
                 completeActiveBoss()
             }
@@ -186,7 +206,6 @@ class BattleViewModel(
             isFreeStudyActive = false
             isBattleActive = true
             isBattlePaused = false
-            saveFocusSessionState()
             startTimer()
             RpgSoundManager.playBeginBattleSound()
         }
@@ -210,7 +229,6 @@ class BattleViewModel(
             isFreeStudyActive = false
             isBattleActive = true
             isBattlePaused = false
-            saveFocusSessionState()
             startTimer()
             RpgSoundManager.playBeginBattleSound()
         }
@@ -261,7 +279,6 @@ class BattleViewModel(
         isFreeStudyActive = true
         isBattleActive = true
         isBattlePaused = false
-        saveFocusSessionState()
         startTimer()
         RpgSoundManager.playBeginBattleSound()
     }
@@ -269,7 +286,7 @@ class BattleViewModel(
     fun pauseBattle(onPaused: () -> Unit = {}) {
         if (!isBattleActive) return
         if (isBattlePaused) {
-            saveFocusSessionState()
+            publishFocusSessionState()
             onPaused()
             return
         }
@@ -278,7 +295,7 @@ class BattleViewModel(
         timerJob?.cancel()
         viewModelScope.launch {
             advanceSessionClock(pausedAtMillis, forceBossSync = true)
-            saveFocusSessionState()
+            publishFocusSessionState()
             RpgSoundManager.playPauseStudySound()
             onPaused()
         }
@@ -296,22 +313,42 @@ class BattleViewModel(
     }
 
     fun syncFocusSessionTime() {
-        if (!isBattleActive || isBattlePaused || isCompletingSession) return
+        if (!isBattleActive || isCompletingSession) return
         timerJob?.cancel()
         viewModelScope.launch {
-            advanceSessionClock(clock(), forceBossSync = true)
+            val saved = focusSessionStore.read() ?: return@launch
+            val current = reconcileFocusSession(saved, clock())
+            isBattlePaused = current.isPaused
+            battleTimeLeftSeconds = current.timeLeftSeconds
+            battleTimeSpentSeconds = current.timeSpentSeconds
+            lastTickTimeMillis = current.lastTickTimeMillis
+            if (activeBoss != null && current != saved) {
+                saveIncrementalBossProgress()
+            }
             if (battleTimeLeftSeconds <= 0L) {
                 completeActiveBoss()
+            } else if (isBattlePaused) {
+                publishFocusSessionState()
             } else {
                 startTimer()
             }
         }
     }
 
+    fun processPendingFocusAction() {
+        if (!isBattleActive || !focusSessionStore.consumeFinishRequest()) return
+        finishSessionFromNotification()
+    }
+
+    private fun finishSessionFromNotification() {
+        if (activeBossStepId != null) endBossStepEarly() else completeActiveBoss()
+    }
+
     private fun startTimer() {
         timerJob?.cancel()
         lastTickTimeMillis = clock()
-        saveFocusSessionState()
+        FocusSessionNotifier.cancelCompleted(context)
+        publishFocusSessionState()
         timerJob = viewModelScope.launch {
             while (isBattleActive && !isBattlePaused && battleTimeLeftSeconds > 0L) {
                 delay(1000L)
@@ -666,7 +703,7 @@ class BattleViewModel(
                 if (!isFreeStudyActive) {
                     saveIncrementalBossProgress()
                 }
-                saveFocusSessionState()
+                publishFocusSessionState()
             }
         }
     }
@@ -908,9 +945,6 @@ class BattleViewModel(
 
     override fun onCleared() {
         timerJob?.cancel()
-        if (isBattleActive) {
-            saveFocusSessionState()
-        }
         super.onCleared()
     }
 }

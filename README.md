@@ -17,6 +17,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - Daily study quests with priorities, rollover, history, and timer integration
 - Goal checklists with timed study steps, progress tracking, and automatic completion
 - Pause, resume, abandon, and completion flows
+- Live focus notifications with countdown, pause, resume, and finish controls
 - Post-session summaries for time, rewards, levels, streaks, and progress
 - Optional post-session break timers with persistent countdowns and completion alerts
 - Weekly, monthly, and lifetime study insights with goal and period comparisons
@@ -36,6 +37,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - Coroutines, Flow, and StateFlow
 - MVVM with feature-specific view models
 - AlarmManager and BroadcastReceiver for reminders
+- Chronometer-based Android notifications for background focus controls
 - Robolectric and JUnit for local tests
 
 The bundled interface sounds come from Kenney's CC0 Interface Sounds pack.

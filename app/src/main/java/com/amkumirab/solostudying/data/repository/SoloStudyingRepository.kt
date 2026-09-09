@@ -26,6 +26,7 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
     val allSessions: Flow<List<StudySessionEntity>> = dao.getAllSessions()
     val allSkills: Flow<List<SkillEntity>> = dao.getAllSkills()
     val allDailyQuests: Flow<List<DailyQuestEntity>> = dao.getAllDailyQuests()
+    val allRecurringQuests: Flow<List<RecurringQuestEntity>> = dao.getAllRecurringQuests()
 
     suspend fun getBossById(id: Int): BossEntity? {
         return dao.getBossById(id)
@@ -199,6 +200,26 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
 
     suspend fun deleteDailyQuest(quest: DailyQuestEntity) {
         dao.deleteDailyQuest(quest)
+    }
+
+    suspend fun insertDailyQuestIfAbsent(quest: DailyQuestEntity): Boolean {
+        return dao.insertDailyQuestIfAbsent(quest) != -1L
+    }
+
+    suspend fun getActiveRecurringQuests(): List<RecurringQuestEntity> {
+        return dao.getActiveRecurringQuests()
+    }
+
+    suspend fun insertRecurringQuest(quest: RecurringQuestEntity): Long {
+        return dao.insertRecurringQuest(quest)
+    }
+
+    suspend fun updateRecurringQuest(quest: RecurringQuestEntity) {
+        dao.updateRecurringQuest(quest)
+    }
+
+    suspend fun deleteRecurringQuest(quest: RecurringQuestEntity) {
+        dao.deleteRecurringQuest(quest)
     }
 
     suspend fun completeDailyQuest(id: Int, completedAt: Long): Boolean {

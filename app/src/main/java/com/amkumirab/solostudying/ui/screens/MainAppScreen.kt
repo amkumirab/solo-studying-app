@@ -925,6 +925,7 @@ fun DungeonTab(
     var stepsBoss by remember { mutableStateOf<BossEntity?>(null) }
     val dailyQuests by viewModel.dailyQuests.collectAsState()
     val allDailyQuests by viewModel.allDailyQuests.collectAsState()
+    val recurringQuests by viewModel.recurringQuests.collectAsState()
     val dashboardDate = remember(viewModel.dailyQuestViewModel.todayDate) {
         runCatching { LocalDate.parse(viewModel.dailyQuestViewModel.todayDate) }
             .getOrDefault(LocalDate.now())
@@ -1037,6 +1038,7 @@ fun DungeonTab(
         DailyQuestBoard(
             quests = dailyQuests,
             allQuests = allDailyQuests,
+            recurringQuests = recurringQuests,
             skills = skills,
             today = viewModel.dailyQuestViewModel.todayDate,
             activeQuestId = viewModel.activeDailyQuestId,
@@ -1045,6 +1047,9 @@ fun DungeonTab(
             onUpdateQuest = viewModel::updateDailyQuest,
             onSetCompleted = viewModel::setDailyQuestCompleted,
             onDeleteQuest = viewModel::deleteDailyQuest,
+            onUpdateRecurringQuest = viewModel::updateRecurringQuest,
+            onSetRecurringQuestActive = viewModel::setRecurringQuestActive,
+            onDeleteRecurringQuest = viewModel::deleteRecurringQuest,
             onStartQuest = { quest ->
                 if (!viewModel.isBattleActive) {
                     viewModel.selectAndStartDailyQuest(quest)

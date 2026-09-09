@@ -10,6 +10,7 @@ import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.notification.ReminderSettings
+import com.amkumirab.solostudying.domain.quest.RecurringQuestSchedule
 
 class SoloStudyingViewModel(
     val statusViewModel: StatusViewModel,
@@ -38,6 +39,7 @@ class SoloStudyingViewModel(
     val tutorialState = tutorialViewModel.uiState
     val dailyQuests = dailyQuestViewModel.todayQuests
     val allDailyQuests = dailyQuestViewModel.allQuests
+    val recurringQuests = dailyQuestViewModel.recurringQuests
 
     // --- Active Timer State Delegation ---
     val activeBoss: BossEntity? get() = battleViewModel.activeBoss
@@ -300,8 +302,9 @@ class SoloStudyingViewModel(
         durationMinutes: Int,
         skillId: Int?,
         priority: com.amkumirab.solostudying.domain.quest.QuestPriority,
+        repeatSchedule: RecurringQuestSchedule?,
     ) {
-        dailyQuestViewModel.createQuest(title, durationMinutes, skillId, priority)
+        dailyQuestViewModel.createQuest(title, durationMinutes, skillId, priority, repeatSchedule)
     }
 
     fun setDailyQuestCompleted(quest: DailyQuestEntity, completed: Boolean) {
@@ -320,6 +323,32 @@ class SoloStudyingViewModel(
 
     fun deleteDailyQuest(quest: DailyQuestEntity) {
         dailyQuestViewModel.deleteQuest(quest)
+    }
+
+    fun updateRecurringQuest(
+        quest: RecurringQuestEntity,
+        title: String,
+        durationMinutes: Int,
+        skillId: Int?,
+        priority: com.amkumirab.solostudying.domain.quest.QuestPriority,
+        repeatSchedule: RecurringQuestSchedule,
+    ) {
+        dailyQuestViewModel.updateRecurringQuest(
+            quest,
+            title,
+            durationMinutes,
+            skillId,
+            priority,
+            repeatSchedule,
+        )
+    }
+
+    fun setRecurringQuestActive(quest: RecurringQuestEntity, active: Boolean) {
+        dailyQuestViewModel.setRecurringQuestActive(quest, active)
+    }
+
+    fun deleteRecurringQuest(quest: RecurringQuestEntity) {
+        dailyQuestViewModel.deleteRecurringQuest(quest)
     }
 
     fun refreshDailyQuests() {

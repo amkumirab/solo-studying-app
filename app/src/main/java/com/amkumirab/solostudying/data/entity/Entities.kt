@@ -1,6 +1,7 @@
 package com.amkumirab.solostudying.data.entity
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -149,7 +150,10 @@ data class StudySessionEntity(
 
 @Entity(
     tableName = "daily_quests",
-    indices = [androidx.room.Index(value = ["scheduledDate"])],
+    indices = [
+        Index(value = ["scheduledDate"]),
+        Index(value = ["recurringQuestId", "scheduledDate"], unique = true),
+    ],
 )
 data class DailyQuestEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -161,4 +165,18 @@ data class DailyQuestEntity(
     val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null,
+    val recurringQuestId: Int? = null,
+    @ColumnInfo(defaultValue = "0") val isSkipped: Boolean = false,
+)
+
+@Entity(tableName = "recurring_quests")
+data class RecurringQuestEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val title: String,
+    val durationMinutes: Int,
+    val skillId: Int? = null,
+    val priority: Int = 1,
+    val weekdaysMask: Int,
+    val isActive: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis(),
 )

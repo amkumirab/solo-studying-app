@@ -24,6 +24,7 @@ import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.data.entity.BossStepEntity
 import com.amkumirab.solostudying.data.entity.SkillEntity
 import com.amkumirab.solostudying.data.entity.DailyQuestEntity
+import com.amkumirab.solostudying.data.entity.RecurringQuestEntity
 import com.amkumirab.solostudying.data.entity.StudySessionEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.domain.session.ProgressSummary
@@ -605,6 +606,7 @@ class AccessibilitySemanticsTest {
         var toggled: Pair<Int, Boolean>? = null
         var startedQuestId: Int? = null
         var createdQuest: Pair<String, Int>? = null
+        var createdRepeatMask: Int? = null
 
         composeRule.setContent {
             MaterialTheme {
@@ -613,18 +615,23 @@ class AccessibilitySemanticsTest {
                         DailyQuestBoard(
                             quests = listOf(quest),
                             allQuests = listOf(quest),
+                            recurringQuests = emptyList(),
                             skills = emptyList(),
                             today = "2026-09-01",
                             activeQuestId = null,
                             isSessionActive = false,
-                            onCreateQuest = { title, duration, _, _ ->
+                            onCreateQuest = { title, duration, _, _, schedule ->
                                 createdQuest = title to duration
+                                createdRepeatMask = schedule?.weekdaysMask
                             },
                             onUpdateQuest = { _, _, _, _, _ -> },
                             onSetCompleted = { selected, completed ->
                                 toggled = selected.id to completed
                             },
                             onDeleteQuest = {},
+                            onUpdateRecurringQuest = { _, _, _, _, _, _ -> },
+                            onSetRecurringQuestActive = { _, _ -> },
+                            onDeleteRecurringQuest = {},
                             onStartQuest = { startedQuestId = it.id },
                         )
                     }
@@ -649,13 +656,70 @@ class AccessibilitySemanticsTest {
         composeRule.onNodeWithTag("daily_quest_editor").assertExists()
         composeRule.onNodeWithTag("daily_quest_title_input").performTextInput("Read chapter four")
         composeRule.onNodeWithTag("daily_quest_duration_45").performClick()
+        composeRule.onNodeWithTag("quest_repeat_Daily").performScrollTo().performClick()
         composeRule.onNodeWithTag("save_daily_quest_button")
             .performScrollTo()
             .assertIsEnabled()
             .performClick()
         composeRule.runOnIdle {
             assertEquals("Read chapter four" to 45, createdQuest)
+            assertEquals(
+                com.amkumirab.solostudying.domain.quest.ALL_WEEKDAYS_MASK,
+                createdRepeatMask,
+            )
         }
+    }
+
+    @Test
+    fun `recurring quest manager exposes schedule controls and editor`() {
+        val recurring = RecurringQuestEntity(
+            id = 21,
+            title = "Practice mathematics",
+            durationMinutes = 30,
+            priority = QuestPriority.High.value,
+            weekdaysMask = com.amkumirab.solostudying.domain.quest.weekdaysMask(
+                setOf(java.time.DayOfWeek.MONDAY, java.time.DayOfWeek.WEDNESDAY),
+            ),
+        )
+        var activeChange: Pair<Int, Boolean>? = null
+
+        composeRule.setContent {
+            MaterialTheme {
+                LazyColumn {
+                    item {
+                        DailyQuestBoard(
+                            quests = emptyList(),
+                            allQuests = emptyList(),
+                            recurringQuests = listOf(recurring),
+                            skills = emptyList(),
+                            today = "2026-09-09",
+                            activeQuestId = null,
+                            isSessionActive = false,
+                            onCreateQuest = { _, _, _, _, _ -> },
+                            onUpdateQuest = { _, _, _, _, _ -> },
+                            onSetCompleted = { _, _ -> },
+                            onDeleteQuest = {},
+                            onUpdateRecurringQuest = { _, _, _, _, _, _ -> },
+                            onSetRecurringQuestActive = { quest, active ->
+                                activeChange = quest.id to active
+                            },
+                            onDeleteRecurringQuest = {},
+                            onStartQuest = {},
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("recurring_quests_button").performClick()
+        composeRule.onNodeWithTag("recurring_quest_manager").assertExists()
+        composeRule.onNodeWithText("Mon, Wed · 30 min").assertExists()
+        composeRule.onNodeWithTag("toggle_recurring_quest_21").performClick()
+        composeRule.runOnIdle { assertEquals(21 to false, activeChange) }
+
+        composeRule.onNodeWithTag("edit_recurring_quest_21").performClick()
+        composeRule.onNodeWithTag("daily_quest_editor").assertExists()
+        composeRule.onNodeWithText("EDIT RECURRING QUEST").assertExists()
     }
 
     @Test

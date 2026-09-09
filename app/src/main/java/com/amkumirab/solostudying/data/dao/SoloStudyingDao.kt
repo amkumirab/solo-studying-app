@@ -128,9 +128,28 @@ interface SoloStudyingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyQuest(quest: DailyQuestEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDailyQuestIfAbsent(quest: DailyQuestEntity): Long
+
     @Update
     suspend fun updateDailyQuest(quest: DailyQuestEntity)
 
     @Delete
     suspend fun deleteDailyQuest(quest: DailyQuestEntity)
+
+    // --- Recurring quests ---
+    @Query("SELECT * FROM recurring_quests ORDER BY isActive DESC, createdAt ASC")
+    fun getAllRecurringQuests(): Flow<List<RecurringQuestEntity>>
+
+    @Query("SELECT * FROM recurring_quests WHERE isActive = 1 ORDER BY createdAt ASC")
+    suspend fun getActiveRecurringQuests(): List<RecurringQuestEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecurringQuest(quest: RecurringQuestEntity): Long
+
+    @Update
+    suspend fun updateRecurringQuest(quest: RecurringQuestEntity)
+
+    @Delete
+    suspend fun deleteRecurringQuest(quest: RecurringQuestEntity)
 }

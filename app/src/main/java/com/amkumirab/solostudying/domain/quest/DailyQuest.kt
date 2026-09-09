@@ -28,7 +28,8 @@ fun selectVisibleDailyQuests(
     today: String,
 ): List<DailyQuestEntity> = quests
     .filter { quest ->
-        quest.scheduledDate == today || (!quest.isCompleted && quest.scheduledDate < today)
+        !quest.isSkipped &&
+            (quest.scheduledDate == today || (!quest.isCompleted && quest.scheduledDate < today))
     }
     .sortedWith(
         compareBy<DailyQuestEntity> { it.isCompleted }

@@ -26,6 +26,9 @@ class SoloStudyingViewModel(
     var focusNavigationRequest by mutableIntStateOf(0)
         private set
 
+    var quickFocusRequest by mutableIntStateOf(0)
+        private set
+
     // --- StateFlow Delegation to Feature ViewModels ---
     val bosses = dungeonViewModel.bosses
     val bossSteps = dungeonViewModel.bossSteps
@@ -140,6 +143,14 @@ class SoloStudyingViewModel(
 
     fun requestFocusScreen() {
         focusNavigationRequest += 1
+    }
+
+    fun requestQuickFocus() {
+        quickFocusRequest += 1
+    }
+
+    fun selectAndStartQuickFocus(minutes: Int, skillId: Int?) {
+        battleViewModel.selectAndStartQuickFocus(minutes, skillId)
     }
 
     fun skipBreak() {

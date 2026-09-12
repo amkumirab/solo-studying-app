@@ -246,6 +246,17 @@ class BattleViewModel(
         }
     }
 
+    fun selectAndStartQuickFocus(minutes: Int, skillId: Int?) {
+        viewModelScope.launch {
+            beginFreeStudy(
+                minutes = minutes,
+                skillId = skillId,
+                dailyQuestId = null,
+                dailyQuestTitle = null,
+            )
+        }
+    }
+
     fun selectAndStartDailyQuest(quest: DailyQuestEntity) {
         viewModelScope.launch {
             beginFreeStudy(

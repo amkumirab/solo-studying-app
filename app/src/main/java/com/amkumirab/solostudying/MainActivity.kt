@@ -54,9 +54,7 @@ class MainActivity : ComponentActivity() {
       this,
       SoloStudyingViewModelFactory(repository, applicationContext)
     )[SoloStudyingViewModel::class.java]
-    if (intent?.action == ACTION_OPEN_FOCUS_SESSION) {
-      viewModel.requestFocusScreen()
-    }
+    routeNavigationIntent(intent)
 
     setContent {
       SoloStudyingTheme {
@@ -71,9 +69,7 @@ class MainActivity : ComponentActivity() {
     if (prepareFocusAction(intent) && ::viewModel.isInitialized) {
       viewModel.processPendingFocusAction()
     }
-    if (intent.action == ACTION_OPEN_FOCUS_SESSION && ::viewModel.isInitialized) {
-      viewModel.requestFocusScreen()
-    }
+    if (::viewModel.isInitialized) routeNavigationIntent(intent)
   }
 
   private fun prepareFocusAction(intent: Intent?): Boolean {
@@ -82,9 +78,17 @@ class MainActivity : ComponentActivity() {
     return FocusSessionStore(applicationContext).requestFinish()
   }
 
+  private fun routeNavigationIntent(intent: Intent?) {
+    when (intent?.action) {
+      ACTION_OPEN_FOCUS_SESSION -> viewModel.requestFocusScreen()
+      ACTION_START_QUICK_FOCUS -> viewModel.requestQuickFocus()
+    }
+  }
+
   companion object {
     const val ACTION_OPEN_FOCUS_SESSION = "com.amkumirab.solostudying.ACTION_OPEN_FOCUS_SESSION"
     const val ACTION_FINISH_FOCUS_SESSION = "com.amkumirab.solostudying.ACTION_FINISH_FOCUS_SESSION"
+    const val ACTION_START_QUICK_FOCUS = "com.amkumirab.solostudying.ACTION_START_QUICK_FOCUS"
     const val NOTIFICATION_PERMISSION_REQUEST = 101
   }
 }

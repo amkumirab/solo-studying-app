@@ -76,6 +76,8 @@ import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.sound.SoundSettings
 import com.amkumirab.solostudying.ui.theme.*
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
+import com.amkumirab.solostudying.widget.TodayWidgetProvider
+import com.amkumirab.solostudying.widget.buildTodayWidgetSnapshot
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -99,6 +101,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     val balances by viewModel.balances.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
     val skills by viewModel.skills.collectAsState()
+    val dailyQuests by viewModel.dailyQuests.collectAsState()
     val reminderSettings by viewModel.reminderSettings.collectAsState()
     val soundSettings by RpgSoundManager.settings.collectAsState()
 
@@ -121,6 +124,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     val activity = remember(context) { context.findActivity() }
     val quickStartPreferences = remember(context) { QuickStartPreferences(context) }
     var quickStartSelection by remember { mutableStateOf(quickStartPreferences.read()) }
+    var handledQuickFocusRequest by remember { mutableIntStateOf(0) }
     val updateQuickStartSelection: (QuickStartSelection) -> Unit = { selection ->
         val normalized = normalizeQuickStartSelection(
             durationMinutes = selection.durationMinutes,
@@ -128,6 +132,20 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
         )
         quickStartSelection = normalized
         quickStartPreferences.save(normalized)
+    }
+
+    LaunchedEffect(userProfile, sessions, dailyQuests, bosses, bossSteps, quickStartSelection) {
+        TodayWidgetProvider.updateAll(
+            context = context,
+            snapshot = buildTodayWidgetSnapshot(
+                profile = userProfile,
+                sessions = sessions,
+                quests = dailyQuests,
+                bosses = bosses,
+                steps = bossSteps,
+                quickStart = quickStartSelection,
+            ),
+        )
     }
 
     FocusSessionLifecycleEffect(viewModel = viewModel)
@@ -142,6 +160,27 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
         if (viewModel.focusNavigationRequest > 0) {
             currentTab = Tab.Battle
         }
+    }
+
+    LaunchedEffect(viewModel.quickFocusRequest, userProfile) {
+        val request = viewModel.quickFocusRequest
+        val profile = userProfile
+        if (request <= handledQuickFocusRequest || profile == null) return@LaunchedEffect
+        handledQuickFocusRequest = request
+
+        if (!profile.hasCompletedOnboarding || !profile.hasCompletedTutorial) return@LaunchedEffect
+        if (viewModel.isBattleActive) {
+            currentTab = Tab.Battle
+            return@LaunchedEffect
+        }
+
+        val selection = quickStartPreferences.read()
+        updateQuickStartSelection(selection)
+        viewModel.selectAndStartQuickFocus(
+            minutes = selection.durationMinutes,
+            skillId = selection.skillId,
+        )
+        currentTab = Tab.Battle
     }
 
     BackHandler(enabled = viewModel.isBattleActive) {
@@ -598,6 +637,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
 @Composable
 private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
     val view = LocalView.current
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val shouldKeepScreenOn = viewModel.isBattleActive && !viewModel.isBattlePaused
 
@@ -615,6 +655,7 @@ private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
                 viewModel.syncFocusSessionTime()
                 viewModel.syncBreakTime()
                 viewModel.refreshDailyQuests()
+                TodayWidgetProvider.requestUpdate(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

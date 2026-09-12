@@ -19,6 +19,10 @@ spent studying and actions explicitly confirmed by the user.
 The Today dashboard combines the daily time target, unfinished quests, upcoming
 deadlines, and the next incomplete goal step into a short prioritized plan.
 
+The home-screen widget surfaces the same daily progress and highest-priority
+action outside the app. Its shortcut starts the user's saved quick-focus preset,
+while tapping the rest of the widget opens the app normally.
+
 Daily quests can be scheduled once, every day, or on selected weekdays. The app
 creates only the current day's occurrence, preserves incomplete rollover items,
 and uses a database uniqueness rule to prevent duplicate occurrences. A skipped

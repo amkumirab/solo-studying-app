@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/weekly_widget_description"
+    android:initialKeyguardLayout="@layout/weekly_streak_widget"
+    android:initialLayout="@layout/weekly_streak_widget"
+    android:minHeight="120dp"
+    android:minResizeHeight="120dp"
+    android:minResizeWidth="280dp"
+    android:minWidth="280dp"
+    android:previewImage="@drawable/streak_companion"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

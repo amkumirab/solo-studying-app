@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
     when (intent?.action) {
       ACTION_OPEN_FOCUS_SESSION -> viewModel.requestFocusScreen()
       ACTION_START_QUICK_FOCUS -> viewModel.requestQuickFocus()
+      ACTION_OPEN_STATS -> viewModel.requestStatsScreen()
     }
   }
 
@@ -89,6 +90,7 @@ class MainActivity : ComponentActivity() {
     const val ACTION_OPEN_FOCUS_SESSION = "com.amkumirab.solostudying.ACTION_OPEN_FOCUS_SESSION"
     const val ACTION_FINISH_FOCUS_SESSION = "com.amkumirab.solostudying.ACTION_FINISH_FOCUS_SESSION"
     const val ACTION_START_QUICK_FOCUS = "com.amkumirab.solostudying.ACTION_START_QUICK_FOCUS"
+    const val ACTION_OPEN_STATS = "com.amkumirab.solostudying.ACTION_OPEN_STATS"
     const val NOTIFICATION_PERMISSION_REQUEST = 101
   }
 }

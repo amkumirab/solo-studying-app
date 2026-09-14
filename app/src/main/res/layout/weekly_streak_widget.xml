@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/weekly_streak_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/weekly_streak_background"
+    android:padding="12dp">
+
+    <ImageView
+        android:id="@+id/streak_companion"
+        android:layout_width="104dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:src="@drawable/streak_companion" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="6dp"
+        android:layout_toStartOf="@id/streak_companion"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/streak_widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:textColor="#FFFFC857"
+            android:textSize="23sp" />
+
+        <TextView
+            android:id="@+id/streak_widget_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#FFDCE7F3"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <include layout="@layout/weekly_streak_day_1" />
+            <include layout="@layout/weekly_streak_day_2" />
+            <include layout="@layout/weekly_streak_day_3" />
+            <include layout="@layout/weekly_streak_day_4" />
+            <include layout="@layout/weekly_streak_day_5" />
+            <include layout="@layout/weekly_streak_day_6" />
+            <include layout="@layout/weekly_streak_day_7" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>

@@ -64,6 +64,7 @@ import com.amkumirab.solostudying.domain.session.ProgressSummary
 import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionNotePolicy
 import com.amkumirab.solostudying.domain.session.SessionSummary
+import com.amkumirab.solostudying.domain.streak.buildWeeklyStreakSnapshot
 import com.amkumirab.solostudying.domain.today.TodayPlanItemType
 import com.amkumirab.solostudying.domain.today.buildTodayPlan
 import com.amkumirab.solostudying.notification.NotificationReceiver
@@ -77,6 +78,7 @@ import com.amkumirab.solostudying.sound.SoundSettings
 import com.amkumirab.solostudying.ui.theme.*
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
 import com.amkumirab.solostudying.widget.TodayWidgetProvider
+import com.amkumirab.solostudying.widget.WeeklyStreakWidgetProvider
 import com.amkumirab.solostudying.widget.buildTodayWidgetSnapshot
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -146,6 +148,13 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                 quickStart = quickStartSelection,
             ),
         )
+        WeeklyStreakWidgetProvider.updateAll(
+            context = context,
+            snapshot = buildWeeklyStreakSnapshot(
+                profile = userProfile,
+                sessions = sessions,
+            ),
+        )
     }
 
     FocusSessionLifecycleEffect(viewModel = viewModel)
@@ -159,6 +168,12 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     LaunchedEffect(viewModel.focusNavigationRequest) {
         if (viewModel.focusNavigationRequest > 0) {
             currentTab = Tab.Battle
+        }
+    }
+
+    LaunchedEffect(viewModel.statsNavigationRequest) {
+        if (viewModel.statsNavigationRequest > 0) {
+            currentTab = Tab.Stats
         }
     }
 
@@ -656,6 +671,7 @@ private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
                 viewModel.syncBreakTime()
                 viewModel.refreshDailyQuests()
                 TodayWidgetProvider.requestUpdate(context)
+                WeeklyStreakWidgetProvider.requestUpdate(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

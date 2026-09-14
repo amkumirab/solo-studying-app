@@ -15,6 +15,7 @@ gameplay loop rather than accounts, cloud sync, or online services.
 - One-tap focus presets that remember the last duration and skill
 - Personalized daily dashboard with prioritized next actions and target progress
 - Home-screen widget for today's progress, next action, streak, and quick focus
+- Weekly streak widget with daily target states and an original study companion
 - Daily study quests with priorities, rollover, history, and timer integration
 - Recurring study quests for daily routines or selected weekdays
 - Goal checklists with timed study steps, progress tracking, and automatic completion

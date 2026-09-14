@@ -2,4 +2,6 @@
     <string name="app_name">Solo Studying</string>
     <string name="widget_title">TODAY\'S MISSION</string>
     <string name="widget_description">Today\'s study progress, next quest, and quick focus shortcut</string>
+    <string name="weekly_widget_title">Weekly Streak</string>
+    <string name="weekly_widget_description">Current study streak and daily target progress for this week</string>
 </resources>

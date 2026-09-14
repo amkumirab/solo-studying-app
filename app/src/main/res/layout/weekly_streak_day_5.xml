@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical">
+    <TextView android:id="@+id/streak_day_label_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFB6C4D4" android:textSize="11sp" />
+    <TextView android:id="@+id/streak_day_status_5" android:layout_width="24dp" android:layout_height="24dp" android:layout_marginTop="3dp" android:gravity="center" android:textColor="#FFFFFFFF" android:textSize="15sp" />
+</LinearLayout>

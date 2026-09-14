@@ -23,6 +23,10 @@ The home-screen widget surfaces the same daily progress and highest-priority
 action outside the app. Its shortcut starts the user's saved quick-focus preset,
 while tapping the rest of the widget opens the app normally.
 
+A separate weekly streak widget shows whether each daily target was completed,
+missed, scheduled later in the week, or configured as a rest day. It updates from
+local session history and opens the profile statistics screen when selected.
+
 Daily quests can be scheduled once, every day, or on selected weekdays. The app
 creates only the current day's occurrence, preserves incomplete rollover items,
 and uses a database uniqueness rule to prevent duplicate occurrences. A skipped

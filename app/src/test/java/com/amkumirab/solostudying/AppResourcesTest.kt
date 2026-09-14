@@ -3,8 +3,10 @@ package com.amkumirab.solostudying
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import androidx.test.core.app.ApplicationProvider
 import com.amkumirab.solostudying.widget.TodayWidgetProvider
+import com.amkumirab.solostudying.widget.WeeklyStreakWidgetProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -62,5 +64,31 @@ class AppResourcesTest {
       R.xml.today_widget_info,
       receiver.metaData.getInt("android.appwidget.provider"),
     )
+  }
+
+  @Test
+  fun `weekly streak widget is registered with provider metadata`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val receiver = context.packageManager.getReceiverInfo(
+      ComponentName(context, WeeklyStreakWidgetProvider::class.java),
+      PackageManager.GET_META_DATA,
+    )
+
+    assertFalse(receiver.exported)
+    assertEquals(
+      R.xml.weekly_streak_widget_info,
+      receiver.metaData.getInt("android.appwidget.provider"),
+    )
+  }
+
+  @Test
+  fun `weekly streak companion is a compact transparent asset`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val mascotBitmap = BitmapFactory.decodeResource(context.resources, R.drawable.streak_companion)
+    val pngBytes = context.resources.openRawResource(R.drawable.streak_companion).use { it.readBytes() }
+
+    assertEquals(512, mascotBitmap.width)
+    assertEquals(512, mascotBitmap.height)
+    assertEquals(6, pngBytes[25].toInt())
   }
 }

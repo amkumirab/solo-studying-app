@@ -57,7 +57,7 @@ fun buildTodayPlan(
     zoneId: ZoneId = ZoneId.systemDefault(),
     maxItems: Int = 3,
 ): TodayPlan {
-    val targetMinutes = targetMinutesForDay(profile, today)
+    val targetMinutes = dailyTargetMinutes(profile, today)
     val startOfToday = today.atStartOfDay(zoneId).toInstant().toEpochMilli()
     val startOfTomorrow = today.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
     val studiedSeconds = sessions
@@ -176,12 +176,12 @@ fun buildTodayPlan(
     )
 }
 
-private fun targetMinutesForDay(profile: UserProfileEntity, today: LocalDate): Int {
+fun dailyTargetMinutes(profile: UserProfileEntity, date: LocalDate): Int {
     val weekdayTargets = profile.scheduleWeekdayMinutes
         .split(',')
         .mapNotNull { it.trim().toIntOrNull() }
     return if (weekdayTargets.size == 7) {
-        weekdayTargets[today.dayOfWeek.value - 1].coerceAtLeast(0)
+        weekdayTargets[date.dayOfWeek.value - 1].coerceAtLeast(0)
     } else {
         profile.scheduleMinutesPerDay.coerceAtLeast(0)
     }

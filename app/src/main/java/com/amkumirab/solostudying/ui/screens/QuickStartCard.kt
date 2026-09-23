@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -70,6 +71,7 @@ fun QuickStartCard(
     onSelectionChange: (QuickStartSelection) -> Unit,
     onStart: (QuickStartSelection) -> Unit,
     onCustomDuration: () -> Unit,
+    onFocusCycles: () -> Unit = {},
 ) {
     val selectedSkill = skills.firstOrNull { it.id == selection.skillId }
     val focusName = selectedSkill?.name ?: "General Focus"
@@ -247,6 +249,22 @@ fun QuickStartCard(
                     text = if (isSessionActive) "SESSION ACTIVE" else "START ${selection.durationMinutes} MIN FOCUS",
                     fontWeight = FontWeight.Black,
                 )
+            }
+
+            OutlinedButton(
+                onClick = onFocusCycles,
+                enabled = !isSessionActive,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag("focus_cycles_button"),
+                border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.8f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = RpgGold),
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Icon(Icons.Default.Repeat, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("FOCUS CYCLES", fontWeight = FontWeight.Black)
             }
         }
     }

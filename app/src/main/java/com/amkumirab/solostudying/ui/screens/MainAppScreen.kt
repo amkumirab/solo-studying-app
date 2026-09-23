@@ -67,6 +67,7 @@ import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.domain.streak.buildWeeklyStreakSnapshot
 import com.amkumirab.solostudying.domain.today.TodayPlanItemType
 import com.amkumirab.solostudying.domain.today.buildTodayPlan
+import com.amkumirab.solostudying.focuscycle.FocusCyclePhase
 import com.amkumirab.solostudying.notification.NotificationReceiver
 import com.amkumirab.solostudying.notification.ReminderSchedule
 import com.amkumirab.solostudying.notification.ReminderSettings
@@ -111,6 +112,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     var showCreateBossDialog by remember { mutableStateOf(false) }
     var showCreateRewardDialog by remember { mutableStateOf(false) }
     var showFreeStudyDialog by remember { mutableStateOf(false) }
+    var showFocusCycleDialog by remember { mutableStateOf(false) }
     var pendingTabAfterFocusWarning by remember { mutableStateOf<Tab?>(null) }
     var showExitFocusDialog by remember { mutableStateOf(false) }
 
@@ -308,6 +310,10 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                             RpgSoundManager.playClickSound()
                             showFreeStudyDialog = true
                         },
+                        onFocusCycles = {
+                            RpgSoundManager.playClickSound()
+                            showFocusCycleDialog = true
+                        },
                         onDailyQuestStarted = {
                             currentTab = Tab.Battle
                         },
@@ -415,6 +421,25 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                 )
                 showCreateBossDialog = false
             }
+        )
+    }
+
+    if (showFocusCycleDialog) {
+        FocusCycleSetupDialog(
+            skills = skills,
+            initialSkillId = quickStartSelection.skillId,
+            onDismiss = { showFocusCycleDialog = false },
+            onStart = { plan ->
+                updateQuickStartSelection(
+                    quickStartSelection.copy(
+                        durationMinutes = plan.focusMinutes,
+                        skillId = plan.skillId,
+                    ),
+                )
+                viewModel.startFocusCycle(plan)
+                showFocusCycleDialog = false
+                currentTab = Tab.Battle
+            },
         )
     }
 
@@ -975,6 +1000,7 @@ fun DungeonTab(
     onQuickStartSelectionChange: (QuickStartSelection) -> Unit,
     onQuickStart: (QuickStartSelection) -> Unit,
     onCustomQuickStart: () -> Unit,
+    onFocusCycles: () -> Unit,
     onDailyQuestStarted: () -> Unit,
     onStartBossStep: (BossEntity, BossStepEntity) -> Unit,
 ) {
@@ -1124,6 +1150,7 @@ fun DungeonTab(
             onSelectionChange = onQuickStartSelectionChange,
             onStart = onQuickStart,
             onCustomDuration = onCustomQuickStart,
+            onFocusCycles = onFocusCycles,
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -1927,6 +1954,24 @@ fun BattleTab(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
+                viewModel.focusCycleState?.takeIf { it.phase == FocusCyclePhase.FOCUS }?.let { cycle ->
+                    Surface(
+                        color = RpgGold.copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.75f)),
+                        modifier = Modifier
+                            .padding(bottom = 10.dp)
+                            .testTag("focus_cycle_round"),
+                    ) {
+                        Text(
+                            text = "ROUND ${cycle.currentRound} OF ${cycle.plan.totalRounds}",
+                            color = RpgGold,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                        )
+                    }
+                }
                 Text(
                     text = when {
                         viewModel.activeDailyQuestId != null -> "📜 ACTIVE DAILY QUEST"
@@ -4512,6 +4557,7 @@ fun NotificationOverlays(
     var showBreakDurationDialog by remember { mutableStateOf(false) }
     var sessionNoteDraft by remember { mutableStateOf("") }
     val activeSummaryId = viewModel.sessionSummary?.sessionId
+    val focusCycle = viewModel.focusCycleState
 
     LaunchedEffect(activeSummaryId) {
         sessionNoteDraft = ""
@@ -4523,6 +4569,20 @@ fun NotificationOverlays(
             remainingSeconds = viewModel.breakTimeLeftSeconds,
             onSkipBreak = {
                 viewModel.skipBreak()
+                if (focusCycle == null) onStartAnotherSession()
+            },
+        )
+        return
+    }
+
+    if (focusCycle?.phase == FocusCyclePhase.READY_FOR_FOCUS) {
+        BreakCompleteDialog(
+            message = "Recovery complete. Round ${focusCycle.nextRound} of ${focusCycle.plan.totalRounds} is ready when you are.",
+            startButtonLabel = "START ROUND ${focusCycle.nextRound} OF ${focusCycle.plan.totalRounds}",
+            doneButtonLabel = "END CYCLE",
+            onDone = viewModel::cancelFocusCycle,
+            onStartNextSession = {
+                viewModel.startNextCycleRound()
                 onStartAnotherSession()
             },
         )
@@ -4553,19 +4613,51 @@ fun NotificationOverlays(
     }
 
     viewModel.sessionSummary?.let { summary ->
+        val isCycleRound = focusCycle?.phase == FocusCyclePhase.READY_FOR_BREAK
+        val isCycleComplete = focusCycle?.phase == FocusCyclePhase.COMPLETE
         SessionSummaryDialog(
             summary = summary,
             note = sessionNoteDraft,
             onNoteChange = { sessionNoteDraft = it },
             onSaveNote = { note -> viewModel.updateSessionNote(summary.sessionId, note) },
             onDone = viewModel::dismissSessionSummary,
-            showBreakOption = viewModel.breakSuggestionsEnabled &&
-                summary.endState != SessionEndState.Suspended,
-            onTakeBreak = { showBreakDurationDialog = true },
+            showBreakOption = if (isCycleRound) true else viewModel.breakSuggestionsEnabled &&
+                summary.endState != SessionEndState.Suspended && !isCycleComplete,
+            breakButtonLabel = if (isCycleRound) {
+                "START ${focusCycle?.plan?.breakMinutes} MIN BREAK"
+            } else {
+                "TAKE A BREAK"
+            },
+            showStartAnotherOption = !isCycleRound && !isCycleComplete,
+            onTakeBreak = {
+                if (isCycleRound) {
+                    viewModel.dismissSessionSummary()
+                    viewModel.startCycleBreak()
+                } else {
+                    showBreakDurationDialog = true
+                }
+            },
             onStartAnotherSession = {
                 viewModel.dismissSessionSummary()
                 onStartAnotherSession()
             },
+        )
+        return
+    }
+
+    if (focusCycle?.phase == FocusCyclePhase.READY_FOR_BREAK) {
+        CycleBreakReadyDialog(
+            state = focusCycle,
+            onStartBreak = viewModel::startCycleBreak,
+            onEndCycle = viewModel::cancelFocusCycle,
+        )
+        return
+    }
+
+    if (focusCycle?.phase == FocusCyclePhase.COMPLETE) {
+        CycleCompleteDialog(
+            state = focusCycle,
+            onDone = viewModel.focusCycleViewModel::dismissCompleted,
         )
         return
     }
@@ -4727,6 +4819,8 @@ fun SessionSummaryDialog(
     onStartAnotherSession: () -> Unit,
     showBreakOption: Boolean = true,
     onTakeBreak: () -> Unit = {},
+    breakButtonLabel: String = "TAKE A BREAK",
+    showStartAnotherOption: Boolean = true,
     note: String = "",
     onNoteChange: (String) -> Unit = {},
     onSaveNote: (String) -> Unit = {},
@@ -4887,25 +4981,27 @@ fun SessionSummaryDialog(
                     ) {
                         Icon(Icons.Default.Coffee, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("TAKE A BREAK", fontWeight = FontWeight.Black)
+                        Text(breakButtonLabel, fontWeight = FontWeight.Black)
                     }
                     Spacer(Modifier.height(8.dp))
                 }
-                Button(
-                    onClick = {
-                        onSaveNote(note)
-                        onStartAnotherSession()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .testTag("session_summary_start_another"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = accent,
-                        contentColor = Color.Black,
-                    ),
-                ) {
-                    Text("START ANOTHER SESSION", fontWeight = FontWeight.Black)
+                if (showStartAnotherOption) {
+                    Button(
+                        onClick = {
+                            onSaveNote(note)
+                            onStartAnotherSession()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("session_summary_start_another"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = accent,
+                            contentColor = Color.Black,
+                        ),
+                    ) {
+                        Text("START ANOTHER SESSION", fontWeight = FontWeight.Black)
+                    }
                 }
                 TextButton(
                     onClick = {

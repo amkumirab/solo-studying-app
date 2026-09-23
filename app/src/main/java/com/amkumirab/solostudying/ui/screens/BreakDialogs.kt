@@ -212,6 +212,9 @@ fun BreakTimerDialog(
 fun BreakCompleteDialog(
     onDone: () -> Unit,
     onStartNextSession: () -> Unit,
+    message: String = "Recovery complete. Ready for another focused quest?",
+    startButtonLabel: String = "START NEXT SESSION",
+    doneButtonLabel: String = "DONE",
 ) {
     Dialog(onDismissRequest = onDone) {
         Card(
@@ -246,7 +249,7 @@ fun BreakCompleteDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Recovery complete. Ready for another focused quest?",
+                    text = message,
                     color = TextWhite,
                     textAlign = TextAlign.Center,
                 )
@@ -262,7 +265,7 @@ fun BreakCompleteDialog(
                         contentColor = Color.Black,
                     ),
                 ) {
-                    Text("START NEXT SESSION", fontWeight = FontWeight.Black)
+                    Text(startButtonLabel, fontWeight = FontWeight.Black)
                 }
                 TextButton(
                     onClick = onDone,
@@ -271,7 +274,7 @@ fun BreakCompleteDialog(
                         .heightIn(min = 48.dp)
                         .testTag("break_complete_done"),
                 ) {
-                    Text("DONE", color = TextWhite, fontWeight = FontWeight.Bold)
+                    Text(doneButtonLabel, color = TextWhite, fontWeight = FontWeight.Bold)
                 }
             }
         }

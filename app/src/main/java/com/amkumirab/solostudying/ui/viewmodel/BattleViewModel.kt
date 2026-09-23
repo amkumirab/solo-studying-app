@@ -33,6 +33,7 @@ class BattleViewModel(
     private val repository: SoloStudyingRepository,
     private val context: Context,
     private val focusSessionStore: FocusSessionStore = FocusSessionStore(context),
+    private val onSessionFinished: (SessionSummary) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
@@ -533,7 +534,7 @@ class BattleViewModel(
                     RpgSoundManager.playSkillUnlockSound()
                 }
                 completionResult?.let(::applyProfileCompletionFeedback)
-                sessionSummary = pendingSummary
+                pendingSummary?.let(::publishSessionSummary)
 
                 resetActiveSession()
             } finally {
@@ -656,7 +657,7 @@ class BattleViewModel(
         val result = completionResult
         val sessionId = recordedSessionId
         if (result != null && sessionId != null) {
-            sessionSummary = SessionSummary(
+            publishSessionSummary(SessionSummary(
                 sessionId = sessionId,
                 subject = if (wasFreeStudy) {
                     dailyQuestTitle ?: skill?.name ?: "Astral Free Study"
@@ -689,7 +690,7 @@ class BattleViewModel(
                 currentStreak = if (applyHeavyPenalty && boss != null) 0 else result.currentStreak,
                 streakMessage = result.streakMessage,
                 skillUnlocked = skillMastered,
-            )
+            ))
         }
         penaltyFeedback?.let { showPenaltyToast = it }
         resetActiveSession()
@@ -924,7 +925,7 @@ class BattleViewModel(
             }
             if (!conquered) return@launch
             completionResult?.let(::applyProfileCompletionFeedback)
-            sessionSummary = pendingSummary
+            pendingSummary?.let(::publishSessionSummary)
 
             if (activeBoss?.id == boss.id) {
                 timerJob?.cancel()
@@ -935,6 +936,11 @@ class BattleViewModel(
 
     fun dismissSessionSummary() {
         sessionSummary = null
+    }
+
+    private fun publishSessionSummary(summary: SessionSummary) {
+        sessionSummary = summary
+        onSessionFinished(summary)
     }
 
     fun clearNotifications() {

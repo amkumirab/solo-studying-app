@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 class BreakViewModel(
     context: Context,
     private val store: BreakSessionStore = BreakSessionStore(context),
+    private val onBreakFinished: () -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
@@ -41,7 +42,7 @@ class BreakViewModel(
     }
 
     fun startBreak(minutes: Int) {
-        require(minutes in ALLOWED_BREAK_MINUTES) { "Unsupported break duration: $minutes" }
+        require(minutes in MIN_BREAK_MINUTES..MAX_BREAK_MINUTES) { "Unsupported break duration: $minutes" }
         val durationSeconds = minutes * 60L
         val session = BreakSessionSnapshot(
             durationSeconds = durationSeconds,
@@ -91,6 +92,7 @@ class BreakViewModel(
             NotificationHelper.cancelBreakAlarm(applicationContext)
             store.clearSession()
             showBreakComplete = true
+            onBreakFinished()
             return
         }
         activeBreak = saved
@@ -115,6 +117,7 @@ class BreakViewModel(
         activeBreak = null
         breakTimeLeftSeconds = 0L
         showBreakComplete = true
+        onBreakFinished()
     }
 
     override fun onCleared() {
@@ -124,5 +127,7 @@ class BreakViewModel(
 
     companion object {
         val ALLOWED_BREAK_MINUTES = setOf(5, 10, 15)
+        const val MIN_BREAK_MINUTES = 1
+        const val MAX_BREAK_MINUTES = 60
     }
 }

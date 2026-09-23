@@ -13,6 +13,8 @@ import com.amkumirab.solostudying.MainActivity
 import com.amkumirab.solostudying.R
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
 import com.amkumirab.solostudying.focus.displayTitle
+import com.amkumirab.solostudying.focuscycle.FocusCyclePhase
+import com.amkumirab.solostudying.focuscycle.FocusCycleStore
 import java.util.Locale
 
 object FocusSessionNotifier {
@@ -49,14 +51,16 @@ object FocusSessionNotifier {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
         val title = snapshot.displayTitle()
+        val cycle = FocusCycleStore(context).read()?.takeIf { it.phase == FocusCyclePhase.FOCUS }
+        val roundLabel = cycle?.let { "Round ${it.currentRound} of ${it.plan.totalRounds} · " }.orEmpty()
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(notificationIcon(context))
             .setContentTitle(title)
             .setContentText(
                 if (snapshot.isPaused) {
-                    "Paused · ${formatDuration(snapshot.timeLeftSeconds)} remaining"
+                    "${roundLabel}Paused · ${formatDuration(snapshot.timeLeftSeconds)} remaining"
                 } else {
-                    "Focus in progress · ${formatDuration(snapshot.timeLeftSeconds)} remaining"
+                    "${roundLabel}Focus in progress · ${formatDuration(snapshot.timeLeftSeconds)} remaining"
                 },
             )
             .setContentIntent(openSessionIntent(context))

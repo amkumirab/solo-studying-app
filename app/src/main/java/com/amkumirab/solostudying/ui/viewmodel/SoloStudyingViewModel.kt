@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.domain.session.SessionSummary
+import com.amkumirab.solostudying.focuscycle.FocusCyclePlan
 import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.domain.quest.RecurringQuestSchedule
 
@@ -21,6 +22,7 @@ class SoloStudyingViewModel(
     val tutorialViewModel: TutorialViewModel,
     val breakViewModel: BreakViewModel,
     val dailyQuestViewModel: DailyQuestViewModel,
+    val focusCycleViewModel: FocusCycleViewModel,
 ) : ViewModel() {
 
     var focusNavigationRequest by mutableIntStateOf(0)
@@ -63,6 +65,7 @@ class SoloStudyingViewModel(
     val breakTimeLeftSeconds: Long get() = breakViewModel.breakTimeLeftSeconds
     val showBreakComplete: Boolean get() = breakViewModel.showBreakComplete
     val breakSuggestionsEnabled: Boolean get() = breakViewModel.breakSuggestionsEnabled
+    val focusCycleState get() = focusCycleViewModel.state
 
     var selectedSkillToTrain: SkillEntity?
         get() = battleViewModel.selectedSkillToTrain
@@ -160,8 +163,29 @@ class SoloStudyingViewModel(
         battleViewModel.selectAndStartQuickFocus(minutes, skillId)
     }
 
+    fun startFocusCycle(plan: FocusCyclePlan) {
+        focusCycleViewModel.start(plan)
+        battleViewModel.selectAndStartQuickFocus(plan.focusMinutes, plan.skillId)
+    }
+
+    fun startCycleBreak() {
+        focusCycleViewModel.startBreak()?.let(breakViewModel::startBreak)
+    }
+
+    fun startNextCycleRound() {
+        val plan = focusCycleViewModel.startNextRound() ?: return
+        breakViewModel.dismissBreakComplete()
+        battleViewModel.selectAndStartQuickFocus(plan.focusMinutes, plan.skillId)
+    }
+
+    fun cancelFocusCycle() {
+        focusCycleViewModel.cancel()
+        breakViewModel.dismissBreakComplete()
+    }
+
     fun skipBreak() {
         breakViewModel.skipBreak()
+        focusCycleViewModel.finishBreak()
     }
 
     fun dismissBreakComplete() {
@@ -259,6 +283,7 @@ class SoloStudyingViewModel(
     }
 
     fun abandonActiveBoss(applyHeavyPenalty: Boolean = true) {
+        focusCycleViewModel.cancel()
         battleViewModel.abandonActiveBoss(applyHeavyPenalty)
     }
 
@@ -382,11 +407,16 @@ class SoloStudyingViewModelFactory(
         if (modelClass.isAssignableFrom(SoloStudyingViewModel::class.java)) {
             val statusVM = StatusViewModel(repository, context)
             val dungeonVM = DungeonViewModel(repository, context)
-            val battleVM = BattleViewModel(repository, context)
+            val focusCycleVM = FocusCycleViewModel(context)
+            val battleVM = BattleViewModel(
+                repository = repository,
+                context = context,
+                onSessionFinished = focusCycleVM::onSessionFinished,
+            )
             val skillVM = SkillViewModel(repository, context)
             val shopVM = ShopViewModel(repository)
             val tutorialVM = TutorialViewModel(repository, context)
-            val breakVM = BreakViewModel(context)
+            val breakVM = BreakViewModel(context, onBreakFinished = focusCycleVM::finishBreak)
             val dailyQuestVM = DailyQuestViewModel(repository)
             @Suppress("UNCHECKED_CAST")
             return SoloStudyingViewModel(
@@ -398,6 +428,7 @@ class SoloStudyingViewModelFactory(
                 tutorialVM,
                 breakVM,
                 dailyQuestVM,
+                focusCycleVM,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

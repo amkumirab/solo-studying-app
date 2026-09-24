@@ -5,7 +5,9 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
@@ -399,6 +401,16 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onReplayTutorial = { viewModel.tutorialViewModel.replayTutorial() },
                         breakSuggestionsEnabled = viewModel.breakSuggestionsEnabled,
                         onBreakSuggestionsEnabledChange = viewModel::setBreakSuggestionsEnabled,
+                        focusShieldEnabled = viewModel.focusShieldEnabled,
+                        focusShieldHasAccess = viewModel.focusShieldHasAccess,
+                        onFocusShieldEnabledChange = viewModel::setFocusShieldEnabled,
+                        onRequestFocusShieldAccess = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                },
+                            )
+                        },
                         onUpdateSessionNote = viewModel::updateSessionNote,
                     )
                 }
@@ -693,6 +705,7 @@ private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.syncFocusSessionTime()
+                viewModel.refreshFocusShield()
                 viewModel.syncBreakTime()
                 viewModel.refreshDailyQuests()
                 TodayWidgetProvider.requestUpdate(context)
@@ -1972,6 +1985,35 @@ fun BattleTab(
                         )
                     }
                 }
+                if (viewModel.isFocusShieldActive) {
+                    Surface(
+                        color = RpgEmerald.copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, RpgEmerald.copy(alpha = 0.75f)),
+                        modifier = Modifier
+                            .padding(bottom = 10.dp)
+                            .testTag("focus_shield_active_badge"),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.DoNotDisturbOn,
+                                contentDescription = null,
+                                tint = RpgEmerald,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "FOCUS SHIELD ACTIVE",
+                                color = RpgEmerald,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp,
+                            )
+                        }
+                    }
+                }
                 Text(
                     text = when {
                         viewModel.activeDailyQuestId != null -> "📜 ACTIVE DAILY QUEST"
@@ -2912,6 +2954,10 @@ fun StatsTab(
     onReplayTutorial: () -> Unit,
     breakSuggestionsEnabled: Boolean,
     onBreakSuggestionsEnabledChange: (Boolean) -> Unit,
+    focusShieldEnabled: Boolean,
+    focusShieldHasAccess: Boolean,
+    onFocusShieldEnabledChange: (Boolean) -> Unit,
+    onRequestFocusShieldAccess: () -> Unit,
     onUpdateSessionNote: (Long, String) -> Unit,
 ) {
     val nonNullProfile = profile ?: UserProfileEntity()
@@ -3381,6 +3427,10 @@ fun StatsTab(
                 onReplayTutorial = onReplayTutorial,
                 breakSuggestionsEnabled = breakSuggestionsEnabled,
                 onBreakSuggestionsEnabledChange = onBreakSuggestionsEnabledChange,
+                focusShieldEnabled = focusShieldEnabled,
+                focusShieldHasAccess = focusShieldHasAccess,
+                onFocusShieldEnabledChange = onFocusShieldEnabledChange,
+                onRequestFocusShieldAccess = onRequestFocusShieldAccess,
             )
         }
 
@@ -4313,6 +4363,10 @@ internal fun SystemControlsCard(
     onReplayTutorial: () -> Unit,
     breakSuggestionsEnabled: Boolean = true,
     onBreakSuggestionsEnabledChange: (Boolean) -> Unit = {},
+    focusShieldEnabled: Boolean = false,
+    focusShieldHasAccess: Boolean = false,
+    onFocusShieldEnabledChange: (Boolean) -> Unit = {},
+    onRequestFocusShieldAccess: () -> Unit = {},
 ) {
     val volumePercent = (soundSettings.volume.coerceIn(0f, 1f) * 100).toInt()
 
@@ -4493,6 +4547,71 @@ internal fun SystemControlsCard(
 
                 HorizontalDivider(color = DarkCardBorder.copy(alpha = 0.6f))
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DoNotDisturbOn,
+                        contentDescription = null,
+                        tint = if (focusShieldEnabled && focusShieldHasAccess) RpgGold else TextMuted,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "FOCUS SHIELD",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                color = TextWhite,
+                                fontWeight = FontWeight.Black,
+                            ),
+                        )
+                        Text(
+                            text = if (focusShieldEnabled && !focusShieldHasAccess) {
+                                "Do Not Disturb access is required"
+                            } else {
+                                "Silence interruptions during active focus"
+                            },
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (focusShieldEnabled && !focusShieldHasAccess) RpgGold else TextMuted,
+                            ),
+                        )
+                    }
+                    Switch(
+                        checked = focusShieldEnabled,
+                        onCheckedChange = onFocusShieldEnabledChange,
+                        modifier = Modifier
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .testTag("focus_shield_switch")
+                            .semantics {
+                                contentDescription = "Focus Shield"
+                                stateDescription = when {
+                                    !focusShieldEnabled -> "Off"
+                                    !focusShieldHasAccess -> "On, permission required"
+                                    else -> "On"
+                                }
+                                traversalIndex = 4f
+                            },
+                    )
+                }
+
+                if (focusShieldEnabled && !focusShieldHasAccess) {
+                    OutlinedButton(
+                        onClick = onRequestFocusShieldAccess,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("focus_shield_permission_button")
+                            .semantics { contentDescription = "Grant Do Not Disturb access" },
+                        border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.7f)),
+                    ) {
+                        Icon(Icons.Default.Security, contentDescription = null, tint = RpgGold)
+                        Spacer(Modifier.width(8.dp))
+                        Text("GRANT DO NOT DISTURB ACCESS", color = RpgGold, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                HorizontalDivider(color = DarkCardBorder.copy(alpha = 0.6f))
+
                 Text(
                     text = "Want to re-experience the immersive Hunter Awakening Ritual? You can replay the introductory covenant setup at any time.",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
@@ -4513,7 +4632,7 @@ internal fun SystemControlsCard(
                         .testTag("replay_tutorial_button")
                         .semantics {
                             contentDescription = "Replay onboarding tutorial"
-                            traversalIndex = 4f
+                            traversalIndex = 5f
                         },
                 ) {
                     Icon(

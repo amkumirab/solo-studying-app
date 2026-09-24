@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.amkumirab.solostudying.focus.FocusSessionControlAction
 import com.amkumirab.solostudying.focus.FocusSessionStore
+import com.amkumirab.solostudying.focus.FocusShieldManager
 import com.amkumirab.solostudying.focus.applyFocusSessionControl
 import com.amkumirab.solostudying.focus.displayTitle
 import com.amkumirab.solostudying.focus.reconcileFocusSession
@@ -14,7 +15,9 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val store = FocusSessionStore(context)
+        val focusShield = FocusShieldManager(context)
         val saved = store.read() ?: run {
+            focusShield.restorePreviousFilter()
             FocusSessionNotifier.cancelActive(context)
             FocusSessionNotifier.cancelCompletionAlarm(context)
             return
@@ -29,6 +32,7 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
                     nowMillis = nowMillis,
                 )
                 store.write(updated)
+                focusShield.restorePreviousFilter()
                 FocusSessionNotifier.cancelCompletionAlarm(context)
                 if (updated.timeLeftSeconds > 0L) {
                     FocusSessionNotifier.show(context, updated)
@@ -45,6 +49,7 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
                     nowMillis = nowMillis,
                 )
                 store.write(updated)
+                focusShield.reconcile(sessionActive = true, sessionPaused = false)
                 FocusSessionNotifier.show(context, updated)
                 FocusSessionNotifier.scheduleCompletion(context, updated)
                 FocusSessionActionEvents.notifyChanged()
@@ -54,6 +59,7 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
                 val updated = reconcileFocusSession(saved, nowMillis)
                 store.write(updated)
                 if (updated.timeLeftSeconds <= 0L) {
+                    focusShield.restorePreviousFilter()
                     FocusSessionNotifier.showCompleted(context, updated.displayTitle())
                 } else {
                     FocusSessionNotifier.show(context, updated)

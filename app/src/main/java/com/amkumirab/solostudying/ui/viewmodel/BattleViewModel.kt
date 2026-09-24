@@ -15,6 +15,7 @@ import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
 import com.amkumirab.solostudying.focus.FocusSessionStore
+import com.amkumirab.solostudying.focus.FocusShieldManager
 import com.amkumirab.solostudying.focus.reconcileFocusSession
 import com.amkumirab.solostudying.notification.FocusSessionActionEvents
 import com.amkumirab.solostudying.notification.FocusSessionNotifier
@@ -33,6 +34,7 @@ class BattleViewModel(
     private val repository: SoloStudyingRepository,
     private val context: Context,
     private val focusSessionStore: FocusSessionStore = FocusSessionStore(context),
+    private val focusShieldManager: FocusShieldManager = FocusShieldManager(context),
     private val onSessionFinished: (SessionSummary) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
@@ -81,6 +83,15 @@ class BattleViewModel(
     var showPenaltyToast by mutableStateOf<String?>(null)
 
     var sessionSummary by mutableStateOf<SessionSummary?>(null)
+        private set
+
+    var focusShieldEnabled by mutableStateOf(focusShieldManager.isEnabled())
+        private set
+
+    var focusShieldHasAccess by mutableStateOf(focusShieldManager.hasPolicyAccess())
+        private set
+
+    var isFocusShieldActive by mutableStateOf(false)
         private set
 
     init {
@@ -138,7 +149,11 @@ class BattleViewModel(
 
     private fun restoreSavedFocusSession() {
         viewModelScope.launch {
-            val savedSnapshot = focusSessionStore.read() ?: return@launch
+            val savedSnapshot = focusSessionStore.read() ?: run {
+                focusShieldManager.reconcile(sessionActive = false, sessionPaused = false)
+                refreshFocusShieldState()
+                return@launch
+            }
             val restoredSnapshot = reconcileFocusSession(savedSnapshot, clock())
 
             if (restoredSnapshot.bossId != null) {
@@ -304,6 +319,8 @@ class BattleViewModel(
         }
         val pausedAtMillis = clock()
         isBattlePaused = true
+        focusShieldManager.restorePreviousFilter()
+        refreshFocusShieldState()
         timerJob?.cancel()
         viewModelScope.launch {
             advanceSessionClock(pausedAtMillis, forceBossSync = true)
@@ -334,6 +351,11 @@ class BattleViewModel(
             battleTimeLeftSeconds = current.timeLeftSeconds
             battleTimeSpentSeconds = current.timeSpentSeconds
             lastTickTimeMillis = current.lastTickTimeMillis
+            focusShieldManager.reconcile(
+                sessionActive = true,
+                sessionPaused = current.isPaused,
+            )
+            refreshFocusShieldState()
             if (activeBoss != null && current != saved) {
                 saveIncrementalBossProgress()
             }
@@ -359,6 +381,8 @@ class BattleViewModel(
     private fun startTimer() {
         timerJob?.cancel()
         lastTickTimeMillis = clock()
+        focusShieldManager.reconcile(sessionActive = true, sessionPaused = false)
+        refreshFocusShieldState()
         FocusSessionNotifier.cancelCompleted(context)
         publishFocusSessionState()
         timerJob = viewModelScope.launch {
@@ -556,6 +580,7 @@ class BattleViewModel(
     }
 
     private fun resetActiveSession() {
+        focusShieldManager.restorePreviousFilter()
         activeBoss = null
         isBattleActive = false
         isBattlePaused = false
@@ -569,7 +594,31 @@ class BattleViewModel(
         battleTimeSpentSeconds = 0L
         initialBossTimeSpent = 0L
         lastTickTimeMillis = 0L
+        refreshFocusShieldState()
         clearFocusSessionState()
+    }
+
+    fun updateFocusShieldEnabled(enabled: Boolean) {
+        focusShieldManager.setEnabled(
+            enabled = enabled,
+            sessionActive = isBattleActive,
+            sessionPaused = isBattlePaused,
+        )
+        refreshFocusShieldState()
+    }
+
+    fun refreshFocusShield() {
+        focusShieldManager.reconcile(
+            sessionActive = isBattleActive,
+            sessionPaused = isBattlePaused,
+        )
+        refreshFocusShieldState()
+    }
+
+    private fun refreshFocusShieldState() {
+        focusShieldEnabled = focusShieldManager.isEnabled()
+        focusShieldHasAccess = focusShieldManager.hasPolicyAccess()
+        isFocusShieldActive = isBattleActive && !isBattlePaused && focusShieldManager.isActive()
     }
 
     suspend fun suspendCurrentSession(applyHeavyPenalty: Boolean = false) {

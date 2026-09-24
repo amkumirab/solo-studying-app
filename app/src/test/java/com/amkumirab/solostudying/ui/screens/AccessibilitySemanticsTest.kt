@@ -156,6 +156,8 @@ class AccessibilitySemanticsTest {
     @Test
     fun `system controls expose labels states and minimum touch targets`() {
         var breakSuggestionsUpdate: Boolean? = null
+        var focusShieldUpdate: Boolean? = null
+        var permissionRequests = 0
         composeRule.setContent {
             MaterialTheme {
                 LazyColumn {
@@ -168,6 +170,10 @@ class AccessibilitySemanticsTest {
                             onReplayTutorial = {},
                             breakSuggestionsEnabled = false,
                             onBreakSuggestionsEnabledChange = { breakSuggestionsUpdate = it },
+                            focusShieldEnabled = true,
+                            focusShieldHasAccess = false,
+                            onFocusShieldEnabledChange = { focusShieldUpdate = it },
+                            onRequestFocusShieldAccess = { permissionRequests++ },
                         )
                     }
                 }
@@ -221,6 +227,26 @@ class AccessibilitySemanticsTest {
             .assertHeightIsAtLeast(48.dp)
             .performClick()
         composeRule.runOnIdle { assertEquals(true, breakSuggestionsUpdate) }
+
+        composeRule.onNodeWithTag("focus_shield_switch")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Focus Shield")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "On, permission required",
+                ),
+            )
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle { assertEquals(false, focusShieldUpdate) }
+
+        composeRule.onNodeWithTag("focus_shield_permission_button")
+            .performScrollTo()
+            .assertContentDescriptionEquals("Grant Do Not Disturb access")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.runOnIdle { assertEquals(1, permissionRequests) }
     }
 
     @Test

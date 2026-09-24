@@ -66,6 +66,9 @@ class SoloStudyingViewModel(
     val showBreakComplete: Boolean get() = breakViewModel.showBreakComplete
     val breakSuggestionsEnabled: Boolean get() = breakViewModel.breakSuggestionsEnabled
     val focusCycleState get() = focusCycleViewModel.state
+    val focusShieldEnabled: Boolean get() = battleViewModel.focusShieldEnabled
+    val focusShieldHasAccess: Boolean get() = battleViewModel.focusShieldHasAccess
+    val isFocusShieldActive: Boolean get() = battleViewModel.isFocusShieldActive
 
     var selectedSkillToTrain: SkillEntity?
         get() = battleViewModel.selectedSkillToTrain
@@ -280,6 +283,14 @@ class SoloStudyingViewModel(
 
     fun syncFocusSessionTime() {
         battleViewModel.syncFocusSessionTime()
+    }
+
+    fun setFocusShieldEnabled(enabled: Boolean) {
+        battleViewModel.updateFocusShieldEnabled(enabled)
+    }
+
+    fun refreshFocusShield() {
+        battleViewModel.refreshFocusShield()
     }
 
     fun abandonActiveBoss(applyHeavyPenalty: Boolean = true) {

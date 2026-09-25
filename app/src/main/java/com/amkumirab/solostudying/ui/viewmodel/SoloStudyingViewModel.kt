@@ -69,6 +69,9 @@ class SoloStudyingViewModel(
     val focusShieldEnabled: Boolean get() = battleViewModel.focusShieldEnabled
     val focusShieldHasAccess: Boolean get() = battleViewModel.focusShieldHasAccess
     val isFocusShieldActive: Boolean get() = battleViewModel.isFocusShieldActive
+    val strictFocusRequested: Boolean get() = battleViewModel.strictFocusRequested
+    val isStrictFocusPinned: Boolean get() = battleViewModel.isStrictFocusPinned
+    val strictFocusOwnsPinning: Boolean get() = battleViewModel.strictFocusOwnsPinning
 
     var selectedSkillToTrain: SkillEntity?
         get() = battleViewModel.selectedSkillToTrain
@@ -291,6 +294,26 @@ class SoloStudyingViewModel(
 
     fun refreshFocusShield() {
         battleViewModel.refreshFocusShield()
+    }
+
+    fun requestStrictFocus() {
+        battleViewModel.requestStrictFocus()
+    }
+
+    fun clearStrictFocusRequest() {
+        battleViewModel.clearStrictFocusRequest()
+    }
+
+    fun updateStrictFocusPinningState(isPinned: Boolean) {
+        battleViewModel.updateStrictFocusPinningState(isPinned)
+    }
+
+    fun markStrictFocusStartAttempted() {
+        battleViewModel.markStrictFocusStartAttempted()
+    }
+
+    fun markStrictFocusReleased() {
+        battleViewModel.markStrictFocusReleased()
     }
 
     fun abandonActiveBoss(applyHeavyPenalty: Boolean = true) {

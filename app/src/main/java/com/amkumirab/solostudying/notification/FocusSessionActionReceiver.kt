@@ -6,6 +6,7 @@ import android.content.Intent
 import com.amkumirab.solostudying.focus.FocusSessionControlAction
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.FocusShieldManager
+import com.amkumirab.solostudying.focus.StrictFocusStore
 import com.amkumirab.solostudying.focus.applyFocusSessionControl
 import com.amkumirab.solostudying.focus.displayTitle
 import com.amkumirab.solostudying.focus.reconcileFocusSession
@@ -17,6 +18,7 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
         val store = FocusSessionStore(context)
         val focusShield = FocusShieldManager(context)
         val saved = store.read() ?: run {
+            StrictFocusStore(context).setRequested(false)
             focusShield.restorePreviousFilter()
             FocusSessionNotifier.cancelActive(context)
             FocusSessionNotifier.cancelCompletionAlarm(context)
@@ -32,6 +34,7 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
                     nowMillis = nowMillis,
                 )
                 store.write(updated)
+                StrictFocusStore(context).setRequested(false)
                 focusShield.restorePreviousFilter()
                 FocusSessionNotifier.cancelCompletionAlarm(context)
                 if (updated.timeLeftSeconds > 0L) {
@@ -59,6 +62,7 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
                 val updated = reconcileFocusSession(saved, nowMillis)
                 store.write(updated)
                 if (updated.timeLeftSeconds <= 0L) {
+                    StrictFocusStore(context).setRequested(false)
                     focusShield.restorePreviousFilter()
                     FocusSessionNotifier.showCompleted(context, updated.displayTitle())
                 } else {

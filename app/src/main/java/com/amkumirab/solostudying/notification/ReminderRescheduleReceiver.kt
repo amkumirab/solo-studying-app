@@ -6,6 +6,7 @@ import android.content.Intent
 import com.amkumirab.solostudying.breaks.BreakSessionStore
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.FocusShieldManager
+import com.amkumirab.solostudying.focus.StrictFocusStore
 import com.amkumirab.solostudying.focus.displayTitle
 import com.amkumirab.solostudying.focus.reconcileFocusSession
 
@@ -26,15 +27,20 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
             val focusStore = FocusSessionStore(applicationContext)
             val savedFocus = focusStore.read()
             if (savedFocus == null) {
+                StrictFocusStore(applicationContext).setRequested(false)
                 FocusShieldManager(applicationContext).restorePreviousFilter()
             } else {
                 val saved = savedFocus
                 val current = reconcileFocusSession(saved, System.currentTimeMillis())
                 focusStore.write(current)
                 if (current.timeLeftSeconds <= 0L) {
+                    StrictFocusStore(applicationContext).setRequested(false)
                     FocusShieldManager(applicationContext).restorePreviousFilter()
                     FocusSessionNotifier.showCompleted(applicationContext, current.displayTitle())
                 } else {
+                    if (current.isPaused) {
+                        StrictFocusStore(applicationContext).setRequested(false)
+                    }
                     FocusShieldManager(applicationContext).reconcile(
                         sessionActive = true,
                         sessionPaused = current.isPaused,

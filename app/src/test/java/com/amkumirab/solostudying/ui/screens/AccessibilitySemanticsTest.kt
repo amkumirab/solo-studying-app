@@ -154,6 +154,38 @@ class AccessibilitySemanticsTest {
     }
 
     @Test
+    fun `strict focus requires confirmation and exposes its active state`() {
+        var enableRequests = 0
+        val requested = mutableStateOf(false)
+        val pinned = mutableStateOf(false)
+        composeRule.setContent {
+            MaterialTheme {
+                StrictFocusControl(
+                    isPaused = false,
+                    isRequested = requested.value,
+                    isPinned = pinned.value,
+                    onEnable = {
+                        enableRequests++
+                        requested.value = true
+                    },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("enable_strict_focus_button")
+            .assertContentDescriptionEquals("Enable Strict Focus for this session")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.onNodeWithText("LOCK INTO THIS SESSION?").assertExists()
+        composeRule.onNodeWithTag("confirm_strict_focus_button").performClick()
+        composeRule.runOnIdle {
+            assertEquals(1, enableRequests)
+            pinned.value = true
+        }
+        composeRule.onNodeWithText("STRICT FOCUS ACTIVE").assertExists()
+    }
+
+    @Test
     fun `system controls expose labels states and minimum touch targets`() {
         var breakSuggestionsUpdate: Boolean? = null
         var focusShieldUpdate: Boolean? = null

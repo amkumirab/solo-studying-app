@@ -16,6 +16,7 @@ import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.FocusShieldManager
+import com.amkumirab.solostudying.focus.StrictFocusStore
 import com.amkumirab.solostudying.focus.reconcileFocusSession
 import com.amkumirab.solostudying.notification.FocusSessionActionEvents
 import com.amkumirab.solostudying.notification.FocusSessionNotifier
@@ -35,6 +36,7 @@ class BattleViewModel(
     private val context: Context,
     private val focusSessionStore: FocusSessionStore = FocusSessionStore(context),
     private val focusShieldManager: FocusShieldManager = FocusShieldManager(context),
+    private val strictFocusStore: StrictFocusStore = StrictFocusStore(context),
     private val onSessionFinished: (SessionSummary) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
@@ -94,6 +96,15 @@ class BattleViewModel(
     var isFocusShieldActive by mutableStateOf(false)
         private set
 
+    var strictFocusRequested by mutableStateOf(strictFocusStore.isRequested())
+        private set
+
+    var isStrictFocusPinned by mutableStateOf(false)
+        private set
+
+    var strictFocusOwnsPinning by mutableStateOf(strictFocusStore.ownsPinning())
+        private set
+
     init {
         restoreSavedFocusSession()
         viewModelScope.launch {
@@ -150,6 +161,7 @@ class BattleViewModel(
     private fun restoreSavedFocusSession() {
         viewModelScope.launch {
             val savedSnapshot = focusSessionStore.read() ?: run {
+                clearStrictFocusRequest()
                 focusShieldManager.reconcile(sessionActive = false, sessionPaused = false)
                 refreshFocusShieldState()
                 return@launch
@@ -312,6 +324,7 @@ class BattleViewModel(
 
     fun pauseBattle(onPaused: () -> Unit = {}) {
         if (!isBattleActive) return
+        clearStrictFocusRequest()
         if (isBattlePaused) {
             publishFocusSessionState()
             onPaused()
@@ -347,6 +360,7 @@ class BattleViewModel(
         viewModelScope.launch {
             val saved = focusSessionStore.read() ?: return@launch
             val current = reconcileFocusSession(saved, clock())
+            strictFocusRequested = strictFocusStore.isRequested()
             isBattlePaused = current.isPaused
             battleTimeLeftSeconds = current.timeLeftSeconds
             battleTimeSpentSeconds = current.timeSpentSeconds
@@ -580,6 +594,7 @@ class BattleViewModel(
     }
 
     private fun resetActiveSession() {
+        clearStrictFocusRequest()
         focusShieldManager.restorePreviousFilter()
         activeBoss = null
         isBattleActive = false
@@ -619,6 +634,36 @@ class BattleViewModel(
         focusShieldEnabled = focusShieldManager.isEnabled()
         focusShieldHasAccess = focusShieldManager.hasPolicyAccess()
         isFocusShieldActive = isBattleActive && !isBattlePaused && focusShieldManager.isActive()
+    }
+
+    fun requestStrictFocus() {
+        if (!isBattleActive || isBattlePaused) return
+        strictFocusStore.setRequested(true)
+        strictFocusRequested = true
+    }
+
+    fun clearStrictFocusRequest() {
+        strictFocusStore.setRequested(false)
+        strictFocusRequested = false
+    }
+
+    fun markStrictFocusStartAttempted() {
+        strictFocusStore.setOwnsPinning(true)
+        strictFocusOwnsPinning = true
+    }
+
+    fun markStrictFocusReleased() {
+        strictFocusStore.setOwnsPinning(false)
+        strictFocusOwnsPinning = false
+        isStrictFocusPinned = false
+    }
+
+    fun updateStrictFocusPinningState(isPinned: Boolean) {
+        isStrictFocusPinned = isPinned
+        if (!isPinned && (strictFocusRequested || strictFocusOwnsPinning)) {
+            clearStrictFocusRequest()
+            markStrictFocusReleased()
+        }
     }
 
     suspend fun suspendCurrentSession(applyHeavyPenalty: Boolean = false) {

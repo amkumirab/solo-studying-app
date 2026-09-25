@@ -70,6 +70,7 @@ import com.amkumirab.solostudying.domain.streak.buildWeeklyStreakSnapshot
 import com.amkumirab.solostudying.domain.today.TodayPlanItemType
 import com.amkumirab.solostudying.domain.today.buildTodayPlan
 import com.amkumirab.solostudying.focuscycle.FocusCyclePhase
+import com.amkumirab.solostudying.focus.StrictFocusPinning
 import com.amkumirab.solostudying.notification.NotificationReceiver
 import com.amkumirab.solostudying.notification.ReminderSchedule
 import com.amkumirab.solostudying.notification.ReminderSettings
@@ -162,6 +163,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     }
 
     FocusSessionLifecycleEffect(viewModel = viewModel)
+    StrictFocusPinningEffect(activity = activity, viewModel = viewModel)
 
     LaunchedEffect(viewModel.isBattleActive) {
         if (viewModel.isBattleActive && prepBoss == null && prepFreeStudyMins == null) {
@@ -704,6 +706,7 @@ private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
     DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.updateStrictFocusPinningState(StrictFocusPinning.isPinned(context))
                 viewModel.syncFocusSessionTime()
                 viewModel.refreshFocusShield()
                 viewModel.syncBreakTime()
@@ -715,6 +718,36 @@ private fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+}
+
+@Composable
+private fun StrictFocusPinningEffect(
+    activity: Activity?,
+    viewModel: SoloStudyingViewModel,
+) {
+    val shouldPin = viewModel.strictFocusRequested &&
+        viewModel.isBattleActive &&
+        !viewModel.isBattlePaused
+
+    LaunchedEffect(activity, shouldPin) {
+        val hostActivity = activity ?: return@LaunchedEffect
+        if (shouldPin) {
+            if (StrictFocusPinning.start(hostActivity)) {
+                viewModel.markStrictFocusStartAttempted()
+                if (StrictFocusPinning.isPinned(hostActivity)) {
+                    viewModel.updateStrictFocusPinningState(true)
+                }
+            }
+        } else if (viewModel.strictFocusOwnsPinning) {
+            val stopped = StrictFocusPinning.stop(hostActivity)
+            val remainsPinned = StrictFocusPinning.isPinned(hostActivity)
+            if (stopped && !remainsPinned) {
+                viewModel.markStrictFocusReleased()
+            } else {
+                viewModel.updateStrictFocusPinningState(remainsPinned)
+            }
         }
     }
 }
@@ -2331,6 +2364,15 @@ fun BattleTab(
 
             // Real Interactive Controls
             item {
+                StrictFocusControl(
+                    isPaused = viewModel.isBattlePaused,
+                    isRequested = viewModel.strictFocusRequested,
+                    isPinned = viewModel.isStrictFocusPinned,
+                    onEnable = viewModel::requestStrictFocus,
+                )
+            }
+
+            item {
                 BattleActionControls(
                     isPaused = viewModel.isBattlePaused,
                     isFreeStudy = isFreeStudy,
@@ -2389,6 +2431,108 @@ fun BattleTab(
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun StrictFocusControl(
+    isPaused: Boolean,
+    isRequested: Boolean,
+    isPinned: Boolean,
+    onEnable: () -> Unit,
+) {
+    var showConfirmation by remember { mutableStateOf(false) }
+
+    if (isRequested) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("strict_focus_status"),
+            colors = CardDefaults.cardColors(containerColor = RpgEmerald.copy(alpha = 0.1f)),
+            border = BorderStroke(1.dp, RpgEmerald.copy(alpha = 0.75f)),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = RpgEmerald,
+                )
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = if (isPinned) "STRICT FOCUS ACTIVE" else "CONFIRM SCREEN PINNING",
+                        color = RpgEmerald,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        text = if (isPinned) {
+                            "This study session is pinned. Pausing or finishing will release it."
+                        } else {
+                            "Complete the Android confirmation to lock into this session."
+                        },
+                        color = TextMuted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+    } else if (!isPaused) {
+        OutlinedButton(
+            onClick = { showConfirmation = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 50.dp)
+                .testTag("enable_strict_focus_button")
+                .semantics {
+                    contentDescription = "Enable Strict Focus for this session"
+                },
+            border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.75f)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = RpgGold),
+            shape = RoundedCornerShape(10.dp),
+        ) {
+            Icon(Icons.Default.Lock, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("ENABLE STRICT FOCUS", fontWeight = FontWeight.Black)
+        }
+    }
+
+    if (showConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showConfirmation = false },
+            icon = { Icon(Icons.Default.Lock, contentDescription = null, tint = RpgGold) },
+            title = { Text("LOCK INTO THIS SESSION?", color = TextWhite, fontWeight = FontWeight.Black) },
+            text = {
+                Text(
+                    "Android will pin Solo Studying to the screen so accidental Home and Recent Apps actions cannot interrupt this session. You can still use Android's emergency unpin gesture, and pausing or ending the session releases the lock.",
+                    color = TextMuted,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmation = false
+                        onEnable()
+                    },
+                    modifier = Modifier.testTag("confirm_strict_focus_button"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = RpgGold,
+                        contentColor = Color.Black,
+                    ),
+                ) {
+                    Text("CONTINUE", fontWeight = FontWeight.Black)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmation = false }) {
+                    Text("NOT NOW", color = TextMuted)
+                }
+            },
+            containerColor = DarkFantasySurface,
+        )
     }
 }
 

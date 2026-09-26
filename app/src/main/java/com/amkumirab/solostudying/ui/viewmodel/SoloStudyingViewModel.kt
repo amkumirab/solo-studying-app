@@ -10,6 +10,8 @@ import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.domain.session.SessionSummary
 import com.amkumirab.solostudying.focuscycle.FocusCyclePlan
+import com.amkumirab.solostudying.focusprofile.FocusProfile
+import com.amkumirab.solostudying.focusprofile.FocusProfileType
 import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.domain.quest.RecurringQuestSchedule
 
@@ -23,6 +25,7 @@ class SoloStudyingViewModel(
     val breakViewModel: BreakViewModel,
     val dailyQuestViewModel: DailyQuestViewModel,
     val focusCycleViewModel: FocusCycleViewModel,
+    val focusProfileViewModel: FocusProfileViewModel,
 ) : ViewModel() {
 
     var focusNavigationRequest by mutableIntStateOf(0)
@@ -48,6 +51,7 @@ class SoloStudyingViewModel(
     val dailyQuests = dailyQuestViewModel.todayQuests
     val allDailyQuests = dailyQuestViewModel.allQuests
     val recurringQuests = dailyQuestViewModel.recurringQuests
+    val focusProfiles get() = focusProfileViewModel.profiles
 
     // --- Active Timer State Delegation ---
     val activeBoss: BossEntity? get() = battleViewModel.activeBoss
@@ -171,7 +175,12 @@ class SoloStudyingViewModel(
 
     fun startFocusCycle(plan: FocusCyclePlan) {
         focusCycleViewModel.start(plan)
-        battleViewModel.selectAndStartQuickFocus(plan.focusMinutes, plan.skillId)
+        battleViewModel.selectAndStartQuickFocus(
+            minutes = plan.focusMinutes,
+            skillId = plan.skillId,
+            useFocusShield = plan.useFocusShield,
+            useStrictFocus = plan.useStrictFocus,
+        )
     }
 
     fun startCycleBreak() {
@@ -181,12 +190,69 @@ class SoloStudyingViewModel(
     fun startNextCycleRound() {
         val plan = focusCycleViewModel.startNextRound() ?: return
         breakViewModel.dismissBreakComplete()
-        battleViewModel.selectAndStartQuickFocus(plan.focusMinutes, plan.skillId)
+        battleViewModel.selectAndStartQuickFocus(
+            minutes = plan.focusMinutes,
+            skillId = plan.skillId,
+            useFocusShield = plan.useFocusShield,
+            useStrictFocus = plan.useStrictFocus,
+        )
     }
 
     fun cancelFocusCycle() {
         focusCycleViewModel.cancel()
         breakViewModel.dismissBreakComplete()
+    }
+
+    fun saveFocusProfile(
+        existingId: String?,
+        name: String,
+        type: FocusProfileType,
+        focusMinutes: Int,
+        breakMinutes: Int,
+        rounds: Int,
+        skillId: Int?,
+        useFocusShield: Boolean,
+        useStrictFocus: Boolean,
+    ) {
+        focusProfileViewModel.save(
+            existingId = existingId,
+            name = name,
+            type = type,
+            focusMinutes = focusMinutes,
+            breakMinutes = breakMinutes,
+            rounds = rounds,
+            skillId = skillId,
+            useFocusShield = useFocusShield,
+            useStrictFocus = useStrictFocus,
+        )
+    }
+
+    fun deleteFocusProfile(profile: FocusProfile) {
+        focusProfileViewModel.delete(profile)
+    }
+
+    fun startFocusProfile(profile: FocusProfile, validSkillIds: Set<Int>) {
+        val skillId = profile.skillId?.takeIf(validSkillIds::contains)
+        focusProfileViewModel.markUsed(profile)
+        if (profile.type == FocusProfileType.CYCLE) {
+            startFocusCycle(
+                FocusCyclePlan(
+                    focusMinutes = profile.focusMinutes,
+                    breakMinutes = profile.breakMinutes,
+                    totalRounds = profile.rounds,
+                    skillId = skillId,
+                    useFocusShield = profile.useFocusShield,
+                    useStrictFocus = profile.useStrictFocus,
+                ),
+            )
+        } else {
+            battleViewModel.selectAndStartQuickFocus(
+                minutes = profile.focusMinutes,
+                skillId = skillId,
+                useFocusShield = profile.useFocusShield,
+                useStrictFocus = profile.useStrictFocus,
+            )
+        }
     }
 
     fun skipBreak() {
@@ -442,6 +508,7 @@ class SoloStudyingViewModelFactory(
             val statusVM = StatusViewModel(repository, context)
             val dungeonVM = DungeonViewModel(repository, context)
             val focusCycleVM = FocusCycleViewModel(context)
+            val focusProfileVM = FocusProfileViewModel(context)
             val battleVM = BattleViewModel(
                 repository = repository,
                 context = context,
@@ -463,6 +530,7 @@ class SoloStudyingViewModelFactory(
                 breakVM,
                 dailyQuestVM,
                 focusCycleVM,
+                focusProfileVM,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

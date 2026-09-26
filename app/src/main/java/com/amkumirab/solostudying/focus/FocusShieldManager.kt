@@ -34,22 +34,28 @@ class FocusShieldManager(
 
     fun isEnabled(): Boolean = preferences.getBoolean(KEY_ENABLED, false)
 
+    fun isSessionOverrideEnabled(): Boolean = preferences.getBoolean(KEY_SESSION_OVERRIDE, false)
+
     fun hasPolicyAccess(): Boolean = controller.hasPolicyAccess()
 
-    fun isActive(): Boolean = isEnabled() && hasPolicyAccess() &&
+    fun isActive(): Boolean = shouldShield() && hasPolicyAccess() &&
         controller.currentFilter() != NotificationManager.INTERRUPTION_FILTER_ALL
+
+    fun setSessionOverride(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_SESSION_OVERRIDE, enabled) }
+    }
 
     fun setEnabled(enabled: Boolean, sessionActive: Boolean, sessionPaused: Boolean) {
         preferences.edit { putBoolean(KEY_ENABLED, enabled) }
         if (enabled && sessionActive && !sessionPaused) {
             activate()
-        } else if (!enabled) {
+        } else if (!enabled && !isSessionOverrideEnabled()) {
             restorePreviousFilter()
         }
     }
 
     fun reconcile(sessionActive: Boolean, sessionPaused: Boolean) {
-        if (isEnabled() && sessionActive && !sessionPaused) {
+        if (shouldShield() && sessionActive && !sessionPaused) {
             activate()
         } else {
             restorePreviousFilter()
@@ -57,7 +63,7 @@ class FocusShieldManager(
     }
 
     fun activate() {
-        if (!isEnabled() || !hasPolicyAccess() || ownsCurrentFilter()) return
+        if (!shouldShield() || !hasPolicyAccess() || ownsCurrentFilter()) return
         val currentFilter = controller.currentFilter()
         if (currentFilter != NotificationManager.INTERRUPTION_FILTER_ALL) return
 
@@ -105,10 +111,13 @@ class FocusShieldManager(
         NotificationManager.INTERRUPTION_FILTER_ALARMS,
     )
 
+    private fun shouldShield(): Boolean = isEnabled() || isSessionOverrideEnabled()
+
     companion object {
         const val PREFERENCES_NAME = "solo_studying_focus_shield"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_OWNS_FILTER = "owns_filter"
         private const val KEY_PREVIOUS_FILTER = "previous_filter"
+        private const val KEY_SESSION_OVERRIDE = "session_override"
     }
 }

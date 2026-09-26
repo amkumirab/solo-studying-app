@@ -31,7 +31,14 @@ class FocusCycleViewModelTest {
     @Test
     fun `completed rounds move through break and restore from storage`() {
         val viewModel = FocusCycleViewModel(context)
-        val plan = FocusCyclePlan(focusMinutes = 25, breakMinutes = 5, totalRounds = 2, skillId = 7)
+        val plan = FocusCyclePlan(
+            focusMinutes = 25,
+            breakMinutes = 5,
+            totalRounds = 2,
+            skillId = 7,
+            useFocusShield = true,
+            useStrictFocus = true,
+        )
 
         viewModel.start(plan)
         viewModel.onSessionFinished(summary(id = 10, durationSeconds = 1_500))

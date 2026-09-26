@@ -28,14 +28,20 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
             val savedFocus = focusStore.read()
             if (savedFocus == null) {
                 StrictFocusStore(applicationContext).setRequested(false)
-                FocusShieldManager(applicationContext).restorePreviousFilter()
+                FocusShieldManager(applicationContext).apply {
+                    restorePreviousFilter()
+                    setSessionOverride(false)
+                }
             } else {
                 val saved = savedFocus
                 val current = reconcileFocusSession(saved, System.currentTimeMillis())
                 focusStore.write(current)
                 if (current.timeLeftSeconds <= 0L) {
                     StrictFocusStore(applicationContext).setRequested(false)
-                    FocusShieldManager(applicationContext).restorePreviousFilter()
+                    FocusShieldManager(applicationContext).apply {
+                        restorePreviousFilter()
+                        setSessionOverride(false)
+                    }
                     FocusSessionNotifier.showCompleted(applicationContext, current.displayTitle())
                 } else {
                     if (current.isPaused) {

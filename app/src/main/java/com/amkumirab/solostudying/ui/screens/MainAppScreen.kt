@@ -1201,6 +1201,26 @@ fun DungeonTab(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        FocusProfilesCard(
+            profiles = viewModel.focusProfiles,
+            skills = skills,
+            isSessionActive = isBattleActive,
+            focusShieldHasAccess = viewModel.focusShieldHasAccess,
+            onStart = { profileToStart ->
+                if (!viewModel.isBattleActive) {
+                    viewModel.startFocusProfile(
+                        profile = profileToStart,
+                        validSkillIds = skills.mapTo(mutableSetOf()) { it.id },
+                    )
+                    onDailyQuestStarted()
+                }
+            },
+            onSave = viewModel::saveFocusProfile,
+            onDelete = viewModel::deleteFocusProfile,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         DeadlineGoalsCard(
             bosses = bosses,
             scheduleDays = profile?.scheduleDays.orEmpty(),

@@ -163,6 +163,7 @@ class BattleViewModel(
             val savedSnapshot = focusSessionStore.read() ?: run {
                 clearStrictFocusRequest()
                 focusShieldManager.reconcile(sessionActive = false, sessionPaused = false)
+                focusShieldManager.setSessionOverride(false)
                 refreshFocusShieldState()
                 return@launch
             }
@@ -274,13 +275,20 @@ class BattleViewModel(
         }
     }
 
-    fun selectAndStartQuickFocus(minutes: Int, skillId: Int?) {
+    fun selectAndStartQuickFocus(
+        minutes: Int,
+        skillId: Int?,
+        useFocusShield: Boolean = false,
+        useStrictFocus: Boolean = false,
+    ) {
         viewModelScope.launch {
             beginFreeStudy(
                 minutes = minutes,
                 skillId = skillId,
                 dailyQuestId = null,
                 dailyQuestTitle = null,
+                useFocusShield = useFocusShield,
+                useStrictFocus = useStrictFocus,
             )
         }
     }
@@ -301,6 +309,8 @@ class BattleViewModel(
         skillId: Int?,
         dailyQuestId: Int?,
         dailyQuestTitle: String?,
+        useFocusShield: Boolean = false,
+        useStrictFocus: Boolean = false,
     ) {
         require(minutes in 1..480) { "Study duration must be between 1 and 480 minutes" }
         if (isBattleActive) {
@@ -315,9 +325,12 @@ class BattleViewModel(
         battleTimeLeftSeconds = minutes * 60L
         battleTimeSpentSeconds = 0L
         initialBossTimeSpent = 0L
+        focusShieldManager.setSessionOverride(useFocusShield)
         isFreeStudyActive = true
         isBattleActive = true
         isBattlePaused = false
+        strictFocusStore.setRequested(useStrictFocus)
+        strictFocusRequested = useStrictFocus
         startTimer()
         RpgSoundManager.playBeginBattleSound()
     }
@@ -596,6 +609,7 @@ class BattleViewModel(
     private fun resetActiveSession() {
         clearStrictFocusRequest()
         focusShieldManager.restorePreviousFilter()
+        focusShieldManager.setSessionOverride(false)
         activeBoss = null
         isBattleActive = false
         isBattlePaused = false

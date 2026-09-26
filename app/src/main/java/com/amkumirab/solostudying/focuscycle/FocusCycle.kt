@@ -8,6 +8,8 @@ data class FocusCyclePlan(
     val breakMinutes: Int,
     val totalRounds: Int,
     val skillId: Int? = null,
+    val useFocusShield: Boolean = false,
+    val useStrictFocus: Boolean = false,
 ) {
     init {
         require(focusMinutes in MIN_FOCUS_MINUTES..MAX_FOCUS_MINUTES)
@@ -62,6 +64,8 @@ class FocusCycleStore(context: Context) {
                     breakMinutes = preferences.getInt(KEY_BREAK_MINUTES, 5),
                     totalRounds = preferences.getInt(KEY_TOTAL_ROUNDS, 4),
                     skillId = preferences.getInt(KEY_SKILL_ID, NO_SKILL).takeUnless { it == NO_SKILL },
+                    useFocusShield = preferences.getBoolean(KEY_USE_FOCUS_SHIELD, false),
+                    useStrictFocus = preferences.getBoolean(KEY_USE_STRICT_FOCUS, false),
                 ),
                 currentRound = preferences.getInt(KEY_CURRENT_ROUND, 1),
                 completedRounds = preferences.getInt(KEY_COMPLETED_ROUNDS, 0),
@@ -85,6 +89,8 @@ class FocusCycleStore(context: Context) {
             putInt(KEY_BREAK_MINUTES, state.plan.breakMinutes)
             putInt(KEY_TOTAL_ROUNDS, state.plan.totalRounds)
             putInt(KEY_SKILL_ID, state.plan.skillId ?: NO_SKILL)
+            putBoolean(KEY_USE_FOCUS_SHIELD, state.plan.useFocusShield)
+            putBoolean(KEY_USE_STRICT_FOCUS, state.plan.useStrictFocus)
             putInt(KEY_CURRENT_ROUND, state.currentRound)
             putInt(KEY_COMPLETED_ROUNDS, state.completedRounds)
             putLong(KEY_FOCUSED_SECONDS, state.focusedSeconds)
@@ -108,5 +114,7 @@ class FocusCycleStore(context: Context) {
         private const val KEY_FOCUSED_SECONDS = "focused_seconds"
         private const val KEY_PHASE = "phase"
         private const val KEY_LAST_SESSION_ID = "last_session_id"
+        private const val KEY_USE_FOCUS_SHIELD = "use_focus_shield"
+        private const val KEY_USE_STRICT_FOCUS = "use_strict_focus"
     }
 }

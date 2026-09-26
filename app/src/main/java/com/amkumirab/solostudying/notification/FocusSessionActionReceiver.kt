@@ -20,6 +20,7 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
         val saved = store.read() ?: run {
             StrictFocusStore(context).setRequested(false)
             focusShield.restorePreviousFilter()
+            focusShield.setSessionOverride(false)
             FocusSessionNotifier.cancelActive(context)
             FocusSessionNotifier.cancelCompletionAlarm(context)
             return
@@ -64,6 +65,7 @@ class FocusSessionActionReceiver : BroadcastReceiver() {
                 if (updated.timeLeftSeconds <= 0L) {
                     StrictFocusStore(context).setRequested(false)
                     focusShield.restorePreviousFilter()
+                    focusShield.setSessionOverride(false)
                     FocusSessionNotifier.showCompleted(context, updated.displayTitle())
                 } else {
                     FocusSessionNotifier.show(context, updated)

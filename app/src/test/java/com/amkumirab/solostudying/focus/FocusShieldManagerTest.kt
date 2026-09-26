@@ -99,6 +99,26 @@ class FocusShieldManagerTest {
         assertFalse(manager.ownsCurrentFilter())
     }
 
+    @Test
+    fun `session override enables shield without changing global preference`() {
+        val controller = FakeController()
+        val manager = FocusShieldManager(context, controller)
+
+        manager.setSessionOverride(true)
+        manager.reconcile(sessionActive = true, sessionPaused = false)
+
+        assertFalse(manager.isEnabled())
+        assertTrue(manager.isSessionOverrideEnabled())
+        assertTrue(manager.isActive())
+        assertEquals(NotificationManager.INTERRUPTION_FILTER_PRIORITY, controller.filter)
+
+        manager.restorePreviousFilter()
+        manager.setSessionOverride(false)
+
+        assertFalse(manager.isSessionOverrideEnabled())
+        assertEquals(NotificationManager.INTERRUPTION_FILTER_ALL, controller.filter)
+    }
+
     private class FakeController(
         var hasAccess: Boolean = true,
         var filter: Int = NotificationManager.INTERRUPTION_FILTER_ALL,

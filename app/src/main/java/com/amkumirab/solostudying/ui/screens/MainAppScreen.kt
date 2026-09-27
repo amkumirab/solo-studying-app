@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +48,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.traversalIndex
@@ -95,6 +97,12 @@ enum class Tab(val title: String, val icon: ImageVector) {
     Battle("Battle", Icons.Default.Timer),
     Shop("Reward Shop", Icons.Default.LocalMall),
     Stats("Profile Stats", Icons.Default.Person)
+}
+
+internal enum class DungeonSection(val title: String, val subtitle: String, val icon: ImageVector) {
+    Today("Today", "Plan and finish today's study", Icons.Default.Today),
+    Focus("Focus", "Start a focused study session", Icons.Default.Bolt),
+    Goals("Goals", "Manage long-term challenges", Icons.Default.Flag),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -292,10 +300,6 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onConquerRealBoss = { boss ->
                             RpgSoundManager.playClickSound()
                             viewModel.conquerRealBossManual(boss)
-                        },
-                        onEnterFreeStudyClicked = {
-                            RpgSoundManager.playClickSound()
-                            showFreeStudyDialog = true
                         },
                         quickStartSelection = quickStartSelection,
                         onQuickStartSelectionChange = updateQuickStartSelection,
@@ -780,7 +784,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                     strokeWidth = 1.dp.toPx()
                 )
             }
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -790,18 +794,18 @@ fun RPGTopBar(profile: UserProfileEntity?) {
             // Profile Info with circular level icon
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
                         .background(
                             Brush.linearGradient(
                                 listOf(SurfaceInteractive, SurfaceSubtle)
                             )
                         )
-                        .border(2.dp, NeonBlueAccent, CircleShape),
+                        .border(1.5.dp, NeonBlueAccent, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -809,7 +813,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = FontWeight.Bold,
                             color = NeonBlueAccent,
-                            fontSize = 11.sp
+                            fontSize = 10.sp
                         )
                     )
                 }
@@ -820,8 +824,8 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
                             color = TextMuted,
-                            letterSpacing = 1.5.sp,
-                            fontSize = 10.sp
+                            letterSpacing = 1.2.sp,
+                            fontSize = 9.sp
                         )
                     )
                     Text(
@@ -829,7 +833,8 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = TextWhite,
-                            letterSpacing = 0.5.sp
+                            letterSpacing = 0.3.sp,
+                            fontSize = 16.sp,
                         )
                     )
                 }
@@ -838,7 +843,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
             // Streak & Gold Economy Indicators
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
                 if (nonNullProfile.currentStreak > 0) {
                     Row(
@@ -846,7 +851,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                             .clip(RoundedCornerShape(20.dp))
                             .background(RpgRuby.copy(alpha = 0.15f))
                             .border(1.dp, RpgRuby.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -854,7 +859,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                             imageVector = Icons.Default.LocalFireDepartment,
                             contentDescription = "Streak Fire",
                             tint = RpgRuby,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = "${nonNullProfile.currentStreak}D",
@@ -872,7 +877,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
                         .clip(RoundedCornerShape(20.dp))
                         .background(SurfaceSubtle)
                         .border(1.dp, StrongCardBorder, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
@@ -896,7 +901,7 @@ fun RPGTopBar(profile: UserProfileEntity?) {
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // XP Progression Bar
         Row(
@@ -952,6 +957,7 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
         containerColor = SurfaceElevated,
         tonalElevation = 0.dp,
         modifier = Modifier
+            .height(64.dp)
             .drawBehind {
                 drawLine(
                     color = NeonBlueAccent.copy(alpha = 0.25f),
@@ -986,13 +992,14 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
                         Icon(
                             imageVector = tab.icon,
                             contentDescription = null,
-                            tint = if (isSelected) NeonBlueAccent else TextSubtle
+                            tint = if (isSelected) NeonBlueAccent else TextSubtle,
+                            modifier = Modifier.size(20.dp),
                         )
                         if (tab == Tab.Battle && isBattleActive) {
                             // Flash a red indicator on battle tab when studying
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp)
+                                    .size(6.dp)
                                     .align(Alignment.TopEnd)
                                     .clip(CircleShape)
                                     .background(RpgRuby)
@@ -1006,7 +1013,7 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             color = if (isSelected) NeonBlueAccent else TextSubtle,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                         ),
                         maxLines = 1,
                     )
@@ -1041,7 +1048,6 @@ fun DungeonTab(
     onFightBoss: (BossEntity) -> Unit,
     onDeleteBoss: (BossEntity) -> Unit,
     onConquerRealBoss: (BossEntity) -> Unit,
-    onEnterFreeStudyClicked: () -> Unit,
     quickStartSelection: QuickStartSelection,
     onQuickStartSelectionChange: (QuickStartSelection) -> Unit,
     onQuickStart: (QuickStartSelection) -> Unit,
@@ -1052,6 +1058,7 @@ fun DungeonTab(
 ) {
     var selectedDungeonCategory by remember { mutableStateOf("All") }
     var stepsBoss by remember { mutableStateOf<BossEntity?>(null) }
+    var selectedSection by rememberSaveable { mutableStateOf(DungeonSection.Today) }
     val dailyQuests by viewModel.dailyQuests.collectAsState()
     val allDailyQuests by viewModel.allDailyQuests.collectAsState()
     val recurringQuests by viewModel.recurringQuests.collectAsState()
@@ -1085,7 +1092,7 @@ fun DungeonTab(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
             .verticalScroll(rememberScrollState())
     ) {
         Row(
@@ -1095,35 +1102,51 @@ fun DungeonTab(
         ) {
             Column {
                 Text(
-                    text = "Dungeons",
+                    text = "Study Hub",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = TextWhite
                     )
                 )
                 Text(
-                    text = "Slay your study obstacles",
+                    text = selectedSection.subtitle,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = TextMuted
                     )
                 )
             }
 
-            Button(
-                onClick = onCreateBossClicked,
-                colors = ButtonDefaults.buttonColors(containerColor = NeonBlueSecondary),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.testTag("create_boss_button")
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Boss icon", modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Summon Boss", fontWeight = FontWeight.Bold)
+            if (selectedSection == DungeonSection.Goals) {
+                FilledTonalButton(
+                    onClick = onCreateBossClicked,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = NeonBlueAccent.copy(alpha = 0.14f),
+                        contentColor = NeonBlueAccent,
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .heightIn(min = 44.dp)
+                        .testTag("create_boss_button"),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(17.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text("NEW GOAL", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
             }
         }
 
+        Spacer(modifier = Modifier.height(10.dp))
+
+        DungeonSectionTabs(
+            selectedSection = selectedSection,
+            onSelected = { selectedSection = it },
+        )
+
         Spacer(modifier = Modifier.height(12.dp))
 
-        todayPlan?.let { plan ->
+        if (selectedSection == DungeonSection.Today) {
+            todayPlan?.let { plan ->
             TodayDashboardCard(
                 plan = plan,
                 isSessionActive = isBattleActive,
@@ -1162,9 +1185,9 @@ fun DungeonTab(
                 },
             )
             Spacer(modifier = Modifier.height(12.dp))
-        }
+            }
 
-        DailyQuestBoard(
+            DailyQuestBoard(
             quests = dailyQuests,
             allQuests = allDailyQuests,
             recurringQuests = recurringQuests,
@@ -1185,11 +1208,12 @@ fun DungeonTab(
                     onDailyQuestStarted()
                 }
             },
-        )
+            )
+        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        if (selectedSection == DungeonSection.Focus) {
 
-        QuickStartCard(
+            QuickStartCard(
             skills = skills,
             selection = quickStartSelection,
             isSessionActive = isBattleActive,
@@ -1197,11 +1221,11 @@ fun DungeonTab(
             onStart = onQuickStart,
             onCustomDuration = onCustomQuickStart,
             onFocusCycles = onFocusCycles,
-        )
+            )
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        FocusProfilesCard(
+            FocusProfilesCard(
             profiles = viewModel.focusProfiles,
             skills = skills,
             isSessionActive = isBattleActive,
@@ -1217,19 +1241,20 @@ fun DungeonTab(
             },
             onSave = viewModel::saveFocusProfile,
             onDelete = viewModel::deleteFocusProfile,
-        )
+            )
+        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        if (selectedSection == DungeonSection.Goals) {
 
-        DeadlineGoalsCard(
+            DeadlineGoalsCard(
             bosses = bosses,
             scheduleDays = profile?.scheduleDays.orEmpty(),
             isSessionActive = isBattleActive,
             onCreateGoal = onCreateBossClicked,
             onStartGoal = onFightBoss,
-        )
+            )
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
         // System 7: RED DUNGEON (PENALTY SYSTEM) VISUAL STRESS INDICATOR
         val redDungeonDays = profile?.redDungeonDays ?: 0
@@ -1378,65 +1403,7 @@ fun DungeonTab(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Casually Entered Free Study Zone Portal banner/hub
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onEnterFreeStudyClicked() }
-                .padding(vertical = 6.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1E3A)),
-            border = BorderStroke(1.dp, NeonBlueAccent.copy(alpha = 0.6f))
-        ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(Color.Black),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Cyclone,
-                            contentDescription = "Astral vortex portal",
-                            tint = NeonBlueAccent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Column {
-                        Text(
-                            text = "ASTRAL PORTAL (FREE STUDY)",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Black,
-                                color = NeonBlueAccent,
-                                letterSpacing = 1.sp
-                            )
-                        )
-                        Text(
-                            text = "Study casually with custom timer focus.",
-                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                        )
-                    }
-                }
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Go portal",
-                    tint = NeonBlueAccent
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
         // Dungeon Categories/Folders Scrollable filters
         if (dungeonsList.size > 1) {
@@ -1479,11 +1446,11 @@ fun DungeonTab(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (filteredBosses.isEmpty()) {
+            if (filteredBosses.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
+                    .height(220.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(DarkFantasySurface)
                     .border(
@@ -1502,7 +1469,7 @@ fun DungeonTab(
                         imageVector = Icons.Default.Shield,
                         contentDescription = "Empty dungeons shield",
                         tint = NeonBlueAccent.copy(alpha = 0.3f),
-                        modifier = Modifier.size(64.dp)
+                        modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -1523,9 +1490,9 @@ fun DungeonTab(
                     )
                 }
             }
-        } else {
+            } else {
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 filteredBosses.forEach { boss ->
@@ -1540,6 +1507,7 @@ fun DungeonTab(
                         onManageSteps = { stepsBoss = boss },
                     )
                 }
+            }
             }
         }
     }
@@ -1562,6 +1530,58 @@ fun DungeonTab(
                 onStartBossStep(boss, step)
             },
         )
+    }
+}
+
+@Composable
+internal fun DungeonSectionTabs(
+    selectedSection: DungeonSection,
+    onSelected: (DungeonSection) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(SurfaceSubtle)
+            .border(1.dp, DarkCardBorder, RoundedCornerShape(12.dp))
+            .padding(4.dp)
+            .testTag("study_hub_sections"),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        DungeonSection.entries.forEach { section ->
+            val isSelected = section == selectedSection
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(if (isSelected) InfoContainer else Color.Transparent)
+                    .clickable { onSelected(section) }
+                    .testTag("study_hub_${section.name.lowercase()}")
+                    .semantics {
+                        selected = isSelected
+                        contentDescription = "${section.title} study hub section"
+                    }
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = section.icon,
+                    contentDescription = null,
+                    tint = if (isSelected) NeonBlueAccent else TextMuted,
+                    modifier = Modifier.size(17.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = section.title,
+                    color = if (isSelected) TextWhite else TextMuted,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -1599,7 +1619,7 @@ fun BossCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(115.dp)
+                    .height(100.dp)
                     .background(backgroundBrush)
             ) {
                 // Procedural overlay grid
@@ -1949,7 +1969,7 @@ fun BattleTab(
                     imageVector = Icons.Default.Timer,
                     tint = NeonBlueAccent.copy(alpha = 0.25f),
                     contentDescription = "Empty battle portrait",
-                    modifier = Modifier.size(80.dp)
+                    modifier = Modifier.size(56.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(

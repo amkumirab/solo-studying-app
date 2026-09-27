@@ -89,6 +89,30 @@ class AccessibilitySemanticsTest {
     }
 
     @Test
+    fun `study hub sections expose compact reachable navigation`() {
+        val selectedSection = mutableStateOf(DungeonSection.Today)
+        composeRule.setContent {
+            MaterialTheme {
+                DungeonSectionTabs(
+                    selectedSection = selectedSection.value,
+                    onSelected = { selectedSection.value = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("study_hub_today")
+            .assertContentDescriptionEquals("Today study hub section")
+            .assertIsSelected()
+            .assertHeightIsAtLeast(48.dp)
+        composeRule.onNodeWithTag("study_hub_focus")
+            .assertContentDescriptionEquals("Focus study hub section")
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+            .assertIsSelected()
+        composeRule.runOnIdle { assertEquals(DungeonSection.Focus, selectedSection.value) }
+    }
+
+    @Test
     fun `battle actions stay readable reachable and independent`() {
         var pauseClicks = 0
         var finishClicks = 0

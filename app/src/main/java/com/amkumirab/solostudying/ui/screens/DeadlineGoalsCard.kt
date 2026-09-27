@@ -81,9 +81,9 @@ internal fun DeadlineGoalsCard(
             .testTag("deadline_goal_planner"),
         colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
         border = BorderStroke(1.dp, if (plans.isEmpty()) DarkCardBorder else NeonBlueAccent.copy(alpha = 0.5f)),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -92,14 +92,14 @@ internal fun DeadlineGoalsCard(
                     imageVector = Icons.Default.CalendarMonth,
                     contentDescription = null,
                     tint = NeonBlueAccent,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "DEADLINE PLANNER",
                         color = TextWhite,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Black,
                     )
                     Text(
@@ -122,11 +122,11 @@ internal fun DeadlineGoalsCard(
                     onClick = onCreateGoal,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 44.dp)
                         .testTag("create_deadline_goal"),
                     border = BorderStroke(1.dp, NeonBlueAccent),
                 ) {
-                    Icon(Icons.Default.AddTask, contentDescription = null, tint = NeonBlueAccent)
+                    Icon(Icons.Default.AddTask, contentDescription = null, tint = NeonBlueAccent, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("ADD DEADLINE GOAL", color = NeonBlueAccent, fontWeight = FontWeight.Bold)
                 }
@@ -271,10 +271,10 @@ private fun DeadlineGoalRow(
                     disabledContentColor = TextMuted,
                 ),
                 modifier = Modifier
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 44.dp)
                     .testTag("start_deadline_goal_${plan.boss.id}"),
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("START", fontWeight = FontWeight.Black)
             }

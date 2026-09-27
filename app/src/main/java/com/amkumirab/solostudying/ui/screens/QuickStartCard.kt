@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -83,12 +82,12 @@ fun QuickStartCard(
             .testTag("quick_start_card")
             .semantics { isTraversalGroup = true },
         colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-        border = BorderStroke(1.5.dp, NeonBlueAccent.copy(alpha = 0.7f)),
-        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, NeonBlueAccent.copy(alpha = 0.55f)),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -100,7 +99,7 @@ fun QuickStartCard(
                         imageVector = Icons.Default.Bolt,
                         contentDescription = null,
                         tint = RpgGold,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
                     Column {
@@ -108,7 +107,8 @@ fun QuickStartCard(
                             text = "QUICK START",
                             color = TextWhite,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp,
+                            letterSpacing = 0.8.sp,
+                            fontSize = 14.sp,
                             modifier = Modifier.semantics { heading() },
                         )
                         Text(
@@ -118,7 +118,6 @@ fun QuickStartCard(
                         )
                     }
                 }
-                Icon(Icons.Default.Timer, contentDescription = null, tint = NeonBlueAccent)
             }
 
             Row(
@@ -132,7 +131,7 @@ fun QuickStartCard(
                     OutlinedButton(
                         onClick = { onSelectionChange(selection.copy(durationMinutes = minutes)) },
                         modifier = Modifier
-                            .heightIn(min = 48.dp)
+                            .heightIn(min = 44.dp)
                             .testTag("quick_start_duration_$minutes")
                             .semantics {
                                 selected = isSelected
@@ -155,7 +154,7 @@ fun QuickStartCard(
                 OutlinedButton(
                     onClick = onCustomDuration,
                     modifier = Modifier
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 44.dp)
                         .testTag("quick_start_custom"),
                     border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.75f)),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = RpgGold),
@@ -169,7 +168,7 @@ fun QuickStartCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 44.dp)
                         .background(Color(0xFF101521), RoundedCornerShape(10.dp))
                         .clickable { skillMenuExpanded = true }
                         .testTag("quick_start_skill_selector")
@@ -194,7 +193,12 @@ fun QuickStartCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Icon(Icons.Default.ExpandMore, contentDescription = null, tint = NeonBlueAccent)
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = NeonBlueAccent,
+                        modifier = Modifier.size(19.dp),
+                    )
                 }
 
                 DropdownMenu(
@@ -228,7 +232,7 @@ fun QuickStartCard(
                 enabled = !isSessionActive,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 52.dp)
+                    .heightIn(min = 48.dp)
                     .testTag("quick_start_button")
                     .semantics {
                         contentDescription = if (isSessionActive) {
@@ -243,7 +247,7 @@ fun QuickStartCard(
                 ),
                 shape = RoundedCornerShape(10.dp),
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = if (isSessionActive) "SESSION ACTIVE" else "START ${selection.durationMinutes} MIN FOCUS",
@@ -256,13 +260,13 @@ fun QuickStartCard(
                 enabled = !isSessionActive,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 44.dp)
                     .testTag("focus_cycles_button"),
                 border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.8f)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = RpgGold),
                 shape = RoundedCornerShape(10.dp),
             ) {
-                Icon(Icons.Default.Repeat, contentDescription = null)
+                Icon(Icons.Default.Repeat, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("FOCUS CYCLES", fontWeight = FontWeight.Black)
             }

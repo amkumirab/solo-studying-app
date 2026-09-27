@@ -56,12 +56,12 @@ fun FocusProfilesCard(
     Card(
         modifier = Modifier.fillMaxWidth().testTag("focus_profiles_card"),
         colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-        border = BorderStroke(1.5.dp, RpgGold.copy(alpha = 0.65f)),
-        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.55f)),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -73,7 +73,8 @@ fun FocusProfilesCard(
                         "FOCUS PROFILES",
                         color = RpgGold,
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp,
+                        letterSpacing = 0.8.sp,
+                        fontSize = 14.sp,
                         modifier = Modifier.semantics { heading() },
                     )
                     Text(
@@ -88,6 +89,7 @@ fun FocusProfilesCard(
                         showEditor = true
                     },
                     modifier = Modifier.testTag("add_focus_profile"),
+                    contentPadding = PaddingValues(horizontal = 11.dp, vertical = 7.dp),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = RpgGold.copy(alpha = 0.14f),
                         contentColor = RpgGold,
@@ -171,6 +173,7 @@ private fun FocusProfileRow(
                     imageVector = if (profile.type == FocusProfileType.CYCLE) Icons.Default.Repeat else Icons.Default.Timer,
                     contentDescription = null,
                     tint = if (profile.type == FocusProfileType.CYCLE) RpgGold else NeonBlueAccent,
+                    modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
@@ -198,13 +201,17 @@ private fun FocusProfileRow(
                     modifier = Modifier.testTag("edit_focus_profile_${profile.id}").semantics {
                         contentDescription = "Edit ${profile.name} focus profile"
                     },
-                ) { Icon(Icons.Default.Edit, contentDescription = null, tint = TextMuted) }
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                }
                 IconButton(
                     onClick = onDelete,
                     modifier = Modifier.testTag("delete_focus_profile_${profile.id}").semantics {
                         contentDescription = "Delete ${profile.name} focus profile"
                     },
-                ) { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = RpgRuby) }
+                ) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = RpgRuby, modifier = Modifier.size(18.dp))
+                }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -217,14 +224,14 @@ private fun FocusProfileRow(
                 enabled = !isSessionActive,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 44.dp)
                     .testTag("start_focus_profile_${profile.id}"),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = NeonBlueAccent,
                     contentColor = BlackFantasyBackground,
                 ),
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(if (isSessionActive) "SESSION ACTIVE" else "START PROFILE", fontWeight = FontWeight.Black)
             }
@@ -417,7 +424,7 @@ private fun ProfileOptionRow(
     testTag: String,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = if (checked) RpgGold else TextMuted)
+        Icon(icon, contentDescription = null, tint = if (checked) RpgGold else TextMuted, modifier = Modifier.size(19.dp))
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = TextWhite, fontWeight = FontWeight.Bold)

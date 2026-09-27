@@ -133,12 +133,12 @@ fun DailyQuestBoard(
             .testTag("daily_quest_board")
             .semantics { isTraversalGroup = true },
         colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-        border = BorderStroke(1.5.dp, RpgGold.copy(alpha = 0.7f)),
-        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, RpgGold.copy(alpha = 0.55f)),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -146,14 +146,20 @@ fun DailyQuestBoard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Today, contentDescription = null, tint = RpgGold)
+                    Icon(
+                        Icons.Default.Today,
+                        contentDescription = null,
+                        tint = RpgGold,
+                        modifier = Modifier.size(20.dp),
+                    )
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text(
                             text = "DAILY QUEST BOARD",
                             color = TextWhite,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp,
+                            letterSpacing = 0.8.sp,
+                            fontSize = 14.sp,
                             modifier = Modifier.semantics { heading() },
                         )
                         Text(
@@ -170,19 +176,25 @@ fun DailyQuestBoard(
                 Row {
                     IconButton(
                         onClick = { showRecurringQuests = true },
-                        modifier = Modifier.testTag("recurring_quests_button"),
+                        modifier = Modifier.size(40.dp).testTag("recurring_quests_button"),
                     ) {
                         Icon(
                             Icons.Default.Repeat,
                             contentDescription = "Manage recurring quests",
                             tint = TextMuted,
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                     IconButton(
                         onClick = { showHistory = true },
-                        modifier = Modifier.testTag("daily_quest_history_button"),
+                        modifier = Modifier.size(40.dp).testTag("daily_quest_history_button"),
                     ) {
-                        Icon(Icons.Default.History, contentDescription = "Open quest history", tint = TextMuted)
+                        Icon(
+                            Icons.Default.History,
+                            contentDescription = "Open quest history",
+                            tint = TextMuted,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     IconButton(
                         onClick = {
@@ -190,9 +202,14 @@ fun DailyQuestBoard(
                             editingRecurringQuest = null
                             showEditor = true
                         },
-                        modifier = Modifier.testTag("add_daily_quest_button"),
+                        modifier = Modifier.size(40.dp).testTag("add_daily_quest_button"),
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add daily quest", tint = NeonBlueAccent)
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add daily quest",
+                            tint = NeonBlueAccent,
+                            modifier = Modifier.size(19.dp),
+                        )
                     }
                 }
             }
@@ -201,7 +218,7 @@ fun DailyQuestBoard(
                 progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
+                    .height(6.dp)
                     .testTag("daily_quest_progress")
                     .semantics {
                         contentDescription = "$completedCount of ${quests.size} daily quests completed"
@@ -397,13 +414,14 @@ private fun DailyQuestRow(
                 IconButton(
                     onClick = onToggle,
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(40.dp)
                         .testTag("toggle_daily_quest_${quest.id}"),
                 ) {
                     Icon(
                         imageVector = if (quest.isCompleted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                         contentDescription = if (quest.isCompleted) "Mark ${quest.title} incomplete" else "Mark ${quest.title} complete",
                         tint = if (quest.isCompleted) RpgEmerald else accent,
+                        modifier = Modifier.size(21.dp),
                     )
                 }
                 Column(modifier = Modifier.weight(1f)) {
@@ -429,10 +447,20 @@ private fun DailyQuestRow(
                     }
                 }
                 IconButton(onClick = onEdit, modifier = Modifier.testTag("edit_daily_quest_${quest.id}")) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit ${quest.title}", tint = TextMuted)
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit ${quest.title}",
+                        tint = TextMuted,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
                 IconButton(onClick = onDelete, modifier = Modifier.testTag("delete_daily_quest_${quest.id}")) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Delete ${quest.title}", tint = RpgRuby)
+                    Icon(
+                        Icons.Default.DeleteOutline,
+                        contentDescription = "Delete ${quest.title}",
+                        tint = RpgRuby,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
 
@@ -442,7 +470,7 @@ private fun DailyQuestRow(
                     enabled = !isSessionActive,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 48.dp)
+                    .heightIn(min = 44.dp)
                         .testTag("start_daily_quest_${quest.id}"),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isActive) RpgEmerald else NeonBlueAccent,
@@ -450,7 +478,7 @@ private fun DailyQuestRow(
                     ),
                     shape = RoundedCornerShape(8.dp),
                 ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = when {

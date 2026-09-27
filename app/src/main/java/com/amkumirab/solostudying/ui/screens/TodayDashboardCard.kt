@@ -84,10 +84,10 @@ internal fun TodayDashboardCard(
             .fillMaxWidth()
             .testTag("today_dashboard"),
         colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-        border = BorderStroke(1.5.dp, borderColor),
-        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, borderColor),
+        shape = RoundedCornerShape(12.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -96,14 +96,14 @@ internal fun TodayDashboardCard(
                     imageVector = Icons.Default.Today,
                     contentDescription = null,
                     tint = if (plan.isDailyTargetComplete) RpgEmerald else NeonBlueAccent,
-                    modifier = Modifier.size(26.dp),
+                    modifier = Modifier.size(20.dp),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "TODAY'S PLAN",
                         color = TextWhite,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.8.sp,
                     )
@@ -131,12 +131,12 @@ internal fun TodayDashboardCard(
                 )
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(11.dp))
             LinearProgressIndicator(
                 progress = { plan.progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(9.dp)
+                    .height(7.dp)
                     .clip(RoundedCornerShape(5.dp))
                     .testTag("today_target_progress")
                     .semantics {
@@ -165,9 +165,9 @@ internal fun TodayDashboardCard(
                 style = MaterialTheme.typography.bodySmall,
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(11.dp))
             HorizontalDivider(color = DarkCardBorder)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
             if (plan.items.isEmpty()) {
                 Row(
@@ -178,7 +178,12 @@ internal fun TodayDashboardCard(
                         .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = RpgEmerald)
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = RpgEmerald,
+                        modifier = Modifier.size(19.dp),
+                    )
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text("TODAY'S PLAN COMPLETE", color = RpgEmerald, fontWeight = FontWeight.Black)
@@ -240,7 +245,7 @@ private fun TodayPlanItemRow(
             .testTag("today_plan_item_$itemTag"),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = urgencyColor, modifier = Modifier.size(22.dp))
+            Icon(icon, contentDescription = null, tint = urgencyColor, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(9.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -287,7 +292,7 @@ private fun TodayPlanItemRow(
             enabled = !isSessionActive,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
+                .heightIn(min = 44.dp)
                 .testTag("start_today_plan_$itemTag"),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (isNext) urgencyColor else SurfaceElevated,
@@ -297,7 +302,7 @@ private fun TodayPlanItemRow(
             ),
             shape = RoundedCornerShape(10.dp),
         ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null)
+            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(
                 text = if (isSessionActive) "SESSION ACTIVE" else "START FOCUS",

@@ -140,7 +140,7 @@ class AccessibilitySemanticsTest {
             .assertHeightIsAtLeast(48.dp)
             .assertIsEnabled()
             .performClick()
-        composeRule.onNodeWithText("CONQUER").assertExists()
+        composeRule.onNodeWithText("END EARLY").assertExists()
 
         composeRule.onNodeWithTag("battle_retreat_button")
             .assertHeightIsAtLeast(48.dp)
@@ -172,7 +172,7 @@ class AccessibilitySemanticsTest {
         }
 
         composeRule.onNodeWithText("RESUME TIMER").assertExists()
-        composeRule.onNodeWithText("FINISH").assertExists()
+        composeRule.onNodeWithText("END SESSION").assertExists()
         composeRule.onNodeWithTag("battle_pause_resume_button").performClick()
         composeRule.runOnIdle { assertEquals(1, resumeClicks) }
     }

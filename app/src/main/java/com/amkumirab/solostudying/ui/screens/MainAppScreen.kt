@@ -2426,11 +2426,7 @@ fun BattleTab(
                         viewModel.resumeBattle()
                     },
                     onFinish = {
-                        if (viewModel.activeBossStepId != null) {
-                            viewModel.endBossStepEarly()
-                        } else {
-                            viewModel.completeActiveBoss()
-                        }
+                        viewModel.completeActiveBoss()
                     },
                     onRetreat = {
                         RpgSoundManager.playClickSound()
@@ -2647,8 +2643,8 @@ fun BattleActionControls(
                 Text(
                     text = when {
                         isStudyStep -> "END EARLY"
-                        isFreeStudy -> "FINISH"
-                        else -> "CONQUER"
+                        isFreeStudy -> "END SESSION"
+                        else -> "END EARLY"
                     },
                     fontWeight = FontWeight.Black,
                     maxLines = 1,

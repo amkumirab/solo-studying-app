@@ -402,7 +402,7 @@ class BattleViewModel(
     }
 
     private fun finishSessionFromNotification() {
-        if (activeBossStepId != null) endBossStepEarly() else completeActiveBoss()
+        completeActiveBoss()
     }
 
     private fun startTimer() {
@@ -466,6 +466,10 @@ class BattleViewModel(
         viewModelScope.launch {
             try {
                 advanceSessionClock(clock(), forceBossSync = true)
+                if (battleTimeLeftSeconds > 0L) {
+                    suspendCurrentSession(applyHeavyPenalty = false)
+                    return@launch
+                }
                 val finalDuration = battleTimeSpentSeconds
                 val completedFullTarget = battleTimeLeftSeconds == 0L
                 val boss = activeBoss
@@ -525,6 +529,9 @@ class BattleViewModel(
                         baseReward = baseReward,
                         studyCompleted = true,
                         isFreeStudy = completedFreeStudy,
+                        bossDefeated = !completedFreeStudy &&
+                            bossStepId == null &&
+                            boss?.isCompleted == false,
                     )
                     completionResult = result
                     val sessionId = insertSession(
@@ -595,15 +602,8 @@ class BattleViewModel(
     }
 
     fun endBossStepEarly() {
-        if (!isBattleActive || activeBossStepId == null || isCompletingSession) return
-        isCompletingSession = true
-        viewModelScope.launch {
-            try {
-                suspendCurrentSession(applyHeavyPenalty = false)
-            } finally {
-                isCompletingSession = false
-            }
-        }
+        if (activeBossStepId == null) return
+        completeActiveBoss()
     }
 
     private fun resetActiveSession() {
@@ -856,7 +856,8 @@ class BattleViewModel(
         durationSeconds: Long,
         baseReward: SessionReward,
         studyCompleted: Boolean,
-        isFreeStudy: Boolean = false
+        isFreeStudy: Boolean = false,
+        bossDefeated: Boolean = false,
     ): SessionCompletionResult {
         val profile = repository.getProfileSync() ?: UserProfileEntity()
         val adjustedReward = SessionRewardCalculator.applyProgressionModifiers(
@@ -946,7 +947,7 @@ class BattleViewModel(
                 lastStudyDate = if (studyCompleted) todayStr else profile.lastStudyDate,
                 totalStudyTimeSeconds = profile.totalStudyTimeSeconds + durationSeconds,
                 totalSessionCount = profile.totalSessionCount + 1,
-                totalBossesDefeated = profile.totalBossesDefeated + (if (studyCompleted && !isFreeStudy) 1 else 0),
+                totalBossesDefeated = profile.totalBossesDefeated + (if (bossDefeated) 1 else 0),
                 totalGoldEarned = profile.totalGoldEarned + totalGoldGained + levelUpGoldBonus,
                 totalXpEarned = profile.totalXpEarned + totalXpGained,
                 totalFreeStudySeconds = profile.totalFreeStudySeconds + (if (isFreeStudy) durationSeconds else 0L),
@@ -996,7 +997,8 @@ class BattleViewModel(
                     durationSeconds = durationSeconds,
                     baseReward = baseReward,
                     studyCompleted = true,
-                    isFreeStudy = false
+                    isFreeStudy = false,
+                    bossDefeated = true,
                 )
                 completionResult = result
                 val sessionId = insertSession(

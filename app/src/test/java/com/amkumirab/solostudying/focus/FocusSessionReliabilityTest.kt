@@ -150,7 +150,7 @@ class FocusSessionReliabilityTest {
     }
 
     @Test
-    fun `finish request completes a restored session once`() = runBlocking {
+    fun `finish request suspends an incomplete restored session once`() = runBlocking {
         store.write(
             runningSnapshot(
                 isPaused = true,
@@ -169,7 +169,8 @@ class FocusSessionReliabilityTest {
             repository.allSessions.first().takeIf { it.size == 1 }
         }
         assertEquals(20L, sessions.single().durationSeconds)
-        assertTrue(sessions.single().wasCompleted)
+        assertFalse(sessions.single().wasCompleted)
+        assertEquals(SessionEndState.Suspended, viewModel.sessionSummary?.endState)
         assertFalse(store.consumeFinishRequest())
     }
 
@@ -236,7 +237,7 @@ class FocusSessionReliabilityTest {
     }
 
     @Test
-    fun `repeated completion requests create one study session`() = runBlocking {
+    fun `repeated early finish requests create one suspended session`() = runBlocking {
         var nowMillis = 2_000_000L
         val viewModel = BattleViewModel(repository, context, store) { nowMillis }
         battleViewModel = viewModel
@@ -261,15 +262,58 @@ class FocusSessionReliabilityTest {
 
         assertEquals(1, sessions.size)
         assertEquals(1, profile.totalSessionCount)
-        assertTrue(sessions.single().wasCompleted)
+        assertFalse(sessions.single().wasCompleted)
         val summary = viewModel.sessionSummary ?: error("Session summary was not created")
         assertEquals(sessions.single().id.toLong(), summary.sessionId)
         assertEquals(sessions.single().durationSeconds, summary.durationSeconds)
         assertEquals(sessions.single().xpEarned, summary.xpEarned)
-        assertEquals(SessionEndState.Completed, summary.endState)
+        assertEquals(SessionEndState.Suspended, summary.endState)
 
         viewModel.dismissSessionSummary()
         assertNull(viewModel.sessionSummary)
+    }
+
+    @Test
+    fun `ending a boss early saves progress without conquest rewards`() = runBlocking {
+        repository.insertOrUpdateProfile(
+            UserProfileEntity(
+                currentStreak = 3,
+                longestStreak = 3,
+                lastStudyDate = "2026-08-31",
+                redDungeonDays = 1,
+                isRedDungeonBoostActive = true,
+            ),
+        )
+        val boss = BossEntity(
+            id = 72,
+            name = "Legendary Integrity Trial",
+            difficulty = "Legendary",
+            requiredMinutes = 10,
+        )
+        repository.insertBoss(boss)
+        val viewModel = BattleViewModel(repository, context, store) { 3_000_000L }
+        battleViewModel = viewModel
+
+        viewModel.selectAndStartBattle(boss)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        viewModel.simulateStudySeconds(10L)
+        waitForCondition { if (viewModel.battleTimeSpentSeconds == 10L) true else null }
+        viewModel.completeActiveBoss()
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+
+        val updatedBoss = repository.getBossById(boss.id) ?: error("Boss disappeared")
+        val session = repository.allSessions.first().single()
+        val profile = repository.getProfileSync() ?: error("Profile was not saved")
+        assertFalse(updatedBoss.isCompleted)
+        assertEquals(10L, updatedBoss.timeSpentSeconds)
+        assertFalse(session.wasCompleted)
+        assertTrue(session.xpEarned < 750)
+        assertEquals(0, profile.totalBossesDefeated)
+        assertEquals(3, profile.currentStreak)
+        assertEquals("2026-08-31", profile.lastStudyDate)
+        assertEquals(1, profile.redDungeonDays)
+        assertTrue(profile.isRedDungeonBoostActive)
+        assertEquals(SessionEndState.Suspended, viewModel.sessionSummary?.endState)
     }
 
     @Test
@@ -307,6 +351,7 @@ class FocusSessionReliabilityTest {
         assertEquals(session.xpEarned, profile.totalXpEarned)
         assertEquals(session.goldEarned, profile.totalGoldEarned - 100)
         assertEquals(222, profile.gold)
+        assertEquals(1, profile.totalBossesDefeated)
         val summary = viewModel.sessionSummary ?: error("Session summary was not created")
         assertEquals("Reward Consistency Trial", summary.subject)
         assertEquals(270, summary.xpEarned)
@@ -364,6 +409,15 @@ class FocusSessionReliabilityTest {
 
     @Test
     fun `finishing a quest early keeps it pending`() = runBlocking {
+        repository.insertOrUpdateProfile(
+            UserProfileEntity(
+                currentStreak = 4,
+                longestStreak = 4,
+                lastStudyDate = "2026-08-31",
+                redDungeonDays = 2,
+                isRedDungeonBoostActive = true,
+            ),
+        )
         val questId = repository.insertDailyQuest(
             DailyQuestEntity(
                 title = "Read chapter four",
@@ -383,7 +437,15 @@ class FocusSessionReliabilityTest {
         waitForCondition { if (!viewModel.isBattleActive) true else null }
 
         val pending = repository.getDailyQuestById(questId) ?: error("Quest disappeared")
+        val profile = repository.getProfileSync() ?: error("Profile was not saved")
+        val session = repository.allSessions.first().single()
         assertFalse(pending.isCompleted)
+        assertFalse(session.wasCompleted)
+        assertEquals(SessionEndState.Suspended, viewModel.sessionSummary?.endState)
+        assertEquals(4, profile.currentStreak)
+        assertEquals("2026-08-31", profile.lastStudyDate)
+        assertEquals(2, profile.redDungeonDays)
+        assertTrue(profile.isRedDungeonBoostActive)
     }
 
     @Test
@@ -421,6 +483,7 @@ class FocusSessionReliabilityTest {
         assertTrue(completedStep.isCompleted)
         assertEquals(60L, updatedBoss.timeSpentSeconds)
         assertFalse(updatedBoss.isCompleted)
+        assertEquals(0, repository.getProfileSync()?.totalBossesDefeated)
         assertEquals("Review electromagnetic waves", viewModel.sessionSummary?.subject)
         assertEquals(
             "Physics Exam: Review electromagnetic waves",
@@ -481,9 +544,7 @@ class FocusSessionReliabilityTest {
         repeat(2) {
             viewModel.selectAndStartFreeStudy(minutes = 1)
             waitForCondition { if (viewModel.isBattleActive) true else null }
-            viewModel.simulateStudySeconds(10L)
-            waitForCondition { if (viewModel.battleTimeSpentSeconds == 10L) true else null }
-            viewModel.completeActiveBoss()
+            viewModel.simulateStudySeconds(60L)
             waitForCondition { if (!viewModel.isBattleActive) true else null }
             Unit
         }

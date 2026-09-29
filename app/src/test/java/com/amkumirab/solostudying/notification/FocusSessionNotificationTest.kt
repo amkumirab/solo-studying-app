@@ -1,5 +1,7 @@
 package com.amkumirab.solostudying.notification
 
+import android.Manifest
+import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
@@ -30,6 +32,7 @@ class FocusSessionNotificationTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         store = FocusSessionStore(context)
         store.clear()
         notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -125,6 +128,16 @@ class FocusSessionNotificationTest {
         assertEquals("00:00", formatDuration(0L))
         assertEquals("24:59", formatDuration(1_499L))
         assertEquals("2:03:04", formatDuration(7_384L))
+    }
+
+    @Test
+    fun `focus notifications are skipped when permission is denied`() {
+        shadowOf(context as Application).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+
+        FocusSessionNotifier.show(context, runningSnapshot())
+        FocusSessionNotifier.showCompleted(context, "Electromagnetics")
+
+        assertTrue(shadowOf(notificationManager).allNotifications.isEmpty())
     }
 
     private fun runningSnapshot(

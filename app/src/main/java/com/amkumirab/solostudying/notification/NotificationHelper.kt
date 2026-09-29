@@ -1,13 +1,18 @@
 package com.amkumirab.solostudying.notification
 
+import android.Manifest
 import android.app.AlarmManager
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -137,6 +142,27 @@ object NotificationHelper {
         } catch (exception: Exception) {
             Log.e(TAG, "Unable to schedule $label alarm", exception)
         }
+    }
+}
+
+internal fun canPostNotifications(context: Context): Boolean {
+    val hasRuntimePermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+        PackageManager.PERMISSION_GRANTED
+    return hasRuntimePermission && NotificationManagerCompat.from(context).areNotificationsEnabled()
+}
+
+internal fun postNotificationSafely(
+    context: Context,
+    notificationId: Int,
+    notification: Notification,
+): Boolean {
+    if (!canPostNotifications(context)) return false
+    return try {
+        NotificationManagerCompat.from(context).notify(notificationId, notification)
+        true
+    } catch (_: SecurityException) {
+        false
     }
 }
 

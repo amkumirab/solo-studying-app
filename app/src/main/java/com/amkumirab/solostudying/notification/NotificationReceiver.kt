@@ -1,6 +1,5 @@
 package com.amkumirab.solostudying.notification
 
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -114,8 +113,6 @@ class NotificationReceiver : BroadcastReceiver() {
     }
 
     private fun showNotification(context: Context, title: String, message: String) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
         // Intent to open Main App when clicked
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -140,8 +137,11 @@ class NotificationReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
 
         // Show the notification matching ID based on title hash for distinct morning/evening notifications
-        notificationManager.notify(title.hashCode(), builder.build())
-        Log.d(TAG, "Displayed notification with title: $title")
+        if (postNotificationSafely(context, title.hashCode(), builder.build())) {
+            Log.d(TAG, "Displayed notification with title: $title")
+        } else {
+            Log.d(TAG, "Notification skipped because permission is unavailable")
+        }
     }
 
     private fun getStartOfTodayMillis(): Long {

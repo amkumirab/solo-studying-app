@@ -13,6 +13,7 @@ import com.amkumirab.solostudying.domain.reward.SessionRewardCalculator
 import com.amkumirab.solostudying.domain.session.ProgressSummary
 import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionSummary
+import com.amkumirab.solostudying.domain.streak.calculateStreakProgress
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.FocusShieldManager
@@ -28,8 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.LocalDate
 
 class BattleViewModel(
     private val repository: SoloStudyingRepository,
@@ -866,36 +866,20 @@ class BattleViewModel(
             isXpBoostActive = profile.isRedDungeonBoostActive,
         )
 
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val todayStr = sdf.format(Date())
-
-        var streakUpdated = profile.currentStreak
-        var longestStreakUpdated = profile.longestStreak
-        var streakAdvanced = false
-
-        if (studyCompleted) {
-            val lastStudyDate = profile.lastStudyDate
-            if (lastStudyDate == null) {
-                streakUpdated = 1
-                streakAdvanced = true
-            } else if (lastStudyDate != todayStr) {
-                val lastDate = sdf.parse(lastStudyDate)
-                val today = sdf.parse(todayStr)
-                if (lastDate != null && today != null) {
-                    val diffDays = (today.time - lastDate.time) / (1000 * 60 * 60 * 24)
-                    if (diffDays == 1L) {
-                        streakUpdated++
-                        streakAdvanced = true
-                    } else if (diffDays > 1L) {
-                        streakUpdated = 1
-                        streakAdvanced = true
-                    }
-                }
-            }
-            if (streakUpdated > longestStreakUpdated) {
-                longestStreakUpdated = streakUpdated
-            }
+        val today = LocalDate.now()
+        val streakProgress = if (studyCompleted) {
+            calculateStreakProgress(
+                currentStreak = profile.currentStreak,
+                longestStreak = profile.longestStreak,
+                lastStudyDate = profile.lastStudyDate,
+                today = today,
+            )
+        } else {
+            null
         }
+        val streakUpdated = streakProgress?.current ?: profile.currentStreak
+        val longestStreakUpdated = streakProgress?.longest ?: profile.longestStreak
+        val streakAdvanced = streakProgress?.advanced == true
 
         var bonusGold = 0
         var bonusXp = 0
@@ -944,7 +928,7 @@ class BattleViewModel(
                 gold = profile.gold + totalGoldGained + levelUpGoldBonus,
                 currentStreak = streakUpdated,
                 longestStreak = longestStreakUpdated,
-                lastStudyDate = if (studyCompleted) todayStr else profile.lastStudyDate,
+                lastStudyDate = if (studyCompleted) today.toString() else profile.lastStudyDate,
                 totalStudyTimeSeconds = profile.totalStudyTimeSeconds + durationSeconds,
                 totalSessionCount = profile.totalSessionCount + 1,
                 totalBossesDefeated = profile.totalBossesDefeated + (if (bossDefeated) 1 else 0),

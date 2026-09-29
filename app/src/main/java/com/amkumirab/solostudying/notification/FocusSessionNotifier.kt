@@ -48,7 +48,7 @@ object FocusSessionNotifier {
             cancelActive(context)
             return
         }
-        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+        if (!canPostNotifications(context)) return
 
         val title = snapshot.displayTitle()
         val cycle = FocusCycleStore(context).read()?.takeIf { it.phase == FocusCyclePhase.FOCUS }
@@ -95,16 +95,12 @@ object FocusSessionNotifier {
             finishSessionIntent(context),
         )
 
-        try {
-            NotificationManagerCompat.from(context).notify(ACTIVE_NOTIFICATION_ID, builder.build())
-        } catch (_: SecurityException) {
-            // Android 13+ may revoke notification permission while a session is active.
-        }
+        postNotificationSafely(context, ACTIVE_NOTIFICATION_ID, builder.build())
     }
 
     fun showCompleted(context: Context, subject: String) {
         cancelActive(context)
-        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+        if (!canPostNotifications(context)) return
         NotificationHelper.createNotificationChannel(context)
         val notification = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
             .setSmallIcon(notificationIcon(context))
@@ -119,11 +115,7 @@ object FocusSessionNotifier {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()
-        try {
-            NotificationManagerCompat.from(context).notify(COMPLETED_NOTIFICATION_ID, notification)
-        } catch (_: SecurityException) {
-            // Android 13+ may revoke notification permission while a session is active.
-        }
+        postNotificationSafely(context, COMPLETED_NOTIFICATION_ID, notification)
     }
 
     fun scheduleCompletion(context: Context, snapshot: FocusSessionSnapshot) {

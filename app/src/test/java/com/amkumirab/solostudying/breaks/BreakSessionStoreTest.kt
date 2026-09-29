@@ -1,5 +1,7 @@
 package com.amkumirab.solostudying.breaks
 
+import android.Manifest
+import android.app.Application
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationManager
@@ -31,6 +33,7 @@ class BreakSessionStoreTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         context.deleteSharedPreferences(BreakSessionStore.PREFERENCES_NAME)
         ShadowAlarmManager.reset()
         store = BreakSessionStore(context)
@@ -118,5 +121,21 @@ class BreakSessionStoreTest {
             "Break complete",
             notifications.single().extras.getCharSequence(Notification.EXTRA_TITLE).toString(),
         )
+    }
+
+    @Test
+    fun `break completion receiver skips notification without permission`() {
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        shadowOf(context as Application).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+
+        NotificationReceiver().onReceive(
+            context,
+            Intent(context, NotificationReceiver::class.java).apply {
+                action = NotificationReceiver.ACTION_BREAK_COMPLETE
+            },
+        )
+
+        assertTrue(shadowOf(notificationManager).allNotifications.isEmpty())
     }
 }

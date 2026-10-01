@@ -7,10 +7,30 @@ and gold, and records progress against the skill being trained.
 The project is a work in progress. Its current focus is a reliable local-first
 gameplay loop rather than accounts, cloud sync, or online services.
 
+## Screenshots
+
+Real-device screenshots from an earlier build, shared by the project author.
+They show the existing study hub, profile progress, and reward shop. The new
+dungeon study-plan form and progress card are not shown in these captures.
+
+<table>
+  <tr>
+    <th>Study goals</th>
+    <th>Profile &amp; progress</th>
+    <th>Reward shop</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/study-goals.png" width="240" alt="Study hub with goal deadlines, daily study estimates, and dungeon categories" /></td>
+    <td><img src="docs/screenshots/profile-stats.png" width="240" alt="Profile with level progression, study streaks, daily campaign report, and study insights" /></td>
+    <td><img src="docs/screenshots/reward-shop.png" width="240" alt="Reward shop with a coffee break, social media time, and a favorite snack purchasable with study-earned gold" /></td>
+  </tr>
+</table>
+
 ## What works
 
 - First-run setup for goals, study days, and daily targets
 - Dungeons for grouping related goals
+- Course-sized dungeon plans with hour targets, finish dates, custom study days, and adaptive daily estimates
 - Boss battles and free-study sessions
 - One-tap focus presets that remember the last duration and skill
 - Personalized daily dashboard with prioritized next actions and target progress
@@ -90,6 +110,18 @@ access in one place.
 No API key or online account is required. Study data stays in the app's local
 Room database.
 
+## Plan a long-term course
+
+Open **Dungeons > Goals**, select a dungeon, then choose **Set study target and
+deadline**. Enter total study hours, pick a date (or use the **2 months** shortcut),
+and choose your study weekdays. **Plan a dungeon** also lets you start with a new
+course name. Assign bosses to that exact dungeon name to record course progress.
+
+The plan card shows total progress, remaining effort, and the suggested pace per
+remaining study day. Existing and completed boss progress counts; free study does
+not. Editing or removing a plan leaves bosses and their recorded time intact.
+See [Dungeon study plans](docs/DUNGEON_STUDY_PLANS.md) for calculation rules.
+
 ## Tests
 
 Run the local JVM test suite from Android Studio or the project root.
@@ -157,7 +189,7 @@ Product rules and implementation boundaries are documented in
 - Split the main Compose screen by feature
 - Add data export and restore
 - Improve accessibility labels and UI tests
-- Add screenshots and a short demo recording
+- Record a short walkthrough of the study workflow
 
 ## License
 

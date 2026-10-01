@@ -5,7 +5,10 @@ import com.amkumirab.solostudying.data.dao.SoloStudyingDao
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.domain.session.SessionNotePolicy
+import com.amkumirab.solostudying.domain.dungeon.DungeonStudyPlanInput
+import com.amkumirab.solostudying.domain.dungeon.isValid
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 
 enum class RewardPurchaseStatus {
     Purchased,
@@ -71,6 +74,33 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
 
     suspend fun deleteDungeon(dungeon: DungeonEntity) {
         dao.deleteDungeon(dungeon)
+    }
+
+    suspend fun saveDungeonStudyPlan(input: DungeonStudyPlanInput, today: LocalDate = LocalDate.now()) {
+        require(input.isValid(today)) { "Invalid dungeon study plan" }
+        database.withTransaction {
+            val existing = dao.getDungeonByName(input.dungeonName)
+            val dungeon = existing ?: DungeonEntity(
+                name = input.dungeonName, description = "", status = "Unlocked",
+            )
+            val planned = dungeon.copy(
+                targetMinutes = input.targetMinutes,
+                planStartDate = dungeon.planStartDate ?: today.toString(),
+                planDeadlineDate = input.deadline.toString(),
+                studyWeekdaysMask = input.weekdaysMask,
+            )
+            if (existing == null) dao.insertDungeon(planned) else dao.updateDungeon(planned)
+        }
+    }
+
+    suspend fun clearDungeonStudyPlan(name: String) {
+        database.withTransaction {
+            val dungeon = dao.getDungeonByName(name) ?: return@withTransaction
+            dao.updateDungeon(dungeon.copy(
+                targetMinutes = null, planStartDate = null, planDeadlineDate = null,
+                studyWeekdaysMask = 127,
+            ))
+        }
     }
 
     // --- Boss Skill Cross-Reference Operations ---

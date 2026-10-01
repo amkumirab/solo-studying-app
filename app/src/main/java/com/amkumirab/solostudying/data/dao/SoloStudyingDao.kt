@@ -46,6 +46,12 @@ interface SoloStudyingDao {
     @Query("SELECT * FROM dungeons ORDER BY id ASC")
     fun getAllDungeons(): Flow<List<DungeonEntity>>
 
+    @Query("SELECT * FROM dungeons WHERE name = :name ORDER BY id ASC LIMIT 1")
+    suspend fun getDungeonByName(name: String): DungeonEntity?
+
+    @Update
+    suspend fun updateDungeon(dungeon: DungeonEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDungeon(dungeon: DungeonEntity): Long
 

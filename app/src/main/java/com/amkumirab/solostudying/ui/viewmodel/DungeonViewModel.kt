@@ -8,6 +8,7 @@ import com.amkumirab.solostudying.data.entity.BossStepEntity
 import com.amkumirab.solostudying.data.entity.DungeonEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.domain.dungeon.DungeonStudyPlanInput
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -55,7 +56,9 @@ class DungeonViewModel(
             DungeonEntity(name = "Code Catacombs", description = "Crawl through compiler depths and algorithm dungeons.", status = "Unlocked"),
             DungeonEntity(name = "Academic Citadel", description = "Review major exams, lecture summaries, and grand texts.", status = "Unlocked")
         )
-        defaults.forEach { repository.insertDungeon(it) }
+        repository.runInTransaction {
+            if (allDungeons.first().isEmpty()) defaults.forEach { insertDungeon(it) }
+        }
     }
 
     fun createBoss(
@@ -142,6 +145,10 @@ class DungeonViewModel(
             )
         }
     }
+
+    suspend fun saveStudyPlan(input: DungeonStudyPlanInput) = repository.saveDungeonStudyPlan(input)
+
+    suspend fun clearStudyPlan(name: String) = repository.clearDungeonStudyPlan(name)
 
     fun activateRedDungeonXpBoost() {
         viewModelScope.launch {

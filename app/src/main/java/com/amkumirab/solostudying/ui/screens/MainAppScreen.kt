@@ -63,7 +63,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.amkumirab.solostudying.data.entity.*
+import com.amkumirab.solostudying.domain.dungeon.calculateDungeonStudyPlan
 import com.amkumirab.solostudying.domain.session.ProgressSummary
 import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionNotePolicy
@@ -1056,12 +1058,14 @@ fun DungeonTab(
     onDailyQuestStarted: () -> Unit,
     onStartBossStep: (BossEntity, BossStepEntity) -> Unit,
 ) {
-    var selectedDungeonCategory by remember { mutableStateOf("All") }
+    var selectedDungeonCategory by rememberSaveable { mutableStateOf("All") }
+    var showDungeonPlanDialog by rememberSaveable { mutableStateOf(false) }
     var stepsBoss by remember { mutableStateOf<BossEntity?>(null) }
     var selectedSection by rememberSaveable { mutableStateOf(DungeonSection.Today) }
     val dailyQuests by viewModel.dailyQuests.collectAsState()
     val allDailyQuests by viewModel.allDailyQuests.collectAsState()
     val recurringQuests by viewModel.recurringQuests.collectAsState()
+    val dungeons by viewModel.dungeonViewModel.dungeons.collectAsStateWithLifecycle()
     val dashboardDate = remember(viewModel.dailyQuestViewModel.todayDate) {
         runCatching { LocalDate.parse(viewModel.dailyQuestViewModel.todayDate) }
             .getOrDefault(LocalDate.now())
@@ -1080,8 +1084,14 @@ fun DungeonTab(
     }
     
     // Accumulate all distinct dungeon categories created by the player
-    val dungeonsList = remember(bosses) {
-        listOf("All") + bosses.map { it.dungeonName }.distinct().filter { it.isNotBlank() }
+    val dungeonsList = remember(bosses, dungeons) {
+        listOf("All") + (bosses.map { it.dungeonName } + dungeons.filter { it.targetMinutes != null }.map { it.name })
+            .distinct().filter { it.isNotBlank() && it != "All" }
+    }
+
+    val selectedDungeon = dungeons.firstOrNull { it.name == selectedDungeonCategory }
+    val selectedStudyPlan = remember(selectedDungeon, bosses, dashboardDate) {
+        selectedDungeon?.let { calculateDungeonStudyPlan(it, bosses, dashboardDate) }
     }
 
     val filteredBosses = remember(bosses, selectedDungeonCategory) {
@@ -1446,6 +1456,22 @@ fun DungeonTab(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+            if (selectedStudyPlan != null) {
+                DungeonStudyPlanCard(plan = selectedStudyPlan, onEdit = { showDungeonPlanDialog = true })
+            } else {
+                OutlinedButton(
+                    onClick = { showDungeonPlanDialog = true },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_dungeon_study_plan"),
+                ) { Text(if (selectedDungeonCategory == "All") "Plan a dungeon" else "Set study target and deadline") }
+                Text(
+                    "Plan a full course in hours and choose when to finish. Select a dungeon to see its progress.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+
             if (filteredBosses.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -1510,6 +1536,22 @@ fun DungeonTab(
             }
             }
         }
+    }
+
+    if (showDungeonPlanDialog) {
+        DungeonStudyPlanDialog(
+            initialDungeon = if (selectedDungeonCategory == "All") null else selectedDungeon
+                ?: DungeonEntity(name = selectedDungeonCategory, description = ""),
+            existingDungeons = dungeons + bosses.map { DungeonEntity(name = it.dungeonName, description = "") },
+            bosses = bosses,
+            today = dashboardDate,
+            onDismiss = { showDungeonPlanDialog = false },
+            onSave = { input ->
+                viewModel.dungeonViewModel.saveStudyPlan(input)
+                selectedDungeonCategory = input.dungeonName
+            },
+            onRemove = { viewModel.dungeonViewModel.clearStudyPlan(selectedDungeonCategory) },
+        )
     }
 
     stepsBoss?.let { boss ->

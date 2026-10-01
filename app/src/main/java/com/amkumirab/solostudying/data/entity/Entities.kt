@@ -12,7 +12,11 @@ data class DungeonEntity(
     val name: String,
     val description: String,
     val status: String = "Locked", // "Unlocked", "Locked"
-    val unlockedTitle: String = "Novice Scholar"
+    val unlockedTitle: String = "Novice Scholar",
+    val targetMinutes: Int? = null,
+    val planStartDate: String? = null,
+    val planDeadlineDate: String? = null,
+    @ColumnInfo(defaultValue = "127") val studyWeekdaysMask: Int = 127,
 )
 
 @Entity(tableName = "bosses")

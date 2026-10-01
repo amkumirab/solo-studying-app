@@ -23,7 +23,7 @@ import com.amkumirab.solostudying.data.entity.*
         DailyQuestEntity::class,
         RecurringQuestEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class SoloStudyingDatabase : RoomDatabase() {
@@ -55,6 +55,7 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
                     MIGRATION_8_9,
                     MIGRATION_9_10,
                     MIGRATION_10_11,
+                    MIGRATION_11_12,
                 )
 
                 val instance = builder.build()
@@ -170,6 +171,15 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
                     "CREATE INDEX IF NOT EXISTS `index_boss_steps_bossId` " +
                         "ON `boss_steps` (`bossId`)",
                 )
+            }
+        }
+
+        internal val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `dungeons` ADD COLUMN `targetMinutes` INTEGER")
+                db.execSQL("ALTER TABLE `dungeons` ADD COLUMN `planStartDate` TEXT")
+                db.execSQL("ALTER TABLE `dungeons` ADD COLUMN `planDeadlineDate` TEXT")
+                db.execSQL("ALTER TABLE `dungeons` ADD COLUMN `studyWeekdaysMask` INTEGER NOT NULL DEFAULT 127")
             }
         }
 

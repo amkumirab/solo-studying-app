@@ -579,6 +579,102 @@ class FocusSessionReliabilityTest {
         assertEquals(5L, snapshot.timeSpentSeconds)
     }
 
+    @Test
+    fun `short goal session awards time rewards without defeating the boss`() = runBlocking {
+        val id = repository.insertBoss(BossEntity(name = "Operating Systems", difficulty = "Hard", requiredMinutes = 6000)).toInt()
+        val boss = repository.getBossById(id)!!
+        val viewModel = BattleViewModel(repository, context, store) { 10_000_000L }
+        battleViewModel = viewModel
+        viewModel.selectAndStartBattle(boss, sessionMinutes = 45)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        assertEquals(2700L, viewModel.battleTimeLeftSeconds)
+        assertTrue(store.read()!!.isTimedBossSession)
+        viewModel.simulateStudySeconds(2700L)
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+        assertEquals(2700L, repository.getBossById(id)!!.timeSpentSeconds)
+        assertFalse(repository.getBossById(id)!!.isCompleted)
+        assertEquals(0, repository.getProfileSync()!!.totalBossesDefeated)
+        assertEquals(67, repository.allSessions.first().single().xpEarned)
+        assertTrue(repository.allSessions.first().single().wasCompleted)
+    }
+
+    @Test
+    fun `expired restored goal session keeps the whole goal pending`() = runBlocking {
+        val id = repository.insertBoss(BossEntity(name = "Physics", difficulty = "Hard", requiredMinutes = 6000, timeSpentSeconds = 3600)).toInt()
+        store.write(runningSnapshot(timeLeftSeconds = 0, timeSpentSeconds = 1500, initialBossTimeSpentSeconds = 3600, bossId = id).copy(isTimedBossSession = true))
+        battleViewModel = BattleViewModel(repository, context, store) { 1_000_000L }
+        waitForCondition { repository.allSessions.first().firstOrNull() }
+        assertEquals(5100L, repository.getBossById(id)!!.timeSpentSeconds)
+        assertFalse(repository.getBossById(id)!!.isCompleted)
+    }
+
+    @Test
+    fun `last goal session is capped and defeats ordinary boss once`() = runBlocking {
+        val id = repository.insertBoss(BossEntity(name = "Math", difficulty = "Easy", requiredMinutes = 60, timeSpentSeconds = 3590)).toInt()
+        val viewModel = BattleViewModel(repository, context, store) { 10_000_000L }
+        battleViewModel = viewModel
+        viewModel.selectAndStartBattle(repository.getBossById(id)!!, sessionMinutes = 25)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        assertEquals(10L, viewModel.battleTimeLeftSeconds)
+        viewModel.simulateStudySeconds(10)
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+        assertTrue(repository.getBossById(id)!!.isCompleted)
+        assertEquals(1, repository.getProfileSync()!!.totalBossesDefeated)
+    }
+
+    @Test
+    fun `deliverable goal remains pending after its study budget is reached`() = runBlocking {
+        val id = repository.insertBoss(BossEntity(name = "Report", difficulty = "Medium", requiredMinutes = 25, isRealBoss = true)).toInt()
+        val viewModel = BattleViewModel(repository, context, store) { 10_000_000L }
+        battleViewModel = viewModel
+        viewModel.selectAndStartBattle(repository.getBossById(id)!!, sessionMinutes = 25)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        viewModel.simulateStudySeconds(1500)
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+        assertFalse(repository.getBossById(id)!!.isCompleted)
+        assertEquals(0, repository.getProfileSync()!!.totalBossesDefeated)
+        viewModel.selectAndStartBattle(repository.getBossById(id)!!, sessionMinutes = 25)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        assertEquals(1500L, viewModel.battleTimeLeftSeconds)
+    }
+
+    @Test
+    fun `ending a bounded goal session early saves actual time only`() = runBlocking {
+        val id = repository.insertBoss(BossEntity(name = "OS", difficulty = "Hard", requiredMinutes = 6000)).toInt()
+        val viewModel = BattleViewModel(repository, context, store) { 10_000_000L }
+        battleViewModel = viewModel
+        viewModel.selectAndStartBattle(repository.getBossById(id)!!, sessionMinutes = 45)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        viewModel.simulateStudySeconds(120)
+        waitForCondition { if (viewModel.battleTimeSpentSeconds == 120L) true else null }
+        viewModel.pauseBattle()
+        waitForCondition { store.read()?.takeIf { it.isPaused } }
+        assertTrue(store.read()!!.isTimedBossSession)
+        viewModel.resumeBattle()
+        assertTrue(viewModel.isTimedBossSession)
+        viewModel.completeActiveBoss()
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+        assertEquals(120L, repository.getBossById(id)!!.timeSpentSeconds)
+        assertFalse(repository.getBossById(id)!!.isCompleted)
+        assertFalse(repository.allSessions.first().single().wasCompleted)
+    }
+
+    @Test
+    fun `invalid goal duration does not interrupt the current session`() = runBlocking {
+        val viewModel = BattleViewModel(repository, context, store) { 10_000_000L }
+        battleViewModel = viewModel
+        viewModel.selectAndStartFreeStudy(25)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        val boss = BossEntity(name = "OS", difficulty = "Hard", requiredMinutes = 6000)
+        try {
+            viewModel.selectAndStartBattle(boss, 0)
+            throw AssertionError("Expected invalid duration to be rejected")
+        } catch (_: IllegalArgumentException) {
+            assertTrue(viewModel.isFreeStudyActive)
+            assertEquals(1500L, viewModel.battleTimeLeftSeconds)
+        }
+    }
+
     private fun runningSnapshot(
         isPaused: Boolean = false,
         timeLeftSeconds: Long = 300L,

@@ -20,6 +20,7 @@ data class FocusSessionSnapshot(
     val bossStepTitle: String? = null,
     val bossTitle: String? = null,
     val skillTitle: String? = null,
+    val isTimedBossSession: Boolean = false,
 )
 
 class FocusSessionStore(context: Context) {
@@ -49,6 +50,7 @@ class FocusSessionStore(context: Context) {
             bossStepTitle = preferences.getString(KEY_BOSS_STEP_TITLE, null),
             bossTitle = preferences.getString(KEY_BOSS_TITLE, null),
             skillTitle = preferences.getString(KEY_SKILL_TITLE, null),
+            isTimedBossSession = preferences.getBoolean(KEY_TIMED_BOSS, false),
         )
     }
 
@@ -72,6 +74,7 @@ class FocusSessionStore(context: Context) {
             putString(KEY_BOSS_STEP_TITLE, snapshot.bossStepTitle)
             putString(KEY_BOSS_TITLE, snapshot.bossTitle)
             putString(KEY_SKILL_TITLE, snapshot.skillTitle)
+            putBoolean(KEY_TIMED_BOSS, snapshot.isTimedBossSession)
         }
     }
 
@@ -97,6 +100,7 @@ class FocusSessionStore(context: Context) {
         const val PREFERENCES_NAME = "solo_studying_battle_prefs"
 
         private const val KEY_ACTIVE = "session_battle_active"
+        private const val KEY_TIMED_BOSS = "session_timed_boss"
         private const val KEY_FREE_STUDY = "session_free_active"
         private const val KEY_PAUSED = "session_battle_paused"
         private const val KEY_TIME_LEFT = "session_time_left"

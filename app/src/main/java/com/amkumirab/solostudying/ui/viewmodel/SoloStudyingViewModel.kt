@@ -64,6 +64,8 @@ class SoloStudyingViewModel(
     val activeDailyQuestId: Int? get() = battleViewModel.activeDailyQuestId
     val activeDailyQuestTitle: String? get() = battleViewModel.activeDailyQuestTitle
     val activeBossStepId: Int? get() = battleViewModel.activeBossStepId
+    val isTimedBossSession: Boolean get() = battleViewModel.isTimedBossSession
+    val currentBossProgressSeconds: Long get() = battleViewModel.currentBossProgressSeconds
     val activeBossStepTitle: String? get() = battleViewModel.activeBossStepTitle
     val activeBreak get() = breakViewModel.activeBreak
     val breakTimeLeftSeconds: Long get() = breakViewModel.breakTimeLeftSeconds
@@ -326,8 +328,8 @@ class SoloStudyingViewModel(
     }
 
     // --- Focus Battle / Free Study Operations ---
-    fun selectAndStartBattle(boss: BossEntity) {
-        battleViewModel.selectAndStartBattle(boss)
+    fun selectAndStartBattle(boss: BossEntity, sessionMinutes: Int? = null) {
+        battleViewModel.selectAndStartBattle(boss, sessionMinutes)
     }
 
     fun selectAndStartBossStep(boss: BossEntity, step: BossStepEntity) {

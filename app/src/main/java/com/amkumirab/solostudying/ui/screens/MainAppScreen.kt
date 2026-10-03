@@ -111,6 +111,7 @@ internal enum class DungeonSection(val title: String, val subtitle: String, val 
 @Composable
 fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     val bosses by viewModel.bosses.collectAsState()
+    val dungeons by viewModel.dungeons.collectAsStateWithLifecycle()
     val bossSteps by viewModel.bossSteps.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val rewards by viewModel.rewards.collectAsState()
@@ -344,13 +345,18 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                                 freeStudyMins = prepFreeStudyMins,
                                 selectedSkill = prepSelectedSkill,
                                 userProfile = userProfile ?: UserProfileEntity(),
-                                onBeginBattle = {
+                                suggestedDailyMinutes = prepBoss?.let { boss ->
+                                    dungeons.firstOrNull { it.name == boss.dungeonName }?.let { dungeon ->
+                                        calculateDungeonStudyPlan(dungeon, bosses)?.minutesPerStudyDay
+                                    }
+                                },
+                                onBeginBattle = { sessionMinutes ->
                                     if (prepBoss != null) {
                                         viewModel.selectedSkillToTrain = prepSelectedSkill
                                         if (prepStudyStep != null) {
                                             viewModel.selectAndStartBossStep(prepBoss!!, prepStudyStep!!)
                                         } else {
-                                            viewModel.selectAndStartBattle(prepBoss!!)
+                                            viewModel.selectAndStartBattle(prepBoss!!, sessionMinutes)
                                         }
                                     } else if (prepFreeStudyMins != null) {
                                         viewModel.selectedSkillToTrain = prepSelectedSkill
@@ -2047,8 +2053,11 @@ fun BattleTab(
         } else {
             (boss?.requiredMinutes ?: 30) * 60L
         }
+        val remainingProgressSeconds = if (viewModel.isTimedBossSession) {
+            (targetSeconds - viewModel.currentBossProgressSeconds).coerceAtLeast(0L)
+        } else viewModel.battleTimeLeftSeconds
         val hpPercent = if (targetSeconds > 0) {
-            ((viewModel.battleTimeLeftSeconds.toFloat() / targetSeconds)).coerceIn(0f, 1f)
+            (remainingProgressSeconds.toFloat() / targetSeconds).coerceIn(0f, 1f)
         } else 0f
         val damagePercent = 1f - hpPercent
 
@@ -2331,7 +2340,7 @@ fun BattleTab(
                             text = if (isFreeStudy) {
                                 "${(viewModel.battleTimeLeftSeconds / 60) + 1} / $requiredMins MINS"
                             } else {
-                                "${(viewModel.battleTimeLeftSeconds / 60) + 1} / ${boss?.requiredMinutes ?: 30} HP"
+                                "${(remainingProgressSeconds + 59) / 60} / ${boss?.requiredMinutes ?: 30} HP"
                             },
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontWeight = FontWeight.ExtraBold,
@@ -2407,6 +2416,15 @@ fun BattleTab(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
+                        if (viewModel.isTimedBossSession) {
+                            Text("SESSION TIME LEFT", color = NeonBlueAccent, style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                "Whole goal: ${formatCountdown(viewModel.currentBossProgressSeconds)} / ${formatCountdown(targetSeconds)}",
+                                color = TextMuted,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(bottom = 8.dp).testTag("goal_session_progress"),
+                            )
+                        }
                         Text(
                             text = if (viewModel.isBattlePaused) "ENGAGED - FIGHT PAUSED" else "ENGAGED IN COMBAT",
                             style = MaterialTheme.typography.bodySmall.copy(
@@ -2458,7 +2476,7 @@ fun BattleTab(
                 BattleActionControls(
                     isPaused = viewModel.isBattlePaused,
                     isFreeStudy = isFreeStudy,
-                    isStudyStep = viewModel.activeBossStepId != null,
+                    isStudyStep = viewModel.activeBossStepId != null || viewModel.isTimedBossSession,
                     onPause = {
                         RpgSoundManager.playClickSound()
                         viewModel.pauseBattle()

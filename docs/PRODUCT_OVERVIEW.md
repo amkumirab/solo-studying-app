@@ -41,6 +41,25 @@ occurrence stays hidden for that date without disabling its future schedule.
 - Skills track time independently from the overall profile.
 - Streak and recovery state are derived from the configured schedule.
 
+### Bounded goal sessions
+
+A boss's total study budget is separate from one focus session. Before starting
+a goal, users can select 25, 45, or 60 minutes, or enter 1–480 minutes. A dungeon
+plan suggests a session from its remaining daily target, capped at 60 minutes so
+larger daily targets can be split into blocks with breaks.
+
+The timer counts down the selected block while boss health reflects accumulated
+progress against the whole goal. Sessions are capped at the remaining time for
+ordinary unfinished goals. Deliverables can receive extra study after their
+budget is reached and still require explicit completion confirmation.
+
+Finishing a block records a completed study session and time-based rewards; it
+does not defeat an unfinished boss. Reaching an ordinary goal's full budget
+grants its boss reward once. Studying a completed goal preserves previous time
+and grants only time-based rewards. Ending early records only actual elapsed
+time. The bounded-session flag persists with the active timer, with a default
+of false so sessions saved by earlier versions retain their original behavior.
+
 ### Persistence
 
 Room stores the profile, dungeons, bosses, skills, rewards, reward balances, and

@@ -13,6 +13,8 @@ import com.amkumirab.solostudying.domain.reward.SessionRewardCalculator
 import com.amkumirab.solostudying.domain.session.ProgressSummary
 import com.amkumirab.solostudying.domain.session.SessionEndState
 import com.amkumirab.solostudying.domain.session.SessionSummary
+import com.amkumirab.solostudying.domain.session.goalSessionSeconds
+import com.amkumirab.solostudying.domain.session.goalCompletedBySession
 import com.amkumirab.solostudying.domain.streak.calculateStreakProgress
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
 import com.amkumirab.solostudying.focus.FocusSessionStore
@@ -53,6 +55,12 @@ class BattleViewModel(
 
     var isFreeStudyActive by mutableStateOf(false)
         private set
+
+    var isTimedBossSession by mutableStateOf(false)
+        private set
+
+    val currentBossProgressSeconds: Long
+        get() = initialBossTimeSpent + battleTimeSpentSeconds
 
     var selectedSkillToTrain by mutableStateOf<SkillEntity?>(null)
 
@@ -137,6 +145,7 @@ class BattleViewModel(
                 bossStepTitle = activeBossStepTitle,
                 bossTitle = activeBoss?.name,
                 skillTitle = selectedSkillToTrain?.name,
+                isTimedBossSession = isTimedBossSession,
             ),
         )
     }
@@ -194,6 +203,7 @@ class BattleViewModel(
 
             initialBossTimeSpent = restoredSnapshot.initialBossTimeSpentSeconds
             isFreeStudyActive = restoredSnapshot.isFreeStudy
+            isTimedBossSession = restoredSnapshot.isTimedBossSession
             isBattleActive = true
             isBattlePaused = restoredSnapshot.isPaused
             battleTimeLeftSeconds = restoredSnapshot.timeLeftSeconds
@@ -213,7 +223,8 @@ class BattleViewModel(
         }
     }
 
-    fun selectAndStartBattle(boss: BossEntity) {
+    fun selectAndStartBattle(boss: BossEntity, sessionMinutes: Int? = null) {
+        require(sessionMinutes == null || sessionMinutes in 1..480) { "Session duration must be between 1 and 480 minutes" }
         viewModelScope.launch {
             if (isBattleActive) {
                 suspendCurrentSession(applyHeavyPenalty = false)
@@ -222,8 +233,13 @@ class BattleViewModel(
             activeDailyQuestTitle = null
             activeBossStepId = null
             activeBossStepTitle = null
-            activeBoss = boss
-            if (boss.isCompleted) {
+            val currentBoss = repository.getBossById(boss.id) ?: boss
+            activeBoss = currentBoss
+            isTimedBossSession = sessionMinutes != null
+            if (sessionMinutes != null) {
+                initialBossTimeSpent = currentBoss.timeSpentSeconds
+                battleTimeLeftSeconds = goalSessionSeconds(currentBoss, sessionMinutes)
+            } else if (boss.isCompleted) {
                 initialBossTimeSpent = 0L
                 battleTimeLeftSeconds = boss.requiredMinutes * 60L
             } else {
@@ -250,6 +266,7 @@ class BattleViewModel(
             activeDailyQuestId = null
             activeDailyQuestTitle = null
             activeBossStepId = step.id
+            isTimedBossSession = false
             activeBossStepTitle = step.title
             activeBoss = boss
             initialBossTimeSpent = boss.timeSpentSeconds
@@ -323,6 +340,7 @@ class BattleViewModel(
         activeBossStepTitle = null
         activeBoss = null
         battleTimeLeftSeconds = minutes * 60L
+        isTimedBossSession = false
         battleTimeSpentSeconds = 0L
         initialBossTimeSpent = 0L
         focusShieldManager.setSessionOverride(useFocusShield)
@@ -482,7 +500,12 @@ class BattleViewModel(
                     resetActiveSession()
                     return@launch
                 }
-                val baseReward = if (completedFreeStudy || bossStepId != null) {
+                val goalDefeated = boss != null && if (isTimedBossSession) {
+                    goalCompletedBySession(boss, initialBossTimeSpent + finalDuration)
+                } else {
+                    bossStepId == null && !boss.isCompleted
+                }
+                val baseReward = if (completedFreeStudy || bossStepId != null || (isTimedBossSession && !goalDefeated)) {
                     SessionRewardCalculator.completedFreeStudy(finalDuration)
                 } else {
                     SessionRewardCalculator.completedBoss(checkNotNull(boss).difficulty)
@@ -498,7 +521,8 @@ class BattleViewModel(
                             boss.copy(
                                 timeSpentSeconds = updatedBossSeconds,
                                 isCompleted = boss.isCompleted ||
-                                    (bossStepId == null || updatedBossSeconds >= boss.requiredMinutes * 60L),
+                                    if (isTimedBossSession) goalDefeated else
+                                        (bossStepId == null || updatedBossSeconds >= boss.requiredMinutes * 60L),
                             ),
                         )
                     }
@@ -529,9 +553,7 @@ class BattleViewModel(
                         baseReward = baseReward,
                         studyCompleted = true,
                         isFreeStudy = completedFreeStudy,
-                        bossDefeated = !completedFreeStudy &&
-                            bossStepId == null &&
-                            boss?.isCompleted == false,
+                        bossDefeated = !completedFreeStudy && goalDefeated,
                     )
                     completionResult = result
                     val sessionId = insertSession(
@@ -615,6 +637,7 @@ class BattleViewModel(
         isBattlePaused = false
         isFreeStudyActive = false
         selectedSkillToTrain = null
+        isTimedBossSession = false
         activeDailyQuestId = null
         activeDailyQuestTitle = null
         activeBossStepId = null

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +28,9 @@ import com.amkumirab.solostudying.data.entity.BossStepEntity
 import com.amkumirab.solostudying.data.entity.SkillEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.domain.reward.SessionRewardCalculator
+import com.amkumirab.solostudying.domain.session.goalSessionSeconds
+import com.amkumirab.solostudying.domain.session.goalCompletedBySession
+import com.amkumirab.solostudying.domain.session.suggestedGoalSessionMinutes
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.ui.theme.*
 
@@ -37,7 +41,8 @@ fun BeforeTheBattleScreen(
     freeStudyMins: Int?,
     selectedSkill: SkillEntity?,
     userProfile: UserProfileEntity,
-    onBeginBattle: () -> Unit,
+    onBeginBattle: (Int?) -> Unit,
+    suggestedDailyMinutes: Int? = null,
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
@@ -119,12 +124,21 @@ fun BeforeTheBattleScreen(
 
     // Calculations for summary estimates
     val isFreeStudy = boss == null
-    val targetMins = freeStudyMins ?: studyStep?.estimatedMinutes ?: boss?.requiredMinutes ?: 30
+    val usesGoalSession = boss != null && studyStep == null
+    var sessionMinutes by rememberSaveable(boss?.id) {
+        mutableStateOf<Int?>(suggestedGoalSessionMinutes(suggestedDailyMinutes))
+    }
+    val targetMins = if (usesGoalSession) sessionMinutes ?: 0 else freeStudyMins ?: studyStep?.estimatedMinutes ?: 30
+    val sessionSeconds = if (usesGoalSession && sessionMinutes != null) {
+        goalSessionSeconds(checkNotNull(boss), checkNotNull(sessionMinutes))
+    } else targetMins * 60L
+    val willDefeatGoal = usesGoalSession && sessionMinutes != null &&
+        goalCompletedBySession(checkNotNull(boss), boss.timeSpentSeconds + sessionSeconds)
     val redDungeonDays = userProfile.redDungeonDays
     val isXpBoostActive = userProfile.isRedDungeonBoostActive
 
-    val baseReward = if (isFreeStudy) {
-        SessionRewardCalculator.completedFreeStudy(targetMins.toLong() * 60L)
+    val baseReward = if (isFreeStudy || studyStep != null || (usesGoalSession && !willDefeatGoal)) {
+        SessionRewardCalculator.completedFreeStudy(sessionSeconds)
     } else {
         SessionRewardCalculator.completedBoss(boss?.difficulty ?: "Medium")
     }
@@ -226,6 +240,25 @@ fun BeforeTheBattleScreen(
                 }
             }
 
+            if (usesGoalSession) {
+                Card(colors = CardDefaults.cardColors(containerColor = DarkFantasySurface)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GoalSessionDurationPicker(sessionMinutes, suggestedDailyMinutes) { sessionMinutes = it }
+                        Text(
+                            "Whole goal: ${boss?.requiredMinutes} min · Studied: ${(boss?.timeSpentSeconds ?: 0L) / 60} min",
+                            color = TextMuted,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        if (sessionMinutes != null && sessionSeconds < checkNotNull(sessionMinutes) * 60L) {
+                            Text("This session ends when the remaining goal time is reached.", color = RpgGold)
+                        }
+                        if (boss?.isRealBoss == true) {
+                            Text("Study time is saved. Confirm the deliverable separately when finished.", color = TextMuted)
+                        }
+                    }
+                }
+            }
+
             // 3. Battle Session Summary
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -263,7 +296,7 @@ fun BeforeTheBattleScreen(
                                 },
                             )
                             SummaryItem("LOCATION", if (isFreeStudy) "Astral Plane Portal" else "Dungeon: ${boss?.dungeonName ?: "Realm"}")
-                            SummaryItem("FOCUS DURATION", "$targetMins Minutes")
+                            SummaryItem("FOCUS DURATION", "${sessionSeconds / 60} min ${sessionSeconds % 60} sec")
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             SummaryItem("EST. XP REWARD", "✨ $estimatedXp XP")
@@ -506,8 +539,9 @@ fun BeforeTheBattleScreen(
                 Button(
                     onClick = {
                         RpgSoundManager.playClickSound()
-                        onBeginBattle()
+                        onBeginBattle(if (usesGoalSession) sessionMinutes else null)
                     },
+                    enabled = !usesGoalSession || sessionMinutes != null,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isFreeStudy) NeonBlueAccent else RpgRuby,
                         contentColor = OnAccent,

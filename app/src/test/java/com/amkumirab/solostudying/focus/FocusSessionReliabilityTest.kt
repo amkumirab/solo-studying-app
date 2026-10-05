@@ -10,6 +10,8 @@ import com.amkumirab.solostudying.data.entity.DailyQuestEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.domain.session.SessionEndState
+import com.amkumirab.solostudying.domain.planner.*
+import java.time.LocalDate
 import com.amkumirab.solostudying.ui.viewmodel.BattleViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -68,6 +70,49 @@ class FocusSessionReliabilityTest {
         assertEquals(snapshot, FocusSessionStore(context).read())
         FocusSessionStore(context).clear()
         assertNull(FocusSessionStore(context).read())
+    }
+
+    @Test
+    fun `planner block credits only recorded time from a bounded course session`() = runBlocking {
+        val today = LocalDate.of(2026, 10, 5)
+        val boss = BossEntity(id = 81, name = "Operating Systems", difficulty = "Hard", requiredMinutes = 6000, timeSpentSeconds = 300)
+        repository.insertBoss(boss)
+        val plan = buildStudyPlan(PlannerConfig(today, listOf(PlannerCourse(boss.id, 1, today, 2, 300)), List(7) { 60 }, 25))
+        val viewModel = BattleViewModel(repository, context, store) { 8_000_000L }
+        battleViewModel = viewModel
+        viewModel.selectAndStartBattle(boss, plan.blocks.single().minutes)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        assertEquals(0L, blockProgress(plan, listOf(repository.getBossById(boss.id)!!)).single().creditedSeconds)
+        viewModel.simulateStudySeconds(10L)
+        waitForCondition { if (viewModel.battleTimeSpentSeconds == 10L) true else null }
+        viewModel.suspendCurrentSession()
+        val savedBoss = repository.getBossById(boss.id)!!
+        val progress = blockProgress(plan, listOf(savedBoss)).single()
+        assertFalse(savedBoss.isCompleted)
+        assertEquals(310L, savedBoss.timeSpentSeconds)
+        assertEquals(10L, progress.creditedSeconds)
+        assertEquals(50L, progress.remainingSeconds)
+        assertEquals(10L, repository.allSessions.first().single().durationSeconds)
+    }
+
+    @Test
+    fun `finishing a planned block does not complete a course sized goal`() = runBlocking {
+        val today = LocalDate.of(2026, 10, 5)
+        val boss = BossEntity(id = 82, name = "Computational Physics", difficulty = "Hard", requiredMinutes = 6000)
+        repository.insertBoss(boss)
+        val plan = buildStudyPlan(PlannerConfig(today, listOf(PlannerCourse(boss.id, 2, today, 2, 0)), List(7) { 60 }, 25))
+        val viewModel = BattleViewModel(repository, context, store) { 9_000_000L }
+        battleViewModel = viewModel
+        viewModel.selectAndStartBattle(boss, plan.blocks.single().minutes)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        viewModel.simulateStudySeconds(120L)
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+        val savedBoss = repository.getBossById(boss.id)!!
+        assertFalse(savedBoss.isCompleted)
+        assertEquals(0L, blockProgress(plan, listOf(savedBoss)).single().remainingSeconds)
+        assertTrue(remainingPlannerCourses(plan, listOf(savedBoss)).isEmpty())
+        assertEquals(120L, repository.allSessions.first().single().durationSeconds)
+        assertEquals(0, repository.getProfileSync()!!.totalBossesDefeated)
     }
 
     @Test

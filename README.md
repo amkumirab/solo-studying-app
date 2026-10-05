@@ -33,6 +33,7 @@ dungeon study-plan form and progress card are not shown in these captures.
 - Course-sized dungeon plans with hour targets, finish dates, custom study days, and adaptive daily estimates
 - Boss battles and free-study sessions
 - Independent goal sessions with 25/45/60-minute presets, custom durations, and daily-plan suggestions
+- Offline guided exam planner with course effort estimates, daily capacity, weekly sessions, progress credit, and confirmed rescheduling
 - One-tap focus presets that remember the last duration and skill
 - Personalized daily dashboard with prioritized next actions and target progress
 - Home-screen widget for today's progress, next action, streak, and quick focus

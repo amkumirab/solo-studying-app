@@ -328,6 +328,17 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onDailyQuestStarted = {
                             currentTab = Tab.Battle
                         },
+                        onPlannedSessionStarted = { boss, minutes ->
+                            if (!viewModel.isBattleActive) {
+                                prepBoss = null
+                                prepStudyStep = null
+                                prepFreeStudyMins = null
+                                prepSelectedSkill = null
+                                viewModel.selectedSkillToTrain = null
+                                viewModel.selectAndStartBattle(boss, minutes)
+                                currentTab = Tab.Battle
+                            }
+                        },
                         onStartBossStep = { boss, step ->
                             RpgSoundManager.playClickSound()
                             prepBoss = boss
@@ -1062,6 +1073,7 @@ fun DungeonTab(
     onCustomQuickStart: () -> Unit,
     onFocusCycles: () -> Unit,
     onDailyQuestStarted: () -> Unit,
+    onPlannedSessionStarted: (BossEntity, Int) -> Unit,
     onStartBossStep: (BossEntity, BossStepEntity) -> Unit,
 ) {
     var selectedDungeonCategory by rememberSaveable { mutableStateOf("All") }
@@ -1162,6 +1174,15 @@ fun DungeonTab(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (selectedSection == DungeonSection.Today) {
+            StudyPlannerEntry(
+                bosses = bosses,
+                today = dashboardDate,
+                weekdayDefaults = profile?.scheduleWeekdayMinutes?.split(",")?.map { it.toIntOrNull() ?: 0 }
+                    ?: List(7) { 60 },
+                isSessionActive = isBattleActive,
+                onStart = onPlannedSessionStarted,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             todayPlan?.let { plan ->
             TodayDashboardCard(
                 plan = plan,

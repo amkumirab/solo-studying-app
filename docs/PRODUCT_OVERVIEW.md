@@ -60,6 +60,20 @@ and grants only time-based rewards. Ending early records only actual elapsed
 time. The bounded-session flag persists with the active timer, with a default
 of false so sessions saved by earlier versions retain their original behavior.
 
+### Offline exam planner
+
+Study Hub > Today provides a guided planner for up to 20 existing course goals.
+It asks for remaining focus hours, finish-by dates, priorities, daily capacity,
+and preferred block length. The weekly plan protects earlier deadlines, prefers
+full focus blocks, and reports effort that cannot fit. It uses deterministic
+local rules without an online service or a new dependency.
+
+Sessions start the existing bounded goal timer. Recorded time credits blocks in
+their original order; moving an untouched session cannot move earned credit.
+Rebuilding remaining work and removing a plan both require confirmation and
+leave study history, goal targets, and rewards unchanged. Accepted plans live in
+versioned local preferences. See [the planner contract](STUDY_PLANNER.md).
+
 ### Persistence
 
 Room stores the profile, dungeons, bosses, skills, rewards, reward balances, and

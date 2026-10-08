@@ -24,6 +24,9 @@ fun StudyPlannerEntry(
     bosses: List<BossEntity>, today: LocalDate, weekdayDefaults: List<Int>, isSessionActive: Boolean,
     onStart: (BossEntity, Int) -> Unit, modifier: Modifier = Modifier,
     plannerViewModel: StudyPlannerViewModel = viewModel(),
+    content: @Composable (StudyPlan?, @Composable () -> Unit) -> Unit = { _, section ->
+        OutlinedCard(modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { section() } }
+    },
 ) {
     val state by plannerViewModel.state.collectAsStateWithLifecycle()
     var open by rememberSaveable { mutableStateOf(false) }
@@ -33,15 +36,10 @@ fun StudyPlannerEntry(
     var rebuilding by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val busy = state.busy || rebuilding
-    OutlinedCard(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Study planner", style = MaterialTheme.typography.titleMedium)
-            Text("Offline guided questions → a weekly course plan", style = MaterialTheme.typography.bodySmall)
-            Button(onClick = { open = true }, enabled = state.loaded,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_study_planner")) {
-                Text(if (!state.loaded) "Loading…" else if (state.plan == null) "Plan exam preparation" else "Open weekly plan")
-            }
-        }
+    content(state.plan) {
+        StudyPlannerToday(state.plan, bosses, today, state.loaded, isSessionActive || busy, state.error,
+            onOpen = { open = true }, onStart = onStart,
+            onSave = { updated, saved -> plannerViewModel.save(updated, saved) })
     }
     if (open) Dialog(onDismissRequest = { if (!busy) open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {

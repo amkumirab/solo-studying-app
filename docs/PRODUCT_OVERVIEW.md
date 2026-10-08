@@ -74,6 +74,13 @@ Rebuilding remaining work and removing a plan both require confirmation and
 leave study history, goal targets, and rewards unchanged. Accepted plans live in
 versioned local preferences. See [the planner contract](STUDY_PLANNER.md).
 
+The Today dashboard includes the accepted plan's course sessions, with remaining
+minutes and recorded progress. Matching course recommendations are hidden to
+avoid duplicates. Long session lists expand on demand. "No time today" previews
+moving unfinished sessions to later available days, preserving future blocks
+and earned credit. A shortage prevents any partial save; confirmation is required.
+See [the Today integration contract](TODAY_PLANNER.md).
+
 ### Persistence
 
 Room stores the profile, dungeons, bosses, skills, rewards, reward balances, and

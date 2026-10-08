@@ -1174,54 +1174,61 @@ fun DungeonTab(
         Spacer(modifier = Modifier.height(12.dp))
 
         if (selectedSection == DungeonSection.Today) {
-            StudyPlannerEntry(
-                bosses = bosses,
-                today = dashboardDate,
-                weekdayDefaults = profile?.scheduleWeekdayMinutes?.split(",")?.map { it.toIntOrNull() ?: 0 }
-                    ?: List(7) { 60 },
-                isSessionActive = isBattleActive,
-                onStart = onPlannedSessionStarted,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
             todayPlan?.let { plan ->
-            TodayDashboardCard(
-                plan = plan,
-                isSessionActive = isBattleActive,
-                today = dashboardDate,
-                onStartItem = { item ->
-                    when (item.type) {
-                        TodayPlanItemType.DailyQuest -> {
-                            dailyQuests.firstOrNull { it.id == item.sourceId }?.let { quest ->
-                                if (!viewModel.isBattleActive) {
-                                    viewModel.selectAndStartDailyQuest(quest)
-                                    onDailyQuestStarted()
+                StudyPlannerEntry(
+                    bosses = bosses,
+                    today = dashboardDate,
+                    weekdayDefaults = profile?.scheduleWeekdayMinutes?.split(",")?.map { it.toIntOrNull() ?: 0 }
+                        ?: List(7) { 60 },
+                    isSessionActive = isBattleActive,
+                    onStart = onPlannedSessionStarted,
+                    content = { weeklyPlan, plannedSessions ->
+                        val managedGoals = weeklyPlan?.config?.courses?.map { it.bossId }.orEmpty().toSet()
+                        TodayDashboardCard(
+                            plan = plan.copy(items = plan.items.filterNot { item ->
+                                (item.type == TodayPlanItemType.Boss && item.sourceId in managedGoals) ||
+                                    (item.type == TodayPlanItemType.BossStep && item.bossId in managedGoals)
+                            }),
+                            isSessionActive = isBattleActive,
+                            today = dashboardDate,
+                            hasWeeklyPlan = weeklyPlan != null,
+                            plannedSessions = plannedSessions,
+                            onStartItem = { item ->
+                                when (item.type) {
+                                    TodayPlanItemType.DailyQuest -> {
+                                        dailyQuests.firstOrNull { it.id == item.sourceId }?.let { quest ->
+                                            if (!viewModel.isBattleActive) {
+                                                viewModel.selectAndStartDailyQuest(quest)
+                                                onDailyQuestStarted()
+                                            }
+                                        }
+                                    }
+
+                                    TodayPlanItemType.BossStep -> {
+                                        val boss = bosses.firstOrNull { it.id == item.bossId }
+                                        val step = bossSteps.firstOrNull { it.id == item.sourceId }
+                                        if (boss != null && step != null && !viewModel.isBattleActive) {
+                                            onStartBossStep(boss, step)
+                                        }
+                                    }
+
+                                    TodayPlanItemType.Boss -> {
+                                        bosses.firstOrNull { it.id == item.sourceId }?.let(onFightBoss)
+                                    }
+
+                                    TodayPlanItemType.QuickFocus -> {
+                                        if (!viewModel.isBattleActive) {
+                                            viewModel.selectedSkillToTrain = null
+                                            viewModel.selectAndStartFreeStudy(item.durationMinutes)
+                                            onDailyQuestStarted()
+                                        }
+                                    }
                                 }
-                            }
-                        }
-
-                        TodayPlanItemType.BossStep -> {
-                            val boss = bosses.firstOrNull { it.id == item.bossId }
-                            val step = bossSteps.firstOrNull { it.id == item.sourceId }
-                            if (boss != null && step != null && !viewModel.isBattleActive) {
-                                onStartBossStep(boss, step)
-                            }
-                        }
-
-                        TodayPlanItemType.Boss -> {
-                            bosses.firstOrNull { it.id == item.sourceId }?.let(onFightBoss)
-                        }
-
-                        TodayPlanItemType.QuickFocus -> {
-                            if (!viewModel.isBattleActive) {
-                                viewModel.selectedSkillToTrain = null
-                                viewModel.selectAndStartFreeStudy(item.durationMinutes)
-                                onDailyQuestStarted()
-                            }
-                        }
-                    }
-                },
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+                            },
+                        )
+                    },
+                )
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             DailyQuestBoard(

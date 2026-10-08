@@ -68,6 +68,8 @@ internal fun TodayDashboardCard(
     isSessionActive: Boolean,
     onStartItem: (TodayPlanItem) -> Unit,
     today: LocalDate = LocalDate.now(),
+    hasWeeklyPlan: Boolean = false,
+    plannedSessions: @Composable () -> Unit = {},
 ) {
     val studiedMinutes = plan.studiedSeconds / 60L
     val dateLabel = today.format(
@@ -169,7 +171,13 @@ internal fun TodayDashboardCard(
             HorizontalDivider(color = DarkCardBorder)
             Spacer(Modifier.height(10.dp))
 
-            if (plan.items.isEmpty()) {
+            plannedSessions()
+            if (hasWeeklyPlan && plan.items.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("Other study suggestions", style = MaterialTheme.typography.titleSmall, color = TextMuted)
+                Spacer(Modifier.height(8.dp))
+            }
+            if (plan.items.isEmpty() && !hasWeeklyPlan) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

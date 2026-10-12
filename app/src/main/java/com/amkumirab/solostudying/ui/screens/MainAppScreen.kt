@@ -30,10 +30,10 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -95,16 +95,18 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 enum class Tab(val title: String, val icon: ImageVector) {
-    Dungeons("Dungeons", Icons.Default.Shield),
-    Battle("Battle", Icons.Default.Timer),
-    Shop("Reward Shop", Icons.Default.LocalMall),
-    Stats("Profile Stats", Icons.Default.Person)
+    Today("Today", Icons.Default.Today),
+    Dungeons("Study", Icons.Default.Shield),
+    Battle("Session", Icons.Default.Timer),
+    Shop("Rewards", Icons.Default.LocalMall),
+    Stats("Profile", Icons.Default.Person)
 }
 
 internal enum class DungeonSection(val title: String, val subtitle: String, val icon: ImageVector) {
     Today("Today", "Plan and finish today's study", Icons.Default.Today),
     Focus("Focus", "Start a focused study session", Icons.Default.Bolt),
     Goals("Goals", "Manage long-term challenges", Icons.Default.Flag),
+    Plan("Plan", "Build and adjust your weekly study plan", Icons.Default.DateRange),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -122,13 +124,21 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     val reminderSettings by viewModel.reminderSettings.collectAsState()
     val soundSettings by RpgSoundManager.settings.collectAsState()
 
-    var currentTab by remember { mutableStateOf(Tab.Dungeons) }
+    var currentTab by rememberSaveable { mutableStateOf(Tab.Today) }
+    var studySection by rememberSaveable { mutableStateOf(DungeonSection.Goals) }
+    var profileSection by rememberSaveable { mutableStateOf(ProfileSection.Overview) }
+    val tabState = rememberSaveableStateHolder()
     var showCreateBossDialog by remember { mutableStateOf(false) }
     var showCreateRewardDialog by remember { mutableStateOf(false) }
     var showFreeStudyDialog by remember { mutableStateOf(false) }
     var showFocusCycleDialog by remember { mutableStateOf(false) }
     var pendingTabAfterFocusWarning by remember { mutableStateOf<Tab?>(null) }
     var showExitFocusDialog by remember { mutableStateOf(false) }
+    val navigateTo: (Tab) -> Unit = { destination ->
+        if (currentTab == Tab.Battle && viewModel.isBattleActive && destination != Tab.Battle) {
+            pendingTabAfterFocusWarning = destination
+        } else currentTab = destination
+    }
 
     // Before the Battle preparation states
     var prepBoss by remember { mutableStateOf<BossEntity?>(null) }
@@ -190,6 +200,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
 
     LaunchedEffect(viewModel.statsNavigationRequest) {
         if (viewModel.statsNavigationRequest > 0) {
+            profileSection = ProfileSection.Overview
             currentTab = Tab.Stats
         }
     }
@@ -215,8 +226,18 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
         currentTab = Tab.Battle
     }
 
-    BackHandler(enabled = viewModel.isBattleActive) {
-        showExitFocusDialog = true
+    BackHandler(enabled = viewModel.isBattleActive || currentTab != Tab.Today) {
+        when {
+            currentTab == Tab.Stats && profileSection != ProfileSection.Overview -> profileSection = ProfileSection.Overview
+            viewModel.isBattleActive -> showExitFocusDialog = true
+            else -> {
+                prepBoss = null
+                prepStudyStep = null
+                prepFreeStudyMins = null
+                prepSelectedSkill = null
+                currentTab = Tab.Today
+            }
+        }
     }
 
     if (userProfile != null && !userProfile!!.hasCompletedTutorial) {
@@ -233,24 +254,33 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing),
         topBar = {
-            RPGTopBar(profile = userProfile)
+            AppHeader(
+                title = if (currentTab == Tab.Stats && profileSection == ProfileSection.Settings) "Settings" else currentTab.title,
+                playerSummary = "Lv. ${userProfile?.level ?: 1} · ${userProfile?.gold ?: 0} Gold",
+                onSettings = {
+                    profileSection = ProfileSection.Settings
+                    navigateTo(Tab.Stats)
+                },
+                onBack = if (currentTab == Tab.Stats && profileSection == ProfileSection.Settings) {
+                    { profileSection = ProfileSection.Overview }
+                } else null,
+            )
         },
         bottomBar = {
+            Column {
+            if (viewModel.isBattleActive && currentTab != Tab.Battle) {
+                ActiveSessionBar(
+                    paused = viewModel.isBattlePaused,
+                    title = viewModel.activeBoss?.name ?: "Focus study",
+                    onReturn = { currentTab = Tab.Battle },
+                )
+            }
             RPGBottomBar(
                 currentTab = currentTab,
-                onTabSelected = { selectedTab ->
-                    if (
-                        currentTab == Tab.Battle &&
-                        viewModel.isBattleActive &&
-                        selectedTab != Tab.Battle
-                    ) {
-                        pendingTabAfterFocusWarning = selectedTab
-                    } else {
-                        currentTab = selectedTab
-                    }
-                },
+                onTabSelected = navigateTo,
                 isBattleActive = viewModel.isBattleActive
             )
+            }
         },
         containerColor = BlackFantasyBackground
     ) { innerPadding ->
@@ -266,15 +296,11 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                 onStartAnotherSession = { currentTab = Tab.Dungeons },
             )
 
-            AnimatedContent(
-                targetState = currentTab,
-                transitionSpec = {
-                    fadeIn() togetherWith fadeOut()
-                },
-                label = "TabTransition"
-            ) { targetTab ->
-                when (targetTab) {
-                    Tab.Dungeons -> DungeonTab(
+            tabState.SaveableStateProvider(currentTab.name) {
+                when (currentTab) {
+                    Tab.Today, Tab.Dungeons -> DungeonTab(
+                        selectedSection = if (currentTab == Tab.Today) DungeonSection.Today else studySection,
+                        onSectionSelected = { studySection = it },
                         bosses = bosses,
                         bossSteps = bossSteps,
                         sessions = sessions,
@@ -407,6 +433,9 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         onDeleteReward = { reward -> viewModel.deleteReward(reward) }
                     )
                     Tab.Stats -> StatsTab(
+                        showSettingsHeader = false,
+                        selectedSection = profileSection,
+                        onSectionSelected = { profileSection = it },
                         profile = userProfile,
                         sessions = sessions,
                         skills = skills,
@@ -644,7 +673,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
             },
             title = { Text("Leave the focus screen?") },
             text = {
-                Text("Your study timer will keep running. You can return from the Battle tab at any time.")
+                Text("Your study timer will keep running. Use the session bar to return at any time.")
             },
             confirmButton = {
                 TextButton(
@@ -782,278 +811,10 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 }
 
 // ==========================================
-// COMPOSABLE: TOP BAR WITH HEALTH & PROGRESS
-// ==========================================
-@Composable
-fun RPGTopBar(profile: UserProfileEntity?) {
-    val nonNullProfile = profile ?: UserProfileEntity()
-    val nextLevelXp = nonNullProfile.level * 150
-    val xpProgress = if (nextLevelXp > 0) nonNullProfile.xp.toFloat() / nextLevelXp else 0f
-    val rankLabel = getRankLabel(nonNullProfile.level)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(DarkFantasySurface)
-            .drawBehind {
-                drawLine(
-                    color = NeonBlueAccent.copy(alpha = 0.25f),
-                    start = Offset(0f, size.height),
-                    end = Offset(size.width, size.height),
-                    strokeWidth = 1.dp.toPx()
-                )
-            }
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Profile Info with circular level icon
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(SurfaceInteractive, SurfaceSubtle)
-                            )
-                        )
-                        .border(1.5.dp, NeonBlueAccent, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "LV.${nonNullProfile.level}",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = NeonBlueAccent,
-                            fontSize = 10.sp
-                        )
-                    )
-                }
-
-                Column {
-                    Text(
-                        text = rankLabel.uppercase(),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = TextMuted,
-                            letterSpacing = 1.2.sp,
-                            fontSize = 9.sp
-                        )
-                    )
-                    Text(
-                        text = nonNullProfile.name,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TextWhite,
-                            letterSpacing = 0.3.sp,
-                            fontSize = 16.sp,
-                        )
-                    )
-                }
-            }
-
-            // Streak & Gold Economy Indicators
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
-                if (nonNullProfile.currentStreak > 0) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(RpgRuby.copy(alpha = 0.15f))
-                            .border(1.dp, RpgRuby.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocalFireDepartment,
-                            contentDescription = "Streak Fire",
-                            tint = RpgRuby,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "${nonNullProfile.currentStreak}D",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = RpgRuby,
-                                fontSize = 11.sp
-                            )
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(SurfaceSubtle)
-                        .border(1.dp, StrongCardBorder, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(7.dp)
-                            .clip(CircleShape)
-                            .background(RpgGold)
-                    )
-                    Text(
-                        text = "${nonNullProfile.gold}G",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = RpgGold,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp
-                        ),
-                        modifier = Modifier.testTag("gold_counter")
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // XP Progression Bar
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "XP",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    color = NeonBlueAccent,
-                    fontSize = 10.sp
-                )
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(6.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceInteractive)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(xpProgress)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(RpgRuby, NeonBlueAccent) // Red to Cyan gradient bar
-                            )
-                        )
-                )
-            }
-            Text(
-                text = "${nonNullProfile.xp}/${nextLevelXp} XP",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = TextMuted,
-                    fontSize = 9.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-            )
-        }
-    }
-}
-
-// ==========================================
-// COMPOSABLE: BOTTOM NAVIGATION BAR
-// ==========================================
-@Composable
-fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: Boolean) {
-    NavigationBar(
-        containerColor = SurfaceElevated,
-        tonalElevation = 0.dp,
-        modifier = Modifier
-            .height(64.dp)
-            .drawBehind {
-                drawLine(
-                    color = NeonBlueAccent.copy(alpha = 0.25f),
-                    start = Offset(0f, 0f),
-                    end = Offset(size.width, 0f),
-                    strokeWidth = 1.dp.toPx()
-                )
-            }
-            .semantics { isTraversalGroup = true }
-    ) {
-        Tab.values().forEachIndexed { index, tab ->
-            val isSelected = currentTab == tab
-            val accessibilityLabel = if (tab == Tab.Battle && isBattleActive) {
-                "${tab.title}, study session active"
-            } else {
-                tab.title
-            }
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = {
-                    RpgSoundManager.playClickSound()
-                    onTabSelected(tab)
-                },
-                modifier = Modifier
-                    .testTag("bottom_nav_${tab.name.lowercase()}")
-                    .semantics {
-                        contentDescription = accessibilityLabel
-                        traversalIndex = index.toFloat()
-                    },
-                icon = {
-                    Box {
-                        Icon(
-                            imageVector = tab.icon,
-                            contentDescription = null,
-                            tint = if (isSelected) NeonBlueAccent else TextSubtle,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        if (tab == Tab.Battle && isBattleActive) {
-                            // Flash a red indicator on battle tab when studying
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .align(Alignment.TopEnd)
-                                    .clip(CircleShape)
-                                    .background(RpgRuby)
-                            )
-                        }
-                    }
-                },
-                label = {
-                    Text(
-                        text = tab.title,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) NeonBlueAccent else TextSubtle,
-                            fontSize = 10.sp,
-                        ),
-                        maxLines = 1,
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = NeonBlueAccent,
-                    selectedTextColor = NeonBlueAccent,
-                    unselectedIconColor = TextSubtle,
-                    unselectedTextColor = TextSubtle,
-                    indicatorColor = InfoContainer,
-                )
-            )
-        }
-    }
-}
-
-// ==========================================
 // TAB: 1. DUNGEONS TAB
 // ==========================================
 @Composable
-fun DungeonTab(
+internal fun DungeonTab(
     bosses: List<BossEntity>,
     bossSteps: List<BossStepEntity>,
     sessions: List<StudySessionEntity>,
@@ -1075,11 +836,13 @@ fun DungeonTab(
     onDailyQuestStarted: () -> Unit,
     onPlannedSessionStarted: (BossEntity, Int) -> Unit,
     onStartBossStep: (BossEntity, BossStepEntity) -> Unit,
+    selectedSection: DungeonSection = DungeonSection.Today,
+    onSectionSelected: (DungeonSection) -> Unit = {},
 ) {
     var selectedDungeonCategory by rememberSaveable { mutableStateOf("All") }
     var showDungeonPlanDialog by rememberSaveable { mutableStateOf(false) }
     var stepsBoss by remember { mutableStateOf<BossEntity?>(null) }
-    var selectedSection by rememberSaveable { mutableStateOf(DungeonSection.Today) }
+    val sectionState = rememberSaveableStateHolder()
     val dailyQuests by viewModel.dailyQuests.collectAsState()
     val allDailyQuests by viewModel.allDailyQuests.collectAsState()
     val recurringQuests by viewModel.recurringQuests.collectAsState()
@@ -1117,457 +880,479 @@ fun DungeonTab(
         else bosses.filter { it.dungeonName == selectedDungeonCategory }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+    sectionState.SaveableStateProvider(selectedSection.name) {
+        val scrollState = rememberScrollState()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 12.dp)
+                .verticalScroll(scrollState)
         ) {
-            Column {
-                Text(
-                    text = "Study Hub",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        color = TextWhite
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = if (selectedSection == DungeonSection.Today) "Your day" else selectedSection.title,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = TextWhite
+                        )
                     )
-                )
-                Text(
-                    text = selectedSection.subtitle,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextMuted
+                    Text(
+                        text = selectedSection.subtitle,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = TextMuted
+                        )
                     )
-                )
-            }
+                }
 
-            if (selectedSection == DungeonSection.Goals) {
-                FilledTonalButton(
-                    onClick = onCreateBossClicked,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = NeonBlueAccent.copy(alpha = 0.14f),
-                        contentColor = NeonBlueAccent,
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    modifier = Modifier
-                        .heightIn(min = 44.dp)
-                        .testTag("create_boss_button"),
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(17.dp))
-                    Spacer(modifier = Modifier.width(5.dp))
-                    Text("NEW GOAL", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                if (selectedSection == DungeonSection.Goals) {
+                    FilledTonalButton(
+                        onClick = onCreateBossClicked,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = NeonBlueAccent.copy(alpha = 0.14f),
+                            contentColor = NeonBlueAccent,
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .testTag("create_boss_button"),
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(17.dp))
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text("New goal", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-        DungeonSectionTabs(
-            selectedSection = selectedSection,
-            onSelected = { selectedSection = it },
-        )
+            if (selectedSection != DungeonSection.Today) DungeonSectionTabs(
+                selectedSection = selectedSection,
+                onSelected = onSectionSelected,
+            )
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        if (selectedSection == DungeonSection.Today) {
-            todayPlan?.let { plan ->
+            if (selectedSection == DungeonSection.Plan) {
                 StudyPlannerEntry(
-                    bosses = bosses,
-                    today = dashboardDate,
-                    weekdayDefaults = profile?.scheduleWeekdayMinutes?.split(",")?.map { it.toIntOrNull() ?: 0 }
-                        ?: List(7) { 60 },
-                    isSessionActive = isBattleActive,
-                    onStart = onPlannedSessionStarted,
-                    content = { weeklyPlan, plannedSessions ->
-                        val managedGoals = weeklyPlan?.config?.courses?.map { it.bossId }.orEmpty().toSet()
-                        TodayDashboardCard(
-                            plan = plan.copy(items = plan.items.filterNot { item ->
-                                (item.type == TodayPlanItemType.Boss && item.sourceId in managedGoals) ||
-                                    (item.type == TodayPlanItemType.BossStep && item.bossId in managedGoals)
-                            }),
-                            isSessionActive = isBattleActive,
-                            today = dashboardDate,
-                            hasWeeklyPlan = weeklyPlan != null,
-                            plannedSessions = plannedSessions,
-                            onStartItem = { item ->
-                                when (item.type) {
-                                    TodayPlanItemType.DailyQuest -> {
-                                        dailyQuests.firstOrNull { it.id == item.sourceId }?.let { quest ->
+                    bosses = bosses, today = dashboardDate,
+                    weekdayDefaults = profile?.scheduleWeekdayMinutes?.split(",")?.map { it.toIntOrNull() ?: 0 } ?: List(7) { 60 },
+                    isSessionActive = isBattleActive, onStart = onPlannedSessionStarted,
+                    showDailySessions = false,
+                )
+            }
+            if (selectedSection == DungeonSection.Today) {
+                todayPlan?.let { plan ->
+                    StudyPlannerEntry(
+                        bosses = bosses,
+                        today = dashboardDate,
+                        weekdayDefaults = profile?.scheduleWeekdayMinutes?.split(",")?.map { it.toIntOrNull() ?: 0 }
+                            ?: List(7) { 60 },
+                        isSessionActive = isBattleActive,
+                        onStart = onPlannedSessionStarted,
+                        content = { weeklyPlan, plannedSessions ->
+                            val managedGoals = weeklyPlan?.config?.courses?.map { it.bossId }.orEmpty().toSet()
+                            TodayDashboardCard(
+                                plan = plan.copy(items = plan.items.filterNot { item ->
+                                    (item.type == TodayPlanItemType.Boss && item.sourceId in managedGoals) ||
+                                        (item.type == TodayPlanItemType.BossStep && item.bossId in managedGoals)
+                                }),
+                                isSessionActive = isBattleActive,
+                                today = dashboardDate,
+                                hasWeeklyPlan = weeklyPlan != null,
+                                plannedSessions = plannedSessions,
+                                onStartItem = { item ->
+                                    when (item.type) {
+                                        TodayPlanItemType.DailyQuest -> {
+                                            dailyQuests.firstOrNull { it.id == item.sourceId }?.let { quest ->
+                                                if (!viewModel.isBattleActive) {
+                                                    viewModel.selectAndStartDailyQuest(quest)
+                                                    onDailyQuestStarted()
+                                                }
+                                            }
+                                        }
+
+                                        TodayPlanItemType.BossStep -> {
+                                            val boss = bosses.firstOrNull { it.id == item.bossId }
+                                            val step = bossSteps.firstOrNull { it.id == item.sourceId }
+                                            if (boss != null && step != null && !viewModel.isBattleActive) {
+                                                onStartBossStep(boss, step)
+                                            }
+                                        }
+
+                                        TodayPlanItemType.Boss -> {
+                                            bosses.firstOrNull { it.id == item.sourceId }?.let(onFightBoss)
+                                        }
+
+                                        TodayPlanItemType.QuickFocus -> {
                                             if (!viewModel.isBattleActive) {
-                                                viewModel.selectAndStartDailyQuest(quest)
+                                                viewModel.selectedSkillToTrain = null
+                                                viewModel.selectAndStartFreeStudy(item.durationMinutes)
                                                 onDailyQuestStarted()
                                             }
                                         }
                                     }
+                                },
+                            )
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
-                                    TodayPlanItemType.BossStep -> {
-                                        val boss = bosses.firstOrNull { it.id == item.bossId }
-                                        val step = bossSteps.firstOrNull { it.id == item.sourceId }
-                                        if (boss != null && step != null && !viewModel.isBattleActive) {
-                                            onStartBossStep(boss, step)
-                                        }
-                                    }
-
-                                    TodayPlanItemType.Boss -> {
-                                        bosses.firstOrNull { it.id == item.sourceId }?.let(onFightBoss)
-                                    }
-
-                                    TodayPlanItemType.QuickFocus -> {
-                                        if (!viewModel.isBattleActive) {
-                                            viewModel.selectedSkillToTrain = null
-                                            viewModel.selectAndStartFreeStudy(item.durationMinutes)
-                                            onDailyQuestStarted()
-                                        }
-                                    }
-                                }
-                            },
-                        )
-                    },
+                ExpandableStudySection(
+                    title = "Daily tasks",
+                    summary = "${dailyQuests.count { !it.isCompleted }} remaining today",
+                ) {
+                DailyQuestBoard(
+                quests = dailyQuests,
+                allQuests = allDailyQuests,
+                recurringQuests = recurringQuests,
+                skills = skills,
+                today = viewModel.dailyQuestViewModel.todayDate,
+                activeQuestId = viewModel.activeDailyQuestId,
+                isSessionActive = isBattleActive,
+                onCreateQuest = viewModel::createDailyQuest,
+                onUpdateQuest = viewModel::updateDailyQuest,
+                onSetCompleted = viewModel::setDailyQuestCompleted,
+                onDeleteQuest = viewModel::deleteDailyQuest,
+                onUpdateRecurringQuest = viewModel::updateRecurringQuest,
+                onSetRecurringQuestActive = viewModel::setRecurringQuestActive,
+                onDeleteRecurringQuest = viewModel::deleteRecurringQuest,
+                onStartQuest = { quest ->
+                    if (!viewModel.isBattleActive) {
+                        viewModel.selectAndStartDailyQuest(quest)
+                        onDailyQuestStarted()
+                    }
+                },
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                }
             }
 
-            DailyQuestBoard(
-            quests = dailyQuests,
-            allQuests = allDailyQuests,
-            recurringQuests = recurringQuests,
-            skills = skills,
-            today = viewModel.dailyQuestViewModel.todayDate,
-            activeQuestId = viewModel.activeDailyQuestId,
-            isSessionActive = isBattleActive,
-            onCreateQuest = viewModel::createDailyQuest,
-            onUpdateQuest = viewModel::updateDailyQuest,
-            onSetCompleted = viewModel::setDailyQuestCompleted,
-            onDeleteQuest = viewModel::deleteDailyQuest,
-            onUpdateRecurringQuest = viewModel::updateRecurringQuest,
-            onSetRecurringQuestActive = viewModel::setRecurringQuestActive,
-            onDeleteRecurringQuest = viewModel::deleteRecurringQuest,
-            onStartQuest = { quest ->
-                if (!viewModel.isBattleActive) {
-                    viewModel.selectAndStartDailyQuest(quest)
-                    onDailyQuestStarted()
-                }
-            },
-            )
-        }
+            if (selectedSection == DungeonSection.Focus) {
 
-        if (selectedSection == DungeonSection.Focus) {
+                QuickStartCard(
+                skills = skills,
+                selection = quickStartSelection,
+                isSessionActive = isBattleActive,
+                onSelectionChange = onQuickStartSelectionChange,
+                onStart = onQuickStart,
+                onCustomDuration = onCustomQuickStart,
+                onFocusCycles = onFocusCycles,
+                )
 
-            QuickStartCard(
-            skills = skills,
-            selection = quickStartSelection,
-            isSessionActive = isBattleActive,
-            onSelectionChange = onQuickStartSelectionChange,
-            onStart = onQuickStart,
-            onCustomDuration = onCustomQuickStart,
-            onFocusCycles = onFocusCycles,
-            )
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            FocusProfilesCard(
-            profiles = viewModel.focusProfiles,
-            skills = skills,
-            isSessionActive = isBattleActive,
-            focusShieldHasAccess = viewModel.focusShieldHasAccess,
-            onStart = { profileToStart ->
-                if (!viewModel.isBattleActive) {
-                    viewModel.startFocusProfile(
-                        profile = profileToStart,
-                        validSkillIds = skills.mapTo(mutableSetOf()) { it.id },
-                    )
-                    onDailyQuestStarted()
-                }
-            },
-            onSave = viewModel::saveFocusProfile,
-            onDelete = viewModel::deleteFocusProfile,
-            )
-        }
-
-        if (selectedSection == DungeonSection.Goals) {
-
-            DeadlineGoalsCard(
-            bosses = bosses,
-            scheduleDays = profile?.scheduleDays.orEmpty(),
-            isSessionActive = isBattleActive,
-            onCreateGoal = onCreateBossClicked,
-            onStartGoal = onFightBoss,
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-        // System 7: RED DUNGEON (PENALTY SYSTEM) VISUAL STRESS INDICATOR
-        val redDungeonDays = profile?.redDungeonDays ?: 0
-        val isBoostActive = profile?.isRedDungeonBoostActive == true
-        val totalCleared = profile?.totalRedDungeonsCleared ?: 0
-        
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (redDungeonDays > 0) Color(0xFF2E090F) else Color(0xFF161012)
-            ),
-            border = BorderStroke(
-                width = 1.5.dp,
-                color = if (redDungeonDays > 0) RpgRuby else Color(0xFF4C1D24)
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            text = if (redDungeonDays > 0) "🔴 ACTIVE RED GATE" else "🛡️ RED GATES",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Black,
-                                color = if (redDungeonDays > 0) RpgRuby else TextWhite
-                            )
+                FocusProfilesCard(
+                profiles = viewModel.focusProfiles,
+                skills = skills,
+                isSessionActive = isBattleActive,
+                focusShieldHasAccess = viewModel.focusShieldHasAccess,
+                onStart = { profileToStart ->
+                    if (!viewModel.isBattleActive) {
+                        viewModel.startFocusProfile(
+                            profile = profileToStart,
+                            validSkillIds = skills.mapTo(mutableSetOf()) { it.id },
                         )
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(if (redDungeonDays > 0) RpgRuby.copy(alpha = 0.2f) else Color(0xFF2E090F))
-                                .border(1.dp, if (redDungeonDays > 0) RpgRuby else Color(0xFF4C1D24), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = if (redDungeonDays > 0) "BREACH LEVEL $redDungeonDays" else "SECURED",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (redDungeonDays > 0) RpgRuby else RpgGold,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
+                        onDailyQuestStarted()
                     }
-                    
-                    Text(
-                        text = "⚔️ PURIFIED: $totalCleared",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = RpgGold,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                if (redDungeonDays > 0) {
-                    Text(
-                        text = "Your procrastination has let dark rifts breach the perimeter! Normal rewards are reduced by -20% XP/Gold. You need to complete any focus study session to seal this breach.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextWhite.copy(alpha = 0.85f))
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                            .border(1.dp, Color(0xFF4C1D24), RoundedCornerShape(8.dp))
-                            .padding(12.dp)
+                },
+                onSave = viewModel::saveFocusProfile,
+                onDelete = viewModel::deleteFocusProfile,
+                )
+            }
+
+            if (selectedSection == DungeonSection.Goals) {
+
+                DeadlineGoalsCard(
+                bosses = bosses,
+                scheduleDays = profile?.scheduleDays.orEmpty(),
+                isSessionActive = isBattleActive,
+                onCreateGoal = onCreateBossClicked,
+                onStartGoal = onFightBoss,
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+            // System 7: RED DUNGEON (PENALTY SYSTEM) VISUAL STRESS INDICATOR
+            val redDungeonDays = profile?.redDungeonDays ?: 0
+            val isBoostActive = profile?.isRedDungeonBoostActive == true
+            val totalCleared = profile?.totalRedDungeonsCleared ?: 0
+            ExpandableStudySection(
+                title = if (redDungeonDays > 0) "Recovery challenge active" else "Recovery challenges",
+                summary = if (redDungeonDays > 0) "Rewards reduced. Complete a focus session to clear the gate."
+                    else "$totalCleared cleared · no active penalty",
+                tag = "gate_status_toggle",
+            ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (redDungeonDays > 0) Color(0xFF2E090F) else Color(0xFF161012)
+                ),
+                border = BorderStroke(
+                    width = 1.5.dp,
+                    color = if (redDungeonDays > 0) RpgRuby else Color(0xFF4C1D24)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "⚡ RED GATE 2X XP BOOSTER",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = RpgGold
-                                    )
+                            Text(
+                                text = if (redDungeonDays > 0) "🔴 ACTIVE RED GATE" else "🛡️ RED GATES",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Black,
+                                    color = if (redDungeonDays > 0) RpgRuby else TextWhite
                                 )
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(if (redDungeonDays > 0) RpgRuby.copy(alpha = 0.2f) else Color(0xFF2E090F))
+                                    .border(1.dp, if (redDungeonDays > 0) RpgRuby else Color(0xFF4C1D24), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
                                 Text(
-                                    text = "Finish faster: Double XP payout on purification!",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = TextMuted,
-                                        fontSize = 11.sp
+                                    text = if (redDungeonDays > 0) "BREACH LEVEL $redDungeonDays" else "SECURED",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = if (redDungeonDays > 0) RpgRuby else RpgGold,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 )
                             }
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            if (isBoostActive) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(RpgGold.copy(alpha = 0.15f))
-                                        .border(1.dp, RpgGold, RoundedCornerShape(6.dp))
-                                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                                ) {
+                        }
+
+                        Text(
+                            text = "⚔️ PURIFIED: $totalCleared",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = RpgGold,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    if (redDungeonDays > 0) {
+                        Text(
+                            text = "Rewards are reduced until you complete a focus study session to clear this gate.",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextWhite.copy(alpha = 0.85f))
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .border(1.dp, Color(0xFF4C1D24), RoundedCornerShape(8.dp))
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "🔥 2X XP ACTIVE",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = RpgGold,
-                                            fontWeight = FontWeight.Bold
+                                        text = "⚡ RED GATE 2X XP BOOSTER",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = RpgGold
+                                        )
+                                    )
+                                    Text(
+                                        text = "Finish faster: Double XP payout on purification!",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = TextMuted,
+                                            fontSize = 11.sp
                                         )
                                     )
                                 }
-                            } else {
-                                Button(
-                                    onClick = {
-                                        RpgSoundManager.playClickSound()
-                                        viewModel.activateRedDungeonXpBoost()
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = RpgGold),
-                                    shape = RoundedCornerShape(6.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = "BUY (100 G)",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = BlackFantasyBackground,
-                                            fontWeight = FontWeight.Black
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                if (isBoostActive) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(RpgGold.copy(alpha = 0.15f))
+                                            .border(1.dp, RpgGold, RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "🔥 2X XP ACTIVE",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color = RpgGold,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         )
-                                    )
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = {
+                                            RpgSoundManager.playClickSound()
+                                            viewModel.activateRedDungeonXpBoost()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = RpgGold),
+                                        shape = RoundedCornerShape(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "BUY (100 G)",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color = BlackFantasyBackground,
+                                                fontWeight = FontWeight.Black
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        Text(
+                            text = "No active penalty. Keep studying on your scheduled days to maintain your streak.",
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                        )
                     }
-                } else {
-                    Text(
-                        text = "The barriers are holding perfectly. Keep up your daily study streak to prevent Crimson Gates from spawning.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                    )
                 }
             }
-        }
-            Spacer(modifier = Modifier.height(12.dp))
+            }
+                Spacer(modifier = Modifier.height(12.dp))
 
-        // Dungeon Categories/Folders Scrollable filters
-        if (dungeonsList.size > 1) {
-            Text(
-                text = "📁 SELECT REALM DUNGEON",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = NeonBlueAccent,
-                    letterSpacing = 1.sp
+            // Dungeon Categories/Folders Scrollable filters
+            if (dungeonsList.size > 1) {
+                Text(
+                    text = "📁 SELECT REALM DUNGEON",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = NeonBlueAccent,
+                        letterSpacing = 1.sp
+                    )
                 )
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                dungeonsList.forEach { dung ->
-                    val isSel = selectedDungeonCategory == dung
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSel) NeonBlueAccent else DarkFantasySurface)
-                            .border(1.dp, if (isSel) NeonBlueAccent else DarkCardBorder, RoundedCornerShape(20.dp))
-                            .clickable { selectedDungeonCategory = dung }
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    dungeonsList.forEach { dung ->
+                        val isSel = selectedDungeonCategory == dung
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (isSel) NeonBlueAccent else DarkFantasySurface)
+                                .border(1.dp, if (isSel) NeonBlueAccent else DarkCardBorder, RoundedCornerShape(20.dp))
+                                .clickable { selectedDungeonCategory = dung }
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = dung.uppercase(),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSel) BlackFantasyBackground else TextWhite
+                                )
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+                if (selectedStudyPlan != null) {
+                    DungeonStudyPlanCard(plan = selectedStudyPlan, onEdit = { showDungeonPlanDialog = true })
+                } else {
+                    OutlinedButton(
+                        onClick = { showDungeonPlanDialog = true },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_dungeon_study_plan"),
+                    ) { Text(if (selectedDungeonCategory == "All") "Plan a dungeon" else "Set study target and deadline") }
+                    Text(
+                        "Plan a full course in hours and choose when to finish. Select a dungeon to see its progress.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+
+                if (filteredBosses.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(DarkFantasySurface)
+                        .border(
+                            width = 1.dp,
+                            brush = Brush.verticalGradient(listOf(DarkCardBorder, Color.Transparent)),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = "Empty dungeons shield",
+                            tint = NeonBlueAccent.copy(alpha = 0.3f),
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = dung.uppercase(),
-                            style = MaterialTheme.typography.bodySmall.copy(
+                            text = "DUNGEON REALM CLEAR",
+                            style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSel) BlackFantasyBackground else TextWhite
+                                color = TextWhite,
+                                letterSpacing = 1.sp
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "No boss summons exist in this category. Summon an academic obstacle or change filters!",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = TextMuted,
+                                textAlign = TextAlign.Center
                             )
                         )
                     }
                 }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-            if (selectedStudyPlan != null) {
-                DungeonStudyPlanCard(plan = selectedStudyPlan, onEdit = { showDungeonPlanDialog = true })
-            } else {
-                OutlinedButton(
-                    onClick = { showDungeonPlanDialog = true },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_dungeon_study_plan"),
-                ) { Text(if (selectedDungeonCategory == "All") "Plan a dungeon" else "Set study target and deadline") }
-                Text(
-                    "Plan a full course in hours and choose when to finish. Select a dungeon to see its progress.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-
-            if (filteredBosses.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(DarkFantasySurface)
-                    .border(
-                        width = 1.dp,
-                        brush = Brush.verticalGradient(listOf(DarkCardBorder, Color.Transparent)),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
+                } else {
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = "Empty dungeons shield",
-                        tint = NeonBlueAccent.copy(alpha = 0.3f),
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "DUNGEON REALM CLEAR",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = TextWhite,
-                            letterSpacing = 1.sp
+                    filteredBosses.forEach { boss ->
+                        BossCard(
+                            boss = boss,
+                            steps = bossSteps.filter { it.bossId == boss.id },
+                            activeBoss = activeBoss,
+                            isBattleActive = isBattleActive,
+                            onFightBoss = { onFightBoss(boss) },
+                            onDeleteBoss = { onDeleteBoss(boss) },
+                            onConquerRealBoss = { onConquerRealBoss(boss) },
+                            onManageSteps = { stepsBoss = boss },
                         )
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "No boss summons exist in this category. Summon an academic obstacle or change filters!",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextMuted,
-                            textAlign = TextAlign.Center
-                        )
-                    )
+                    }
                 }
-            }
-            } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                filteredBosses.forEach { boss ->
-                    BossCard(
-                        boss = boss,
-                        steps = bossSteps.filter { it.bossId == boss.id },
-                        activeBoss = activeBoss,
-                        isBattleActive = isBattleActive,
-                        onFightBoss = { onFightBoss(boss) },
-                        onDeleteBoss = { onDeleteBoss(boss) },
-                        onConquerRealBoss = { onConquerRealBoss(boss) },
-                        onManageSteps = { stepsBoss = boss },
-                    )
                 }
-            }
             }
         }
     }
@@ -1624,7 +1409,7 @@ internal fun DungeonSectionTabs(
             .testTag("study_hub_sections"),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        DungeonSection.entries.forEach { section ->
+        listOf(DungeonSection.Goals, DungeonSection.Focus, DungeonSection.Plan).forEach { section ->
             val isSelected = section == selectedSection
             Row(
                 modifier = Modifier
@@ -2859,15 +2644,15 @@ fun ShopTab(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Adventurer Shop",
-                    style = MaterialTheme.typography.headlineSmall.copy(
+                    text = "Your rewards",
+                    style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = TextWhite
                     )
                 )
                 Text(
-                    text = "Deduct study-earned Gold for guild rewards",
-                    style = MaterialTheme.typography.bodyMedium.copy(
+                    text = "Spend your study Gold.",
+                    style = MaterialTheme.typography.bodySmall.copy(
                         color = TextMuted
                     ),
                     maxLines = 1,
@@ -2881,12 +2666,12 @@ fun ShopTab(
                 onClick = onCreateRewardClicked,
                 colors = ButtonDefaults.buttonColors(containerColor = NeonBlueSecondary),
                 shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.testTag("create_reward_button"),
+                modifier = Modifier.heightIn(min = 48.dp).testTag("create_reward_button"),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                Icon(Icons.Default.Gavel, contentDescription = "Forge reward button", modifier = Modifier.size(18.dp), tint = Color.White)
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Forge Reward", fontWeight = FontWeight.Bold, maxLines = 1)
+                Text("Add reward", fontWeight = FontWeight.Bold)
             }
         }
 
@@ -2940,7 +2725,7 @@ fun ShopTab(
             // Section: Unlocked inventory balances (Time-Based)
             item {
                 Text(
-                    text = "🛡️ SECURED REWARD INVENTORY (AVAILABLE TO SPEND)",
+                    text = "Ready to use",
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = NeonBlueAccent,
@@ -3020,7 +2805,7 @@ fun ShopTab(
             item {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "🪙 REWARD MERCHANT ITEMS",
+                    text = "Reward shop",
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = NeonBlueAccent,
@@ -3077,7 +2862,7 @@ fun ShopTab(
                                 tint = if (reward.rewardType == "Time-Based") NeonBlueAccent else Color(0xFFFF5CE2),
                                 modifier = Modifier.size(32.dp)
                             )
-                            
+
                             // RPG item quantity/duration badge
                             Box(
                                 modifier = Modifier
@@ -3204,1033 +2989,6 @@ fun ShopTab(
 // ==========================================
 // TAB: 4. RPG PLAYER PROFILE & STATS TAB
 // ==========================================
-@Composable
-fun StatsTab(
-    profile: UserProfileEntity?,
-    sessions: List<StudySessionEntity>,
-    skills: List<SkillEntity>,
-    onCreateSkill: (String, Int, String) -> Unit,
-    onDeleteSkill: (SkillEntity) -> Unit,
-    onUpdateSchedule: (String, Int, String, String) -> Unit,
-    onTriggerSimulatedNotification: (String) -> Unit,
-    reminderSettings: ReminderSettings,
-    onReminderSettingsChange: (ReminderSettings) -> Unit,
-    soundSettings: SoundSettings,
-    onSoundEnabledChange: (Boolean) -> Unit,
-    onSoundVolumeChange: (Float) -> Unit,
-    onPreviewSound: () -> Unit,
-    onReplayTutorial: () -> Unit,
-    breakSuggestionsEnabled: Boolean,
-    onBreakSuggestionsEnabledChange: (Boolean) -> Unit,
-    focusShieldEnabled: Boolean,
-    focusShieldHasAccess: Boolean,
-    onFocusShieldEnabledChange: (Boolean) -> Unit,
-    onRequestFocusShieldAccess: () -> Unit,
-    onUpdateSessionNote: (Long, String) -> Unit,
-) {
-    val nonNullProfile = profile ?: UserProfileEntity()
-    val rankText = getRankLabel(nonNullProfile.level)
-
-    var showSummonSkillDialog by remember { mutableStateOf(false) }
-    var showScheduleContractDialog by remember { mutableStateOf(false) }
-    var sessionBeingEdited by remember { mutableStateOf<StudySessionEntity?>(null) }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Player Profile Card
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                border = BorderStroke(1.dp, NeonBlueAccent.copy(alpha = 0.3f)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(90.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(NeonBlueAccent.copy(alpha = 0.3f), Color.Transparent)
-                                )
-                            )
-                            .border(2.dp, NeonBlueAccent, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${nonNullProfile.level}",
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = TextWhite,
-                                    fontSize = 32.sp
-                                )
-                            )
-                            Text(
-                                text = "LEVEL",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = NeonBlueAccent,
-                                    fontSize = 9.sp
-                                )
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = rankText,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                             fontWeight = FontWeight.ExtraBold,
-                             color = RpgGold,
-                             letterSpacing = 1.sp
-                        )
-                    )
-
-                    Text(
-                        text = "Guild Scholar Class Player",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Streaks summary
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF131524)),
-                            border = BorderStroke(1.dp, DarkCardBorder.copy(alpha = 0.5f))
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "CURRENT STREAK",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = TextMuted,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 9.sp
-                                    )
-                                )
-                                Text(
-                                    text = "${nonNullProfile.currentStreak} Days",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        color = RpgRuby,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                )
-                            }
-                        }
-
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF131524)),
-                            border = BorderStroke(1.dp, DarkCardBorder.copy(alpha = 0.5f))
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "LONGEST STREAK",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = TextMuted,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 9.sp
-                                    )
-                                )
-                                Text(
-                                    text = "${nonNullProfile.longestStreak} Days",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        color = RpgEmerald,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- TODAY'S DAILY COMBAT REPORT ---
-        item {
-            val startOfToday = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-
-            val todaySessions = sessions.filter { it.timestamp >= startOfToday }
-            val totalDurationToday = todaySessions.sumOf { it.durationSeconds }
-            val totalMinutesToday = totalDurationToday / 60
-            val totalXpToday = todaySessions.sumOf { it.xpEarned }
-            val totalGoldToday = todaySessions.sumOf { it.goldEarned }
-            
-            val currentCalendar = java.util.Calendar.getInstance()
-            val todayDayOfWeek = currentCalendar.get(java.util.Calendar.DAY_OF_WEEK)
-            val dailyTargetMinutes = nonNullProfile.getTargetMinutesForCalendarDay(todayDayOfWeek).coerceAtLeast(1)
-            val todayProgress = (totalMinutesToday.toFloat() / dailyTargetMinutes).coerceIn(0f, 1f)
-            
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "⚔️ TODAY'S CAMPAIGN REPORT",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = NeonBlueAccent,
-                        letterSpacing = 1.sp
-                    ),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                    border = BorderStroke(1.dp, if (todayProgress >= 1f) RpgGold else DarkCardBorder),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = if (todayProgress >= 1f) "✨ DAILY PACT CONQUERED!" else "🛡️ DAILY ACTIVE QUEST",
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontWeight = FontWeight.Black,
-                                        color = if (todayProgress >= 1f) RpgGold else TextWhite
-                                    )
-                                )
-                                Text(
-                                    text = "Target: $dailyTargetMinutes minutes focus budget",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                )
-                            }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(if (todayProgress >= 1f) RpgGold.copy(alpha = 0.15f) else Color.Black)
-                                    .border(1.dp, if (todayProgress >= 1f) RpgGold else DarkCardBorder, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "${(todayProgress * 100).toInt()}% DONE",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = if (todayProgress >= 1f) RpgGold else NeonBlueAccent,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // Linear progress bar for daily focus target
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(10.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(todayProgress)
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            if (todayProgress >= 1f) listOf(RpgGold, Color(0xFFFCD34D)) else listOf(NeonBlueAccent, Color(0xFFC582FF))
-                                        )
-                                    )
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(14.dp))
-                        
-                        // Summary numbers
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(text = "CONQUEST TIME", style = MaterialTheme.typography.bodySmall.copy(color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold))
-                                Text(text = "$totalMinutesToday mins", style = MaterialTheme.typography.titleMedium.copy(color = TextWhite, fontWeight = FontWeight.Black))
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(text = "COMBAT LOOT", style = MaterialTheme.typography.bodySmall.copy(color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold))
-                                Text(text = "+$totalXpToday XP / +$totalGoldToday Gold", style = MaterialTheme.typography.bodyMedium.copy(color = RpgGold, fontWeight = FontWeight.Black))
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(DarkCardBorder.copy(alpha = 0.4f))
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        Text(
-                            text = "BATTLE RECORDS FOR TODAY:",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = NeonBlueAccent,
-                                fontSize = 10.sp,
-                                letterSpacing = 0.5.sp
-                            ),
-                            modifier = Modifier.padding(bottom = 6.dp)
-                        )
-                        
-                        if (todaySessions.isEmpty()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = TextMuted,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Your weapons are resting. Enter a dungeon or cross the free study portal to log today's focus chronicles!",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                )
-                            }
-                        } else {
-                            val grouped = todaySessions.groupBy { it.bossName ?: "Free Study Zone" }
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                grouped.forEach { (bossName, list) ->
-                                    val totalDurationSec = list.sumOf { it.durationSeconds }
-                                    val mins = totalDurationSec / 60
-                                    val secs = totalDurationSec % 60
-                                    val durationStr = if (mins > 0) "$mins min${if (mins != 1L) "s" else ""} $secs sec" else "$secs sec"
-                                    val xpGained = list.sumOf { it.xpEarned }
-                                    val goldGained = list.sumOf { it.goldEarned }
-                                    
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(Color(0xFF0F101A), RoundedCornerShape(8.dp))
-                                            .border(1.dp, DarkCardBorder.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                            .padding(10.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Text(
-                                                text = "⚔️",
-                                                fontSize = 14.sp,
-                                                modifier = Modifier.padding(end = 8.dp)
-                                            )
-                                            Column {
-                                                Text(
-                                                    text = bossName.uppercase(),
-                                                    style = MaterialTheme.typography.bodySmall.copy(
-                                                        fontWeight = FontWeight.Black,
-                                                        color = TextWhite
-                                                    )
-                                                )
-                                                Text(
-                                                    text = "Fought for $durationStr",
-                                                    style = MaterialTheme.typography.bodySmall.copy(
-                                                        color = TextMuted,
-                                                        fontSize = 10.sp
-                                                    )
-                                                )
-                                            }
-                                        }
-                                        
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            Text(
-                                                text = "+$xpGained XP",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = NeonBlueAccent,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            )
-                                            Text(
-                                                text = "+$goldGained G",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = RpgGold,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            StudyInsightsCard(
-                sessions = sessions,
-                profile = nonNullProfile,
-            )
-        }
-
-        // System 8: DYNAMIC STUDY SCHEDULE GUILD CONTRACT DISPLAY
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "📜 GUILD STUDY CONTRACT",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = NeonBlueAccent,
-                        letterSpacing = 1.sp
-                    )
-                )
-
-                Text(
-                    text = "EDIT CONTRACT",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = RpgGold
-                    ),
-                    modifier = Modifier.clickable { showScheduleContractDialog = true }
-                )
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                border = BorderStroke(1.dp, DarkCardBorder)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val daysPrint = if (nonNullProfile.scheduleDays.isBlank()) "None Selected" else nonNullProfile.scheduleDays
-                    val flexPrint = if (nonNullProfile.scheduleFlexibility.isBlank()) "Adaptable Study Plan" else nonNullProfile.scheduleFlexibility
-                    
-                    Text(
-                        text = "This sacred pact outlines your academic constraints for the current realm. Breaking alignment resets non-permanent milestones.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    StatRow(label = "Days of Duel Duty", value = daysPrint)
-                    
-                    val daysOfWeekList = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-                    val targetsList = nonNullProfile.scheduleWeekdayMinutes.split(",").map { it.trim().toIntOrNull() ?: 45 }
-                    val weekdayTargetsFormatted = daysOfWeekList.mapIndexed { idx, day ->
-                        val mins = if (idx < targetsList.size) targetsList[idx] else 45
-                        "$day: ${mins}m"
-                    }.joinToString(" | ")
-                    
-                    StatRow(label = "Custom Weekday Targets", value = weekdayTargetsFormatted)
-                    StatRow(label = "Flex Class Covenant", value = flexPrint)
-                }
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "🔊 RPG COMPANION MESSENGER",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = NeonBlueAccent,
-                        letterSpacing = 1.sp
-                    )
-                )
-            }
-        }
-
-        item {
-            ReminderSettingsCard(
-                settings = reminderSettings,
-                onSettingsChange = onReminderSettingsChange,
-                onPreview = onTriggerSimulatedNotification,
-            )
-        }
-
-        // Replay Tutorial / System Controls Section
-        item {
-            SystemControlsCard(
-                soundSettings = soundSettings,
-                onSoundEnabledChange = onSoundEnabledChange,
-                onSoundVolumeChange = onSoundVolumeChange,
-                onPreviewSound = onPreviewSound,
-                onReplayTutorial = onReplayTutorial,
-                breakSuggestionsEnabled = breakSuggestionsEnabled,
-                onBreakSuggestionsEnabledChange = onBreakSuggestionsEnabledChange,
-                focusShieldEnabled = focusShieldEnabled,
-                focusShieldHasAccess = focusShieldHasAccess,
-                onFocusShieldEnabledChange = onFocusShieldEnabledChange,
-                onRequestFocusShieldAccess = onRequestFocusShieldAccess,
-            )
-        }
-
-        // System 6: SKILL ACADEMY INSTRUCTION SECTION
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "🎓 HERO SKILL ACADEMY",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = NeonBlueAccent,
-                        letterSpacing = 1.sp
-                    )
-                )
-
-                Button(
-                    onClick = { showSummonSkillDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF131C30)),
-                    modifier = Modifier.height(28.dp),
-                    shape = RoundedCornerShape(4.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = NeonBlueAccent, modifier = Modifier.size(12.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("SUMMON SKILL", fontSize = 10.sp, color = NeonBlueAccent, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-
-        if (skills.isEmpty()) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                    border = BorderStroke(1.dp, DarkCardBorder.copy(alpha = 0.5f))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(Icons.Default.School, contentDescription = null, tint = TextMuted, modifier = Modifier.size(36.dp))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "NO SKILLS MASTERED YET",
-                            style = MaterialTheme.typography.labelSmall.copy(color = TextWhite, fontWeight = FontWeight.Bold)
-                        )
-                        Text(
-                            text = "Summon customized educational skills (e.g., French Nouns, Physics Rigor) and train them during active focus sessions to elevate them!",
-                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted, textAlign = TextAlign.Center),
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
-        } else {
-            items(skills) { sk ->
-                val totalSeconds = sk.targetMinutes * 60L
-                val skillProgress = if (totalSeconds > 0) {
-                    (sk.spentSeconds.toFloat() / totalSeconds).coerceIn(0f, 1f)
-                } else 0f
-                val activeLvl = (sk.spentSeconds / 3600) + 1
-                val isUnlocked = sk.spentSeconds >= totalSeconds
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF13141E)),
-                    border = BorderStroke(1.dp, if (isUnlocked) RpgGold.copy(alpha = 0.4f) else DarkCardBorder)
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(
-                                        text = sk.name.uppercase(),
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            fontWeight = FontWeight.Black,
-                                            color = if (isUnlocked) RpgGold else TextWhite
-                                        )
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(if (isUnlocked) RpgGold.copy(alpha = 0.15f) else Color.Black)
-                                            .border(1.dp, if (isUnlocked) RpgGold else DarkCardBorder, RoundedCornerShape(4.dp))
-                                            .padding(horizontal = 5.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "LVL $activeLvl",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                color = if (isUnlocked) RpgGold else NeonBlueAccent,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text = sk.suggestion,
-                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                )
-                            }
-
-                            // Disintegrate action
-                            IconButton(
-                                onClick = { onDeleteSkill(sk) },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = "Disintegrate skill icon", tint = RpgRuby, modifier = Modifier.size(16.dp))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Progress Bar to Unlock/Master Skill
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (isUnlocked) "⭐ TRANSCENDED MASTER" else "UNLEASHING RESILIENCE",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = if (isUnlocked) RpgGold else NeonBlueAccent,
-                                    letterSpacing = 0.5.sp
-                                )
-                            )
-                            Text(
-                                text = "${sk.spentSeconds / 60}/${sk.targetMinutes} MINS",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 9.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = TextWhite,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(skillProgress)
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            if (isUnlocked) listOf(RpgGold, Color(0xFFFCD34D)) else listOf(NeonBlueAccent, Color(0xFFC582FF))
-                                        )
-                                    )
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Broad analytical values
-        item {
-            Text(
-                text = "⚔️ STUDY HISTORIC STATISTICS",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = NeonBlueAccent,
-                    letterSpacing = 1.sp
-                )
-            )
-        }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                border = BorderStroke(1.dp, DarkCardBorder)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatRow(label = "Total Focus Time", value = formatStudyTimeFriendly(nonNullProfile.totalStudyTimeSeconds))
-                    StatRow(label = "Completed Session Count", value = "${nonNullProfile.totalSessionCount}")
-                    StatRow(label = "Bosses Slain", value = "${nonNullProfile.totalBossesDefeated}")
-                    StatRow(label = "Total Gold Earned All-Time", value = "${nonNullProfile.totalGoldEarned} G")
-                    StatRow(label = "Total XP Claimed All-Time", value = "${nonNullProfile.totalXpEarned} XP")
-                }
-            }
-        }
-
-        // Section: Activity log list
-        item {
-            Text(
-                text = "📜 HISTORICAL DUNGEON CHRONICLES",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = NeonBlueAccent,
-                    letterSpacing = 1.sp
-                )
-            )
-        }
-
-        if (sessions.isEmpty()) {
-            item {
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                        border = BorderStroke(1.dp, DarkCardBorder.copy(alpha = 0.5f))
-                ) {
-                    Text(
-                        text = "Your journal has no records. Battle bosses inside dungeons to log focus activities!",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted),
-                        modifier = Modifier.padding(16.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        } else {
-            items(items = sessions, key = { it.id }) { session ->
-                SessionHistoryCard(
-                    session = session,
-                    onEditNote = { sessionBeingEdited = session },
-                )
-            }
-        }
-
-    }
-
-    sessionBeingEdited?.let { session ->
-        SessionNoteDialog(
-            session = session,
-            onDismiss = { sessionBeingEdited = null },
-            onSave = { note ->
-                onUpdateSessionNote(session.id.toLong(), note)
-                sessionBeingEdited = null
-            },
-        )
-    }
-
-    // Interactive Dialog 1: Summon custom skill
-    if (showSummonSkillDialog) {
-        var skillName by remember { mutableStateOf("") }
-        var targetHrsInput by remember { mutableStateOf("10") } // Default target 10 hours
-        var suggInput by remember { mutableStateOf("Specialized expertise training") }
-
-        Dialog(onDismissRequest = { showSummonSkillDialog = false }) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                border = BorderStroke(1.5.dp, NeonBlueAccent),
-                modifier = Modifier.padding(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "SUMMON ACADEMY SKILL",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            color = NeonBlueAccent,
-                            letterSpacing = 1.sp
-                        )
-                    )
-
-                    OutlinedTextField(
-                        value = skillName,
-                        onValueChange = { skillName = it },
-                        label = { Text("Skill Name (e.g. Physics Rigor)") },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Black,
-                            unfocusedContainerColor = Color.Black,
-                            focusedLabelColor = NeonBlueAccent,
-                            focusedIndicatorColor = NeonBlueAccent
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = targetHrsInput,
-                        onValueChange = {
-                            if (it.isEmpty() || it.all { char -> char.isDigit() }) targetHrsInput = it
-                        },
-                        label = { Text("Milestone Focus (Minutes)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Black,
-                            unfocusedContainerColor = Color.Black,
-                            focusedLabelColor = NeonBlueAccent,
-                            focusedIndicatorColor = NeonBlueAccent
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = suggInput,
-                        onValueChange = { suggInput = it },
-                        label = { Text("Core Purpose Description") },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Black,
-                            unfocusedContainerColor = Color.Black,
-                            focusedLabelColor = NeonBlueAccent,
-                            focusedIndicatorColor = NeonBlueAccent
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { showSummonSkillDialog = false },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = TextMuted),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("CANCEL")
-                        }
-
-                        val valMinutes = targetHrsInput.toIntOrNull() ?: 600
-                        Button(
-                            onClick = {
-                                if (skillName.isNotBlank() && valMinutes > 0) {
-                                    onCreateSkill(skillName, valMinutes, suggInput)
-                                    showSummonSkillDialog = false
-                                }
-                            },
-                            enabled = skillName.isNotBlank() && valMinutes > 0,
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonBlueAccent),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1.2f)
-                        ) {
-                            Text("CONSECRATE", color = BlackFantasyBackground, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Interactive Dialog 2: Dynamic Study Schedule Guild Contract editor
-    if (showScheduleContractDialog) {
-        var flexState by remember { mutableStateOf(if (nonNullProfile.scheduleFlexibility.isNotBlank()) nonNullProfile.scheduleFlexibility else "Adaptable Study Plan") }
-        
-        // Days checkbox states
-        val daysOfWeekList = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-        val currentDaysSelected = remember {
-            mutableStateMapOf<String, Boolean>().apply {
-                daysOfWeekList.forEach { day ->
-                    put(day, nonNullProfile.scheduleDays.contains(day))
-                }
-            }
-        }
-
-        // Initialize targets for each day from CSV scheduleWeekdayMinutes
-        val weekdayTargets = remember {
-            val initialList = nonNullProfile.scheduleWeekdayMinutes.split(",").map { it.trim().toIntOrNull() ?: 45 }
-            mutableStateMapOf<String, String>().apply {
-                daysOfWeekList.forEachIndexed { index, day ->
-                    val mins = if (index < initialList.size) initialList[index] else nonNullProfile.scheduleMinutesPerDay
-                    put(day, mins.toString())
-                }
-            }
-        }
-
-        val flexClasses = listOf("Casual Study", "Adaptable Study Plan", "Rigorous Schedule", "Elite Grindhouse")
-
-        Dialog(onDismissRequest = { showScheduleContractDialog = false }) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkFantasySurface),
-                border = BorderStroke(1.5.dp, RpgGold),
-                modifier = Modifier.padding(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(20.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "SIGN STUDY COVENANT",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            color = RpgGold,
-                            letterSpacing = 1.sp
-                        )
-                    )
-
-                    Text(
-                        text = "Customize study target focus budgets for each day. The system monitors alignment dynamically according to the current calendar day.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                    )
-
-                    // Daily custom targets list
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "🛡️ DAILY FOCUS COMMITMENTS",
-                            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted, fontWeight = FontWeight.Bold)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        daysOfWeekList.forEach { day ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                    .border(1.dp, DarkCardBorder, RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(
-                                        checked = currentDaysSelected[day] ?: false,
-                                        onCheckedChange = { currentDaysSelected[day] = it },
-                                        colors = CheckboxDefaults.colors(checkedColor = NeonBlueAccent)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = day.uppercase(),
-                                        color = if (currentDaysSelected[day] == true) TextWhite else TextMuted,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    androidx.compose.foundation.text.BasicTextField(
-                                        value = weekdayTargets[day] ?: "0",
-                                        onValueChange = { newValue ->
-                                            if (newValue.isEmpty() || newValue.all { it.isDigit() }) {
-                                                weekdayTargets[day] = newValue
-                                                if ((newValue.toIntOrNull() ?: 0) > 0) {
-                                                    currentDaysSelected[day] = true
-                                                }
-                                            }
-                                        },
-                                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                            color = TextWhite,
-                                            fontWeight = FontWeight.Bold,
-                                            textAlign = TextAlign.Center
-                                        ),
-                                        modifier = Modifier
-                                            .width(70.dp)
-                                            .background(Color.Black, RoundedCornerShape(4.dp))
-                                            .border(1.dp, NeonBlueAccent.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                            .padding(vertical = 6.dp, horizontal = 8.dp)
-                                    )
-                                    Text(
-                                        text = "MINS",
-                                        style = MaterialTheme.typography.labelSmall.copy(color = TextMuted)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Flexibility Dropdown
-                    Column {
-                        Text("FLEXIBILITY INTENSIVENESS", style = MaterialTheme.typography.bodySmall.copy(color = TextMuted, fontWeight = FontWeight.Bold))
-                        Spacer(modifier = Modifier.height(6.dp))
-                        flexClasses.forEach { flexClass ->
-                            val isSel = flexState == flexClass
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSel) RpgGold.copy(alpha = 0.2f) else Color.Black)
-                                    .border(1.dp, if (isSel) RpgGold else DarkCardBorder, RoundedCornerShape(8.dp))
-                                    .clickable { flexState = flexClass }
-                                    .padding(12.dp)
-                            ) {
-                                Text(
-                                    text = flexClass.uppercase(),
-                                    color = if (isSel) RpgGold else TextWhite,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-
-                    // Actions
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { showScheduleContractDialog = false },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = TextMuted),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("ABORT")
-                        }
-
-                        Button(
-                            onClick = {
-                                val selectedDaysCsv = daysOfWeekList.filter { currentDaysSelected[it] == true }.joinToString(",")
-                                val weekdayMinutesCsv = daysOfWeekList.map { weekdayTargets[it]?.toIntOrNull() ?: 0 }.joinToString(",")
-                                val averageMins = daysOfWeekList.map { weekdayTargets[it]?.toIntOrNull() ?: 0 }.filter { it > 0 }.average().toInt().coerceAtLeast(30)
-                                onUpdateSchedule(selectedDaysCsv, averageMins, flexState, weekdayMinutesCsv)
-                                showScheduleContractDialog = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = RpgGold),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1.2f)
-                        ) {
-                            Text("SEAL TREATY", color = BlackFantasyBackground, fontWeight = FontWeight.Black)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 internal fun SessionHistoryCard(
@@ -4923,12 +3681,11 @@ internal fun SystemControlsCard(
 
 @Composable
 fun StatRow(label: String, value: String) {
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted))
+        Text(text = label, style = MaterialTheme.typography.bodySmall.copy(color = TextMuted))
         Text(text = value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = TextWhite))
     }
 }
@@ -5977,7 +4734,7 @@ fun CreateRewardDialog(
 // ==========================================
 // HELPERS & STYLE ASSIGNMENTS
 // ==========================================
-private fun getRankLabel(level: Int): String {
+internal fun getRankLabel(level: Int): String {
     return when {
         level <= 2 -> "Novice Apprentice 🎓"
         level <= 5 -> "Apprentice Spellcaster 🔮"
@@ -6013,7 +4770,7 @@ private fun formatStudyTimeShort(seconds: Long): String {
     return if (mins > 0) "${mins}m ${secs}s" else "${secs}s"
 }
 
-private fun formatStudyTimeFriendly(seconds: Long): String {
+internal fun formatStudyTimeFriendly(seconds: Long): String {
     val totalMins = seconds / 60
     val hrs = totalMins / 60
     val mins = totalMins % 60

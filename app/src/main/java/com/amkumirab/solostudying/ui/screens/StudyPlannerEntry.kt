@@ -25,6 +25,7 @@ fun StudyPlannerEntry(
     bosses: List<BossEntity>, today: LocalDate, weekdayDefaults: List<Int>, isSessionActive: Boolean,
     onStart: (BossEntity, Int) -> Unit, modifier: Modifier = Modifier,
     plannerViewModel: StudyPlannerViewModel = studyPlannerViewModel(),
+    showDailySessions: Boolean = true,
     content: @Composable (StudyPlan?, @Composable () -> Unit) -> Unit = { _, section ->
         OutlinedCard(modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { section() } }
     },
@@ -38,9 +39,23 @@ fun StudyPlannerEntry(
     val scope = rememberCoroutineScope()
     val busy = state.busy || rebuilding
     content(state.plan) {
-        StudyPlannerToday(state.plan, bosses, today, state.loaded, isSessionActive || busy, state.error,
-            onOpen = { open = true }, onStart = onStart,
-            onSave = { updated, saved -> plannerViewModel.save(updated, saved) })
+        if (!showDailySessions) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Weekly study plan", style = MaterialTheme.typography.titleMedium)
+                Text(state.plan?.let { "${it.config.courses.size} courses · guided weekly scheduling" }
+                    ?: "Choose courses, deadlines and available time. Your plan stays on this device.",
+                    style = MaterialTheme.typography.bodyMedium)
+                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Button(
+                    onClick = { open = true }, enabled = state.loaded && !isSessionActive && !busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_study_planner"),
+                ) { Text(if (!state.loaded) "Loading…" else if (state.plan == null) "Create weekly plan" else "Open weekly plan") }
+            }
+        } else {
+            StudyPlannerToday(state.plan, bosses, today, state.loaded, isSessionActive || busy, state.error,
+                onOpen = { open = true }, onStart = onStart,
+                onSave = { updated, saved -> plannerViewModel.save(updated, saved) })
+        }
     }
     if (open) Dialog(onDismissRequest = { if (!busy) open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {

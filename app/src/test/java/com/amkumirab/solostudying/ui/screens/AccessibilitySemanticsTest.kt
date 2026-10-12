@@ -57,7 +57,7 @@ class AccessibilitySemanticsTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `bottom navigation exposes ordered labels and active battle state`() {
+    fun `bottom navigation exposes four destinations without a permanent timer tab`() {
         composeRule.setContent {
             MaterialTheme {
                 RPGBottomBar(
@@ -69,28 +69,29 @@ class AccessibilitySemanticsTest {
         }
 
         composeRule.onNodeWithTag("bottom_nav_dungeons")
-            .assertContentDescriptionEquals("Dungeons")
+            .assertContentDescriptionEquals("Study")
             .assertIsSelected()
-            .assert(
-                SemanticsMatcher.expectValue(
-                    SemanticsProperties.TraversalIndex,
-                    0f,
-                ),
-            )
-
-        composeRule.onNodeWithTag("bottom_nav_battle")
-            .assertContentDescriptionEquals("Battle, study session active")
             .assert(
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.TraversalIndex,
                     1f,
                 ),
             )
+
+        composeRule.onNodeWithTag("bottom_nav_today")
+            .assertContentDescriptionEquals("Today")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.TraversalIndex,
+                    0f,
+                ),
+            )
+        composeRule.onNodeWithTag("bottom_nav_battle").assertDoesNotExist()
     }
 
     @Test
     fun `study hub sections expose compact reachable navigation`() {
-        val selectedSection = mutableStateOf(DungeonSection.Today)
+        val selectedSection = mutableStateOf(DungeonSection.Goals)
         composeRule.setContent {
             MaterialTheme {
                 DungeonSectionTabs(
@@ -100,8 +101,8 @@ class AccessibilitySemanticsTest {
             }
         }
 
-        composeRule.onNodeWithTag("study_hub_today")
-            .assertContentDescriptionEquals("Today study hub section")
+        composeRule.onNodeWithTag("study_hub_goals")
+            .assertContentDescriptionEquals("Goals study hub section")
             .assertIsSelected()
             .assertHeightIsAtLeast(48.dp)
         composeRule.onNodeWithTag("study_hub_focus")

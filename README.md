@@ -10,8 +10,8 @@ gameplay loop rather than accounts, cloud sync, or online services.
 ## Screenshots
 
 Real-device screenshots from an earlier build, shared by the project author.
-They show the existing study hub, profile progress, and reward shop. The new
-dungeon study-plan form and progress card are not shown in these captures.
+They show study goals, profile progress, and the reward shop. Navigation and
+page organization have since changed; these are not screenshots of the latest build.
 
 <table>
   <tr>
@@ -54,6 +54,18 @@ dungeon study-plan form and progress card are not shown in these captures.
 - Low-latency sci-fi interface sounds for study and progression feedback
 - Persistent sound enable and volume controls
 - Local persistence with Room
+
+## Find your way around
+
+- **Today**: daily progress, planned sessions, and expandable daily tasks.
+- **Study**: Goals for long-term courses, Focus for quick sessions, and Plan for weekly scheduling.
+- **Rewards**: your inventory and reward shop.
+- **Profile**: separate Overview, Skills, and History sections.
+- **Settings**: open the gear icon for study schedules, reminders, sound, breaks, and focus controls.
+
+The timer opens when you start a session. If you leave its screen, a session bar
+lets you return without ending your study. Existing focus-navigation warnings remain in place.
+Your data stays on your device. See [the layout contract](docs/APP_ORGANIZATION.md).
 
 ## Tech stack
 

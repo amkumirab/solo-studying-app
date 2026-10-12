@@ -96,7 +96,16 @@ class StudyPlannerUiTest {
     @Test fun `entry opens a persisted plan with the default lifecycle owner`() {
         val plan = buildStudyPlan(PlannerConfig(today, listOf(PlannerCourse(1, 25, today, 2, 0)), List(7) { 60 }, 25))
         StudyPlannerStore(ApplicationProvider.getApplicationContext()).write(plan)
-        rule.setContent { SoloStudyingTheme { StudyPlannerEntry(listOf(boss), today, List(7) { 60 }, false, { _, _ -> }) } }
+        var ownerModel: StudyPlannerViewModel? = null
+        rule.setContent { SoloStudyingTheme {
+            StudyPlannerEntry(listOf(boss), today, List(7) { 60 }, false, { _, _ -> })
+            ownerModel = androidx.lifecycle.viewmodel.compose.viewModel<StudyPlannerViewModel>()
+        } }
+        rule.waitUntil(10000) { ownerModel?.state?.value?.loaded == true }
+        rule.runOnIdle {
+            assertSame("Planner must use this activity's application", ApplicationProvider.getApplicationContext<Application>(), ownerModel!!.getApplication<Application>())
+            assertEquals(plan, ownerModel!!.state.value.plan)
+        }
         rule.waitUntil(10000) { rule.onAllNodesWithText("Open weekly plan").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("open_study_planner").performClick()
         rule.onNodeWithText("Weekly study plan").assertExists()

@@ -11,6 +11,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
 import com.amkumirab.solostudying.ui.viewmodel.StudyPlannerViewModel
@@ -23,7 +24,7 @@ import kotlinx.coroutines.withContext
 fun StudyPlannerEntry(
     bosses: List<BossEntity>, today: LocalDate, weekdayDefaults: List<Int>, isSessionActive: Boolean,
     onStart: (BossEntity, Int) -> Unit, modifier: Modifier = Modifier,
-    plannerViewModel: StudyPlannerViewModel = viewModel(),
+    plannerViewModel: StudyPlannerViewModel = studyPlannerViewModel(),
     content: @Composable (StudyPlan?, @Composable () -> Unit) -> Unit = { _, section ->
         OutlinedCard(modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { section() } }
     },
@@ -100,4 +101,11 @@ fun StudyPlannerEntry(
             }, enabled = !busy) { Text("Confirm") } },
             dismissButton = { TextButton(onClick = { confirmation = null }) { Text("Cancel") } })
     }
+}
+
+@Composable
+internal fun studyPlannerViewModel(): StudyPlannerViewModel {
+    // Resolve Application from the current owner's CreationExtras, not a cached factory.
+    val factory = remember { ViewModelProvider.AndroidViewModelFactory() }
+    return viewModel(factory = factory)
 }

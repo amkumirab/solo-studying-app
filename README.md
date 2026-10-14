@@ -34,6 +34,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Boss battles and free-study sessions
 - Independent goal sessions with 25/45/60-minute presets, custom durations, and daily-plan suggestions
 - Offline guided exam planner with course effort estimates, daily capacity, weekly sessions, progress credit, and confirmed rescheduling
+- Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
 - One-tap focus presets that remember the last duration and skill
 - Personalized daily dashboard with prioritized next actions and target progress

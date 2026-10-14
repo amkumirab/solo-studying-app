@@ -10,3 +10,19 @@
   - Final verification on 2026-10-12: 233 tests passed, with no failures, errors or skips.
   - Debug and unsigned Release builds succeeded; lint reports 0 errors and 34 warnings.
   - Device visual review is still required; no phone or configured emulator was available.
+
+## Planner time budget
+
+- [x] Pure workload calculation and daily adjustment.
+  - Verify deadline-prefix requirements, zero study days, rounding and 15-minute boundaries.
+  - Run `testDebugUnitTest --tests '*PlannerTimeBudgetTest'`.
+- [x] Interactive preview and safe save.
+  - Verify adjustment, reset, rotation, busy states and saving the displayed scenario.
+  - Run `testDebugUnitTest --tests '*StudyPlannerUiTest'`.
+- [x] Complete verification and user testing handoff.
+  - Run full unit tests, lintDebug, assembleDebug and assembleRelease.
+  - Review English user-facing text and document actual device-test availability.
+  - Verified on 2026-10-14: 251 tests, 0 failures, errors or skips.
+  - Debug and unsigned Release APKs built; lint has 0 errors and 34 existing warnings.
+  - Native text-layout checks pass at 288 dp card width on a 320 dp screen with 1.5 font scale.
+  - No attached Android device; physical-device review remains pending.

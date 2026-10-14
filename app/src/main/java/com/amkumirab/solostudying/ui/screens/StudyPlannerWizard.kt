@@ -42,6 +42,8 @@ fun StudyPlannerWizard(
         })
     }
     var sessionMinutes by rememberSaveable { mutableIntStateOf(initialPlan?.config?.sessionMinutes ?: 25) }
+    var dailyAdjustment by rememberSaveable { mutableIntStateOf(0) }
+    var usingRequiredBudget by rememberSaveable { mutableStateOf(false) }
     val available = bosses.filter { !it.isCompleted }
     val selected = selectedIds.mapNotNull { id -> available.firstOrNull { it.id == id } }
     fun remaining(boss: BossEntity): Int = initialCourses.firstOrNull { it.bossId == boss.id }?.remainingMinutes
@@ -65,9 +67,13 @@ fun StudyPlannerWizard(
             priorities[boss.id] ?: initialCourses.firstOrNull { it.bossId == boss.id }?.priority ?: 2,
             boss.timeSpentSeconds.coerceAtLeast(0)) }, capacities.map { it!! }, sessionMinutes)
     }.getOrNull() else null
-    val preview by produceState<StudyPlan?>(null, config) {
+    val scenarioConfig = config?.let { original ->
+        val base = if (usingRequiredBudget) requiredPlannerDailyTime(original) else original
+        base?.let { adjustPlannerDailyTime(it, dailyAdjustment) }
+    }
+    val preview by produceState<StudyPlan?>(null, scenarioConfig) {
         value = null
-        if (config != null) value = withContext(Dispatchers.Default) { buildStudyPlan(config) }
+        if (scenarioConfig != null) value = withContext(Dispatchers.Default) { buildStudyPlan(scenarioConfig) }
     }
     val canContinue = when (step) {
         0 -> selected.isNotEmpty() && selected.size == selectedIds.size
@@ -145,8 +151,18 @@ fun StudyPlannerWizard(
                 Text("Shorter final blocks fit your remaining time and daily capacity. Breaks use the existing break timer.")
             }
             4 -> {
-                if (config == null) Text("Some answers are no longer valid. Go back to update them.", color = MaterialTheme.colorScheme.error)
-                else preview?.let { StudyPlannerPreview(it, bosses, busy, onAccept) } ?: Text("Building your local plan…")
+                if (config == null || scenarioConfig == null) {
+                    Text("Some answers are no longer valid. Go back to update them.", color = MaterialTheme.colorScheme.error)
+                } else {
+                    PlannerTimeBudgetCard(config, scenarioConfig, bosses, dailyAdjustment, usingRequiredBudget,
+                        onAdjustmentChange = { dailyAdjustment = it },
+                        onUseRequired = { usingRequiredBudget = true; dailyAdjustment = 0 },
+                        onReset = { usingRequiredBudget = false; dailyAdjustment = 0 }, enabled = !busy)
+                    // A result from an older draft must never be saved while its replacement builds.
+                    preview?.takeIf { it.config == scenarioConfig }?.let {
+                        StudyPlannerPreview(it, bosses, busy, onAccept)
+                    } ?: Text("Building your local plan…")
+                }
             }
         }
         if (step < 4) {
@@ -157,6 +173,7 @@ fun StudyPlannerWizard(
             }
         }
         OutlinedButton(onClick = {
+            if (step == 4) { dailyAdjustment = 0; usingRequiredBudget = false }
             if (step == 0) onCancel() else if (step == 1 && courseIndex > 0) courseIndex-- else step--
         }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (step == 0) "Cancel" else "Back") }
     }

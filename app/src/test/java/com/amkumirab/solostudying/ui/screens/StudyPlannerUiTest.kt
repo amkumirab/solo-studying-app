@@ -187,4 +187,105 @@ class StudyPlannerUiTest {
         rule.onNodeWithTag("planner_hours").assertTextContains("2000")
         rule.onNodeWithTag("planner_next").performScrollTo().assertIsNotEnabled()
     }
+
+    @Test fun `time budget scenario restores and saves the displayed adjustment without changing rest days`() {
+        var accepted: StudyPlan? = null
+        val restoration = StateRestorationTester(rule)
+        restoration.setContent { SoloStudyingTheme {
+            StudyPlannerWizard(listOf(boss.copy(deadlineDate = today.plusDays(55).toString())), today, null,
+                listOf(150, 150, 150, 150, 150, 0, 0), false, { accepted = it }, {})
+        } }
+        openBudgetPreview()
+        rule.onNodeWithText("150 min per study day").performScrollTo().assertExists()
+        rule.onNodeWithTag("budget_increase").performScrollTo().performClick()
+        rule.onNodeWithText("10 h more than your entered budget").performScrollTo().assertExists()
+        rule.runOnIdle { assertNull(accepted) }
+        restoration.emulateSavedInstanceStateRestore()
+        rule.onNodeWithText("10 h more than your entered budget").performScrollTo().assertExists()
+        waitForBudgetPreview()
+        rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(listOf(165, 165, 165, 165, 165, 0, 0), accepted!!.config.weekdayMinutes)
+            assertEquals(6000, accepted!!.blocks.sumOf { it.minutes })
+            assertTrue(accepted!!.shortfalls.isEmpty())
+        }
+    }
+
+    @Test fun `reducing daily time warns before saving and reset returns to the original budget`() {
+        rule.setContent { SoloStudyingTheme {
+            StudyPlannerWizard(listOf(boss.copy(deadlineDate = today.plusDays(55).toString())), today, null,
+                listOf(150, 150, 150, 150, 150, 0, 0), false, {}, {})
+        } }
+        openBudgetPreview()
+        rule.onNodeWithTag("budget_decrease").performScrollTo().performClick()
+        rule.onNodeWithText("10 h less than your entered budget").performScrollTo().assertExists()
+        waitForBudgetPreview()
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("planner_acknowledge").performScrollTo().performClick()
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsEnabled()
+        rule.onNodeWithTag("budget_reset").performScrollTo().performClick()
+        waitForBudgetPreview()
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsEnabled()
+        rule.onNodeWithTag("budget_decrease").performScrollTo().performClick()
+        waitForBudgetPreview()
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test fun `required budget can be previewed then reset and busy controls cannot change it`() {
+        var busy by mutableStateOf(false)
+        var accepted: StudyPlan? = null
+        rule.setContent { SoloStudyingTheme {
+            StudyPlannerWizard(listOf(boss.copy(deadlineDate = today.plusDays(55).toString())), today, null,
+                listOf(60, 60, 60, 60, 60, 0, 0), busy, { accepted = it }, {})
+        } }
+        openBudgetPreview()
+        rule.onNodeWithTag("budget_use_required").performScrollTo().performClick()
+        waitForBudgetPreview()
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsEnabled()
+        rule.runOnIdle { busy = true }
+        rule.onNodeWithTag("budget_increase").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("budget_decrease").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("budget_reset").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsNotEnabled()
+        rule.runOnIdle { busy = false }
+        rule.onNodeWithTag("budget_reset").performScrollTo().performClick()
+        waitForBudgetPreview()
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("budget_use_required").performScrollTo().performClick()
+        waitForBudgetPreview()
+        rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
+        rule.runOnIdle { assertEquals(listOf(150, 150, 150, 150, 150, 0, 0), accepted!!.config.weekdayMinutes) }
+    }
+
+    private fun openBudgetPreview() {
+        rule.onNodeWithText(boss.name).performClick()
+        repeat(4) { rule.onNodeWithTag("planner_next").performScrollTo().performClick() }
+        waitForBudgetPreview()
+    }
+
+    @Test fun `editing weekday answers clears the prior comparison before saving`() {
+        var accepted: StudyPlan? = null
+        rule.setContent { SoloStudyingTheme {
+            StudyPlannerWizard(listOf(boss.copy(deadlineDate = today.plusDays(55).toString())), today, null,
+                listOf(150, 150, 150, 150, 150, 0, 0), false, { accepted = it }, {})
+        } }
+        openBudgetPreview()
+        rule.onNodeWithTag("budget_increase").performScrollTo().performClick()
+        rule.onNodeWithText("10 h more than your entered budget").performScrollTo().assertExists()
+        rule.onNodeWithText("Back").performScrollTo().performClick()
+        rule.onNodeWithText("Back").performScrollTo().performClick()
+        rule.onNodeWithTag("planner_capacity_0").performScrollTo().performTextReplacement("120")
+        repeat(2) { rule.onNodeWithTag("planner_next").performScrollTo().performClick() }
+        waitForBudgetPreview()
+        rule.onNodeWithText("Same total time as your entered budget").performScrollTo().assertExists()
+        rule.onNodeWithText("10 h more than your entered budget").assertDoesNotExist()
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("planner_acknowledge").performScrollTo().performClick()
+        rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
+        rule.runOnIdle { assertEquals(listOf(120, 150, 150, 150, 150, 0, 0), accepted!!.config.weekdayMinutes) }
+    }
+
+    private fun waitForBudgetPreview() {
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("planner_accept").fetchSemanticsNodes().isNotEmpty() }
+    }
 }

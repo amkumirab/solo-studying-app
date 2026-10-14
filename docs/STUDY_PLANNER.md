@@ -15,6 +15,10 @@ accounts, subscriptions, new permissions, or new dependencies.
   Priority breaks deadline ties. Show unscheduled minutes per course explicitly.
 - Preview before accepting. An incomplete plan may be saved only after its
   capacity warning is acknowledged. Never label it feasible.
+- Before saving, use the [study time check](PLANNER_TIME_BUDGET.md) to see the
+  minimum uniform daily budget needed across your study days. Compare exact
+  15-minute daily changes, inspect each deadline and reset to your entered
+  budget. A final surplus never hides an earlier deadline shortage.
 - Browse seven-day windows. Launch a block through the existing bounded goal
   timer; opening a block never creates study credit or rewards.
 - Credit only increases in recorded course study time since acceptance. Partial

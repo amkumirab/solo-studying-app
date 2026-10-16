@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "start": "2026-10-05",
+  "sessionMinutes": 25,
+  "capacity": [60, 0, 45, 30, 60, 0, 30],
+  "courses": [
+    {"bossId": 7, "remainingMinutes": 80, "finishBy": "2026-10-09", "priority": 3, "baselineSeconds": 120},
+    {"bossId": 12, "remainingMinutes": 70, "finishBy": "2026-10-11", "priority": 1, "baselineSeconds": 5000000000}
+  ],
+  "blocks": [
+    {"id": 19, "bossId": 7, "date": "2026-10-05", "minutes": 25},
+    {"id": 4, "bossId": 7, "date": "2026-10-07", "minutes": 25},
+    {"id": 31, "bossId": 12, "date": "2026-10-07", "minutes": 20},
+    {"id": 50, "bossId": 12, "date": "2026-10-11", "minutes": 15}
+  ]
+}

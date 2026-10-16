@@ -16,9 +16,23 @@ class StudyPlannerStore(context: Context) {
     }
     // Explicit commit preserves the success result; KTX edit returns Unit.
     @SuppressLint("UseKtx")
-    fun write(plan: StudyPlan): Boolean = preferences.edit().putString("plan", encodeStudyPlan(plan)).commit()
-    @SuppressLint("UseKtx")
-    fun clear(): Boolean = preferences.edit().remove("plan").commit()
+    fun write(plan: StudyPlan): Boolean = synchronized(mutationLock) {
+        try {
+            // Do not discard a newer schema or corrupt record behind an already-open editor.
+            preferences.getString("plan", null)?.let(::decodeStudyPlan)
+            return@synchronized preferences.edit().putString("plan", encodeStudyPlan(plan)).commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
 
-    companion object { const val PREFERENCES_NAME = "offline_study_planner" }
+    @SuppressLint("UseKtx")
+    fun clear(): Boolean = synchronized(mutationLock) {
+        preferences.edit().remove("plan").commit()
+    }
+
+    companion object {
+        const val PREFERENCES_NAME = "offline_study_planner"
+        private val mutationLock = Any()
+    }
 }

@@ -22,3 +22,18 @@ comparison. Keep this additive to the existing wizard and scheduling algorithm.
 Risks: a final surplus can mask an earlier deadline shortage; compare every
 deadline. Background previews may be stale while rebuilding; only enable saving
 the result matching the current draft. Preserve rest days and storage compatibility.
+
+## Planner data foundation
+
+Approved scope: the first slice of the university planner roadmap. Establish a
+versioned storage boundary without changing scheduling, progress, or the UI.
+Contract and rationale: `docs/decisions/0001-planner-storage-versions.md`.
+
+1. Add a literal version-1 fixture and failing migration/write-protection tests.
+2. Extract the codec, write a version-2 envelope, retain lossless version-1 reads,
+   and refuse to overwrite unreadable or unsupported saved records.
+3. Review the diff; run focused tests, the full suite, lint and both APK builds.
+
+Preserve block IDs, list order, dates, capacity, priorities and progress baselines.
+Upgrade only on explicit save. Future timed sessions, locks and new priority
+levels must land with their mutation policies, not as silently discarded fields.

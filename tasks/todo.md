@@ -26,3 +26,19 @@
   - Debug and unsigned Release APKs built; lint has 0 errors and 34 existing warnings.
   - Native text-layout checks pass at 288 dp card width on a 320 dp screen with 1.5 font scale.
   - No attached Android device; physical-device review remains pending.
+
+## Planner data foundation
+
+- [x] Write compatibility tests using a literal version-1 fixture.
+  - Red phase: 13 tests ran; 9 failed against the original storage implementation.
+- [x] Implement version-2 storage with lossless reads and overwrite protection.
+- [x] Review, run full tests and lint, and build Debug and unsigned Release APKs.
+  - Independent review: no required changes; the suggested stale-editor protection test was added.
+  - Final verification on 2026-10-16: 267 tests, 0 failures, errors or skips.
+  - Debug and unsigned Release APKs built; lint has 0 errors and 34 existing warnings.
+  - A new commit-result lint warning was resolved with an explicit return, not suppressed.
+  - Publication is split into a behavior-preserving codec extraction and the versioned-storage update.
+  - The extraction passed 58 planner regression tests, lintDebug and assembleDebug independently.
+- [x] Document verification and remaining physical-device checks.
+  - The version-1 fixture and version-2 record retain equal data and study credit.
+  - Physical upgrade testing remains pending; no phone installation was performed.

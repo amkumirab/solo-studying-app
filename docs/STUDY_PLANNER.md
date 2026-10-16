@@ -30,6 +30,10 @@ accounts, subscriptions, new permissions, or new dependencies.
   study history, course targets, and rewards are never rewritten.
 - Persist one versioned, validated local record. Corrupt or unsupported records
   report an error instead of being silently overwritten. Clear requires confirmation.
+  Version-1 records remain readable without rewriting them on open; explicit
+  saves use the version-2 date-only envelope. Migration preserves block IDs,
+  ordering and progress baselines. Unknown fields or versions prevent a save
+  from replacing the existing record. See the [storage decision](decisions/0001-planner-storage-versions.md).
 
 ## Implementation slices
 
@@ -60,3 +64,19 @@ The release APK is unsigned; use the debug APK for device testing.
 Draft restoration also checks that an open date picker is dismissed safely.
 Corruption recovery uses a fresh view model to model reopening the application;
 an already-loaded view model deliberately retains its in-memory accepted plan.
+
+### Storage foundation verification, 2026-10-16
+
+`testDebugUnitTest lintDebug assembleDebug assembleRelease` completed successfully:
+267 tests passed with no failures, errors or skips, including 16 storage
+compatibility tests. Lint reported 0 errors and 34 existing warnings. Debug and
+unsigned Release APKs built successfully.
+
+Compatibility checks cover a literal version-1 fixture, non-sequential block IDs,
+moved dates, fractional study credit, empty schedules, the 18,000-block limit,
+unsupported schemas and an already-open editor encountering a newer record.
+
+Manual upgrade check: install the new debug APK over the previous version without
+uninstalling or clearing app data. Open an accepted plan, compare its sessions and
+credited progress, explicitly save a change, then restart and compare again.
+This physical-device check has not been performed.

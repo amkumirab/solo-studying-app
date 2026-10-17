@@ -20,7 +20,7 @@ import java.time.LocalDate
 @Composable
 fun StudyPlannerWeek(
     plan: StudyPlan, bosses: List<BossEntity>, today: LocalDate, isSessionActive: Boolean,
-    onStart: (BossEntity, Int) -> Unit, onMove: (StudyPlan) -> Unit, modifier: Modifier = Modifier,
+    onStart: (BossEntity, Int) -> Unit, onMove: (StudyPlan) -> Unit, modifier: Modifier = Modifier, subjects: List<PlannerSubject> = emptyList(),
 ) {
     val context = LocalContext.current
     val datePicker = remember { mutableStateOf<DatePickerDialog?>(null) }
@@ -47,7 +47,7 @@ fun StudyPlannerWeek(
             if (plan.shortfalls.isNotEmpty()) {
                 Text("Incomplete plan", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium)
                 plan.shortfalls.forEach { (id, minutes) ->
-                    Text("${bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min were not scheduled. Edit answers to increase capacity or extend dates.")
+                    Text("${subjects.firstOrNull { it.bossId == id }?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min were not scheduled. Edit answers to increase capacity or extend dates.")
                 }
             }
             Text("Study time credits blocks in their original order for each course. Moving a session never changes existing credit.", style = MaterialTheme.typography.bodySmall)
@@ -72,7 +72,8 @@ fun StudyPlannerWeek(
                 val deadline = plan.config.courses.first { it.bossId == block.bossId }.finishBy
                 OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(boss?.name ?: "Removed course", style = MaterialTheme.typography.titleMedium)
+                        val subject = subjects.firstOrNull { it.bossId == block.bossId }
+                        PlannerSubjectTitle(subject?.name ?: boss?.name ?: "Removed course", subject?.color)
                         Text(when {
                             entry.missingCourse -> "This goal was deleted. Edit answers to remove it."
                             entry.remainingSeconds == 0L -> "Done · ${block.minutes} min"

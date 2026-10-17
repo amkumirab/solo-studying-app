@@ -54,6 +54,14 @@
   - 25 focused UI tests passed; lintDebug and assembleDebug succeeded.
   - Repeated stale-save retries cannot restore a removed course. Screen-level
     saved-state restoration is covered; real Activity recreation remains manual.
-- [ ] Planner integration and final checks.
+- [x] Planner integration and final checks.
   - Verify catalog defaults, cleared optional deadline, weekly effort distinction,
     color labels and confirmed rebuild. Run full tests, lint and both APK builds.
+  - Final regression run: 288 tests, 0 failures, errors or skips on 2026-10-17.
+  - Narrow-screen native text-layout checks pass at 288 dp with 1.5 font scale.
+  - Existing accessibility tests hit an Espresso idle timeout during the first
+    combined run. The isolated 24-test suite and subsequent complete run passed
+    without modifying, skipping or disabling any existing test.
+  - Lint: 0 errors and 34 existing warnings. Debug and unsigned Release APKs built.
+  - No attached Android device/emulator; physical upgrade and Activity recreation
+    remain manual checks. Weekly weighted allocation belongs to a later slice.

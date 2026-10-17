@@ -1,6 +1,7 @@
 package com.amkumirab.solostudying.ui.screens
 
 import android.app.Application
+import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -142,5 +143,42 @@ class PlannerSubjectsUiTest {
         }
         assertEquals(0, saves)
         assertNull(store.readData().plan)
+    }
+
+    @Test fun `confirmed rebuild applies catalog settings without silently moving the saved plan`() {
+        val plan = buildStudyPlan(PlannerConfig(today,
+            listOf(PlannerCourse(1, 60, today.plusDays(6), 2, 0)), List(7) { 60 }, 25))
+        val subject = PlannerSubject(1, "OS exam", 5, deadline = today.plusDays(14))
+        assertTrue(store.writeSnapshot(store.readData().snapshot, PlannerSnapshot(plan, listOf(subject))))
+        open()
+        assertEquals(plan, store.readData().plan)
+        rule.onNodeWithText("Schedule", useUnmergedTree = true).performClick()
+        rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.onNodeWithText("Cancel").performClick()
+        assertEquals(plan, store.readData().plan)
+        rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.onNodeWithText("Confirm").performClick()
+        rule.waitUntil(10000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            store.readData().plan!!.config.courses.single().priority == 5
+        }
+        assertEquals(subject.deadline, store.readData().plan!!.config.courses.single().finishBy)
+        assertEquals(60, store.readData().plan!!.config.courses.single().remainingMinutes)
+    }
+
+    @Test fun `unreadable catalog reset is confirmed and preserves the accepted plan`() {
+        val plan = buildStudyPlan(PlannerConfig(today,
+            listOf(PlannerCourse(1, 60, today.plusDays(6), 2, 0)), List(7) { 60 }, 25))
+        assertTrue(store.write(plan))
+        val preferences = app.getSharedPreferences(StudyPlannerStore.PREFERENCES_NAME, Context.MODE_PRIVATE)
+        preferences.edit().putString("subjects", "future-record").commit()
+        open()
+        rule.onNodeWithText("Reset saved subjects").performClick()
+        rule.onNodeWithText("Cancel").performClick()
+        assertEquals("future-record", preferences.getString("subjects", null))
+        rule.onNodeWithText("Reset saved subjects").performClick()
+        rule.onNodeWithText("Reset subjects").performClick()
+        rule.waitUntil(10000) { store.readData().subjectsError == null }
+        assertEquals(plan, store.readData().plan)
     }
 }

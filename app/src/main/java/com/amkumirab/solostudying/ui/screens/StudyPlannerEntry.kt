@@ -41,66 +41,66 @@ fun StudyPlannerEntry(
     val busy = state.busy || rebuilding
     // A failed compare-and-swap invalidates remembered drafts and pending move dialogs.
     key(state.editorGeneration) {
-    content(state.plan) {
-        if (!showDailySessions) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Weekly study plan", style = MaterialTheme.typography.titleMedium)
-                Text(state.plan?.let { "${it.config.courses.size} courses · guided weekly scheduling" }
-                    ?: "Choose courses, deadlines and available time. Your plan stays on this device.",
-                    style = MaterialTheme.typography.bodyMedium)
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Button(
-                    onClick = { open = true }, enabled = state.loaded && !isSessionActive && !busy,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_study_planner"),
-                ) { Text(if (!state.loaded) "Loading…" else if (state.plan == null) "Create weekly plan" else "Open weekly plan") }
+        content(state.plan) {
+            if (!showDailySessions) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Weekly study plan", style = MaterialTheme.typography.titleMedium)
+                    Text(state.plan?.let { "${it.config.courses.size} courses · guided weekly scheduling" }
+                        ?: "Choose courses, deadlines and available time. Your plan stays on this device.",
+                        style = MaterialTheme.typography.bodyMedium)
+                    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Button(
+                        onClick = { open = true }, enabled = state.loaded && !isSessionActive && !busy,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_study_planner"),
+                    ) { Text(if (!state.loaded) "Loading…" else if (state.plan == null) "Create weekly plan" else "Open weekly plan") }
+                }
+            } else {
+                StudyPlannerToday(state.plan, bosses, today, state.loaded, isSessionActive || busy, state.error,
+                    onOpen = { open = true }, onStart = onStart,
+                    onSave = { updated, saved -> plannerViewModel.save(updated, state.snapshot, saved) }, subjects = state.subjects)
             }
-        } else {
-            StudyPlannerToday(state.plan, bosses, today, state.loaded, isSessionActive || busy, state.error,
-                onOpen = { open = true }, onStart = onStart,
-                onSave = { updated, saved -> plannerViewModel.save(updated, state.snapshot, saved) })
         }
-    }
-    if (open) Dialog(onDismissRequest = { if (!busy) open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
-                TextButton(onClick = { open = false }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close planner") }
-                Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = !subjectsOpen, onClick = { subjectsOpen = false }, enabled = !busy,
-                        label = { Text("Schedule") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp))
-                    FilterChip(selected = subjectsOpen, onClick = { subjectsOpen = true }, enabled = !busy,
-                        label = { Text("Subjects") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp))
-                }
-                state.error?.let { error ->
-                    Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
-                    if (state.unreadableRecord) OutlinedButton(onClick = { confirmation = "clear" }, enabled = !busy, modifier = Modifier.padding(16.dp)) { Text("Clear saved plan") }
-                }
-                val plan = state.plan
-                if (subjectsOpen) {
-                    PlannerSubjectsScreen(state.subjects, bosses, today, busy, state.subjectError, state.unreadableSubjects,
-                        onSave = { subject, saved -> plannerViewModel.saveSubject(subject, bosses, saved) },
-                        onRemove = { id, removed -> plannerViewModel.removeSubject(id, removed) },
-                        onReset = { reset -> plannerViewModel.clearSubjects(reset) }, modifier = Modifier.weight(1f))
-                } else if (editing || (plan == null && !state.unreadableRecord)) {
-                    val draftSnapshot = remember { state.snapshot }
-                    StudyPlannerWizard(bosses, today, plan, weekdayDefaults, busy,
-                        onAccept = { accepted -> plannerViewModel.save(accepted, draftSnapshot) { editing = false; actionError = null } },
-                        onCancel = { if (plan == null) open = false else editing = false },
-                        modifier = Modifier.weight(1f))
-                } else if (plan != null) {
+        if (open) Dialog(onDismissRequest = { if (!busy) open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Surface(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
+                    TextButton(onClick = { open = false }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close planner") }
                     Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { editing = true }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Edit answers") }
-                        OutlinedButton(onClick = { confirmation = "rebuild" }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Rebuild remaining") }
+                        FilterChip(selected = !subjectsOpen, onClick = { subjectsOpen = false }, enabled = !busy,
+                            label = { Text("Schedule") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp))
+                        FilterChip(selected = subjectsOpen, onClick = { subjectsOpen = true }, enabled = !busy,
+                            label = { Text("Subjects") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp))
                     }
-                    TextButton(onClick = { confirmation = "clear" }, enabled = !busy, modifier = Modifier.padding(horizontal = 16.dp).heightIn(min = 48.dp)) { Text("Remove plan") }
-                    actionError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
-                    StudyPlannerWeek(plan, bosses, today, isSessionActive || busy,
-                        onStart = { boss, minutes ->
-                            if (!isSessionActive && !busy) { onStart(boss, minutes); open = false }
-                        }, onMove = { plannerViewModel.save(it, state.snapshot) }, modifier = Modifier.weight(1f))
+                    state.error?.let { error ->
+                        Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
+                        if (state.unreadableRecord) OutlinedButton(onClick = { confirmation = "clear" }, enabled = !busy, modifier = Modifier.padding(16.dp)) { Text("Clear saved plan") }
+                    }
+                    val plan = state.plan
+                    if (subjectsOpen) {
+                        PlannerSubjectsScreen(state.subjects, bosses, today, busy, state.subjectError, state.unreadableSubjects,
+                            onSave = { subject, saved -> plannerViewModel.saveSubject(subject, bosses, saved) },
+                            onRemove = { id, removed -> plannerViewModel.removeSubject(id, removed) },
+                            onReset = { reset -> plannerViewModel.clearSubjects(reset) }, modifier = Modifier.weight(1f))
+                    } else if (editing || (plan == null && !state.unreadableRecord)) {
+                        val draftSnapshot = remember { state.snapshot }
+                        StudyPlannerWizard(bosses, today, plan, weekdayDefaults, busy,
+                            onAccept = { accepted -> plannerViewModel.save(accepted, draftSnapshot) { editing = false; actionError = null } },
+                            onCancel = { if (plan == null) open = false else editing = false },
+                            modifier = Modifier.weight(1f), subjects = state.subjects)
+                    } else if (plan != null) {
+                        Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { editing = true }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Edit answers") }
+                            OutlinedButton(onClick = { confirmation = "rebuild" }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Rebuild remaining") }
+                        }
+                        TextButton(onClick = { confirmation = "clear" }, enabled = !busy, modifier = Modifier.padding(horizontal = 16.dp).heightIn(min = 48.dp)) { Text("Remove plan") }
+                        actionError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
+                        StudyPlannerWeek(plan, bosses, today, isSessionActive || busy,
+                            onStart = { boss, minutes ->
+                                if (!isSessionActive && !busy) { onStart(boss, minutes); open = false }
+                            }, onMove = { plannerViewModel.save(it, state.snapshot) }, modifier = Modifier.weight(1f), subjects = state.subjects)
+                    }
                 }
             }
         }
-    }
     }
     confirmation?.let { action ->
         AlertDialog(onDismissRequest = { confirmation = null },
@@ -112,7 +112,7 @@ fun StudyPlannerEntry(
                 if (action == "clear") plannerViewModel.clear { editing = false; actionError = null }
                 else state.plan?.let { plan ->
                     val rebuildSnapshot = state.snapshot
-                    val remaining = remainingPlannerCourses(plan, bosses)
+                    val remaining = remainingPlannerCourses(plan, bosses, state.subjects)
                     when {
                         remaining.isEmpty() -> actionError = "All available courses are complete. Edit answers to choose new goals."
                         remaining.any { it.finishBy !in today..today.plusDays(365) } -> actionError = "A finish date is outside the next year. Edit answers to choose new dates before rebuilding."

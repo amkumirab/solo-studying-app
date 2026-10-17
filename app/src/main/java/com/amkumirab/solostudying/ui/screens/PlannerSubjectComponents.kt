@@ -58,6 +58,7 @@ internal fun SubjectColorSelector(value: SubjectColor, onChange: (SubjectColor) 
 internal fun PlannerSubjectTitle(name: String, color: SubjectColor?, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (color != null) Box(Modifier.padding(top = 4.dp).size(12.dp).background(color.tint(), MaterialTheme.shapes.small))
-        Text(name, style = MaterialTheme.typography.titleMedium)
+        Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f, fill = false))
+        if (color != null) Text(color.name, style = MaterialTheme.typography.bodySmall)
     }
 }

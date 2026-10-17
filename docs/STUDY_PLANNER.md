@@ -7,6 +7,11 @@ accounts, subscriptions, new permissions, or new dependencies.
 
 - Select up to 20 existing, unfinished course goals. Enter remaining focus hours,
   a **finish-by date** (inclusive, within the next year), and priority per course.
+- Manage [goal-linked subjects](PLANNER_SUBJECTS.md) with planner-only names,
+  priorities 1–5, named colors, optional deadlines and preferred weekly hours.
+  Weekly preferences do not replace total remaining effort. Explicit editing or
+  confirmed rebuilding applies scheduling defaults; metadata edits do not move
+  accepted sessions automatically.
 - Set Monday-to-Sunday focus capacity independently, from 0 to 480 minutes.
   Zero means a rest day; breaks are not included in this budget.
 - Choose a preferred block length, 15 to 120 minutes. Smaller final blocks are
@@ -28,12 +33,15 @@ accounts, subscriptions, new permissions, or new dependencies.
 - Move only untouched blocks to a future available day within the course deadline
   and daily capacity. Rebuild the remaining plan only after confirmation; existing
   study history, course targets, and rewards are never rewritten.
-- Persist one versioned, validated local record. Corrupt or unsupported records
+- Persist versioned, validated local plan and subject records. Corrupt or unsupported records
   report an error instead of being silently overwritten. Clear requires confirmation.
-  Version-1 records remain readable without rewriting them on open; explicit
-  saves use the version-2 date-only envelope. Migration preserves block IDs,
+  Version-1 and version-2 plans remain readable without rewriting them on open;
+  changed plans use the version-3 date-only envelope with five priority levels.
+  Legacy numeric priorities retain their exact values and 1–3 bounds.
+  Migration preserves block IDs,
   ordering and progress baselines. Unknown fields or versions prevent a save
-  from replacing the existing record. See the [storage decision](decisions/0001-planner-storage-versions.md).
+  from replacing the existing record. See the [storage decision](decisions/0001-planner-storage-versions.md)
+  and [subject catalog decision](decisions/0002-planner-subject-catalog.md).
 
 ## Implementation slices
 

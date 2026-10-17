@@ -27,9 +27,9 @@ import kotlinx.coroutines.withContext
 fun StudyPlannerWizard(
     bosses: List<BossEntity>, today: LocalDate, initialPlan: StudyPlan?,
     weekdayDefaults: List<Int>, busy: Boolean, onAccept: (StudyPlan) -> Unit,
-    onCancel: () -> Unit, modifier: Modifier = Modifier,
+    onCancel: () -> Unit, modifier: Modifier = Modifier, subjects: List<PlannerSubject> = emptyList(),
 ) {
-    val initialCourses = remember { initialPlan?.let { remainingPlannerCourses(it, bosses) }.orEmpty() }
+    val initialCourses = remember { initialPlan?.let { remainingPlannerCourses(it, bosses, subjects) }.orEmpty() }
     var step by rememberSaveable { mutableIntStateOf(0) }
     var courseIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedIds by rememberSaveable { mutableStateOf(initialCourses.map { it.bossId }) }
@@ -50,9 +50,16 @@ fun StudyPlannerWizard(
         ?: ((boss.requiredMinutes * 60L - boss.timeSpentSeconds.coerceAtLeast(0)).coerceAtLeast(0) + 59).div(60).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     fun hoursText(boss: BossEntity) = hours[boss.id] ?: BigDecimal(remaining(boss)).divide(BigDecimal(60), 2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
     fun minutes(boss: BossEntity): Int? = if (boss.id !in hours) remaining(boss).takeIf { it in 1..60000 } else plannerHoursToMinutes(hoursText(boss))
+    fun subject(boss: BossEntity) = subjects.firstOrNull { it.bossId == boss.id }
+    fun priority(boss: BossEntity) = priorities[boss.id] ?: subject(boss)?.priority
+        ?: initialCourses.firstOrNull { it.bossId == boss.id }?.priority ?: 3
     fun finishBy(boss: BossEntity): LocalDate? = runCatching {
-        LocalDate.parse(dates[boss.id] ?: initialCourses.firstOrNull { it.bossId == boss.id }?.finishBy?.toString()
-            ?: boss.deadlineDate ?: today.plusDays(28).toString())
+        val configured = subject(boss)
+        val accepted = initialCourses.firstOrNull { it.bossId == boss.id }?.finishBy
+        dates[boss.id]?.let(LocalDate::parse)
+            ?: configured?.deadline ?: accepted
+            ?: if (configured == null) boss.deadlineDate?.let(LocalDate::parse) ?: today.plusDays(28)
+            else today.plusDays(28)
     }.getOrNull()
     val context = LocalContext.current
     val datePicker = remember { mutableStateOf<DatePickerDialog?>(null) }
@@ -64,7 +71,7 @@ fun StudyPlannerWizard(
     val config = if (step == 4) runCatching {
         require(selected.size == selectedIds.size)
         PlannerConfig(today, selected.map { boss -> PlannerCourse(boss.id, minutes(boss)!!, finishBy(boss)!!,
-            priorities[boss.id] ?: initialCourses.firstOrNull { it.bossId == boss.id }?.priority ?: 2,
+            priority(boss),
             boss.timeSpentSeconds.coerceAtLeast(0)) }, capacities.map { it!! }, sessionMinutes)
     }.getOrNull() else null
     val scenarioConfig = config?.let { original ->
@@ -93,12 +100,12 @@ fun StudyPlannerWizard(
                         selected = boss.id in selectedIds,
                         onClick = { selectedIds = if (boss.id in selectedIds) selectedIds - boss.id else selectedIds + boss.id },
                         enabled = boss.id in selectedIds || selectedIds.size < 20,
-                        label = { Text(boss.name) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        label = { PlannerSubjectTitle(subject(boss)?.name ?: boss.name, subject(boss)?.color) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     )
                 }
             }
             1 -> if (current != null) {
-                Text("Course ${courseIndex + 1} of ${selected.size}: ${current.name}", style = MaterialTheme.typography.headlineSmall)
+                Text("Course ${courseIndex + 1} of ${selected.size}: ${subject(current)?.name ?: current.name}", style = MaterialTheme.typography.headlineSmall)
                 Text("How much focused study does this course still need?")
                 OutlinedTextField(
                     value = hoursText(current), onValueChange = { hours = hours + (current.id to it.take(12)) },
@@ -116,18 +123,15 @@ fun StudyPlannerWizard(
                     }
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Finish by: $deadline") }
                 Text("This date includes study time. Choose the day before your exam if you need to finish earlier.")
+                if (subject(current)?.deadline == null && subject(current) != null) Text("No exam deadline is set. This finish-by date is only the schedule's planning horizon.", style = MaterialTheme.typography.bodySmall)
                 if (deadline !in today..today.plusDays(365)) Text("Choose a finish date between today and one year ahead.", color = MaterialTheme.colorScheme.error)
                 Text("How important is this course?", style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Normal", "Important", "Critical").forEachIndexed { index, label ->
-                        FilterChip(
-                            selected = (priorities[current.id] ?: initialCourses.firstOrNull { it.bossId == current.id }?.priority ?: 2) == index + 1,
-                            onClick = { priorities = priorities + (current.id to index + 1) },
-                            label = { Text(label) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                        )
-                    }
-                }
+                SubjectPrioritySelector(priority(current), { priorities = priorities + (current.id to it) }, enabled = !busy)
                 Text("Earlier deadlines come first. Priority decides between equal deadlines.", style = MaterialTheme.typography.bodySmall)
+                subject(current)?.preferredWeeklyMinutes?.let {
+                    Text("Preferred: ${subjectHours(it)} h per week")
+                    Text("Saved for future weighted allocation; this plan uses remaining effort and your available days.", style = MaterialTheme.typography.bodySmall)
+                }
             } else Text("This course is no longer available. Go back and select another goal.")
             2 -> {
                 Text("When can you study?", style = MaterialTheme.typography.headlineSmall)
@@ -157,10 +161,10 @@ fun StudyPlannerWizard(
                     PlannerTimeBudgetCard(config, scenarioConfig, bosses, dailyAdjustment, usingRequiredBudget,
                         onAdjustmentChange = { dailyAdjustment = it },
                         onUseRequired = { usingRequiredBudget = true; dailyAdjustment = 0 },
-                        onReset = { usingRequiredBudget = false; dailyAdjustment = 0 }, enabled = !busy)
+                        onReset = { usingRequiredBudget = false; dailyAdjustment = 0 }, enabled = !busy, subjects = subjects)
                     // A result from an older draft must never be saved while its replacement builds.
                     preview?.takeIf { it.config == scenarioConfig }?.let {
-                        StudyPlannerPreview(it, bosses, busy, onAccept)
+                        StudyPlannerPreview(it, bosses, busy, onAccept, subjects)
                     } ?: Text("Building your local plan…")
                 }
             }
@@ -180,7 +184,7 @@ fun StudyPlannerWizard(
 }
 
 @Composable
-fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean, onAccept: (StudyPlan) -> Unit) {
+fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean, onAccept: (StudyPlan) -> Unit, subjects: List<PlannerSubject> = emptyList()) {
     var acknowledged by rememberSaveable(plan) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Your study plan", style = MaterialTheme.typography.headlineSmall)
@@ -188,7 +192,7 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
         if (plan.shortfalls.isEmpty()) Text("Your preparation fits the available study time.")
         else {
             Text("Not enough study time", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.error)
-            plan.shortfalls.forEach { (id, minutes) -> Text("${bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min cannot fit before the finish date.") }
+            plan.shortfalls.forEach { (id, minutes) -> Text("${subjects.firstOrNull { it.bossId == id }?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min cannot fit before the finish date.") }
             Text("Add available minutes, reduce the remaining effort, or extend a finish date. Saving this plan does not solve the shortage.")
             FilterChip(selected = acknowledged, onClick = { acknowledged = !acknowledged },
                 label = { Text("I understand this plan is incomplete") }, modifier = Modifier.heightIn(min = 48.dp).testTag("planner_acknowledge"))
@@ -198,7 +202,10 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
             val date = plan.config.start.plusDays(index.toLong())
             val blocks = plan.blocks.filter { it.date == date }
             Text("${date.dayOfWeek} · $date: ${blocks.sumOf { it.minutes }} min")
-            blocks.groupBy { it.bossId }.forEach { (id, values) -> Text("${bosses.firstOrNull { it.id == id }?.name ?: "Removed course"} — ${values.sumOf { it.minutes }} min", style = MaterialTheme.typography.bodySmall) }
+            blocks.groupBy { it.bossId }.forEach { (id, values) ->
+                val subject = subjects.firstOrNull { it.bossId == id }
+                PlannerSubjectTitle("${subject?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"} — ${values.sumOf { it.minutes }} min", subject?.color)
+            }
         }
         Button(onClick = { onAccept(plan) }, enabled = !busy && (plan.shortfalls.isEmpty() || acknowledged),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("planner_accept")) { Text(if (busy) "Saving…" else "Save plan") }

@@ -34,6 +34,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Boss battles and free-study sessions
 - Independent goal sessions with 25/45/60-minute presets, custom durations, and daily-plan suggestions
 - Offline guided exam planner with course effort estimates, daily capacity, weekly sessions, progress credit, and confirmed rescheduling
+- Goal-linked planner subjects with editable names, five priority levels, named colors, optional deadlines, and saved weekly-hour preferences
 - Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
 - One-tap focus presets that remember the last duration and skill
@@ -67,6 +68,12 @@ page organization have since changed; these are not screenshots of the latest bu
 The timer opens when you start a session. If you leave its screen, a session bar
 lets you return without ending your study. Existing focus-navigation warnings remain in place.
 Your data stays on your device. See [the layout contract](docs/APP_ORGANIZATION.md).
+
+In **Study → Plan**, open the weekly planner and choose **Subjects** to manage
+course details without renaming or deleting the linked goals. Edit answers or
+confirm **Rebuild remaining** to apply priority and deadline changes to a schedule.
+Preferred weekly hours are saved separately from total remaining effort;
+weighted weekly allocation is a later planner update. See [subject settings](docs/PLANNER_SUBJECTS.md).
 
 ## Tech stack
 

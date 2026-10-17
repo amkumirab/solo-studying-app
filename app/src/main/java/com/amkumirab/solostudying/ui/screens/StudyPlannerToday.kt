@@ -18,7 +18,7 @@ internal fun StudyPlannerToday(
     plan: StudyPlan?, bosses: List<BossEntity>, today: LocalDate,
     loaded: Boolean, unavailable: Boolean, error: String?, onOpen: () -> Unit,
     onStart: (BossEntity, Int) -> Unit, onSave: (StudyPlan, () -> Unit) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier, subjects: List<PlannerSubject> = emptyList(),
 ) {
     var expanded by rememberSaveable(today.toString()) { mutableStateOf(false) }
     var postponing by rememberSaveable(today.toString()) { mutableStateOf(false) }
@@ -41,14 +41,15 @@ internal fun StudyPlannerToday(
                 val ordered = available.sortedWith(compareBy<StudyBlockProgress> { it.remainingSeconds == 0L }.thenBy { it.block.id })
                 (if (expanded) ordered else ordered.take(3)).forEach { entry ->
                     val boss = bosses.first { it.id == entry.block.bossId }
+                    val subject = subjects.firstOrNull { it.bossId == boss.id }
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(boss.name, style = MaterialTheme.typography.titleSmall)
+                        PlannerSubjectTitle(subject?.name ?: boss.name, subject?.color)
                         Text(if (entry.remainingSeconds == 0L) "Done · ${entry.block.minutes} min"
                             else "${entry.remainingMinutes} min left · ${entry.creditedSeconds / 60} min credited", style = MaterialTheme.typography.bodySmall)
                         if (entry.remainingSeconds > 0) Button(
                             onClick = { if (!unavailable) onStart(boss, entry.remainingMinutes) }, enabled = !unavailable,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("today_planner_start_${entry.block.id}"),
-                        ) { Text(if (unavailable) "Session active or saving" else "Study ${boss.name}") }
+                        ) { Text(if (unavailable) "Session active or saving" else "Study ${subject?.name ?: boss.name}") }
                     }
                 }
                 if (ordered.size > 3) TextButton(onClick = { expanded = !expanded }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -70,5 +71,5 @@ internal fun StudyPlannerToday(
         }
     }
     if (postponing && plan != null) StudyPostponeDialog(plan, bosses, today, unavailable, error,
-        onDismiss = { postponing = false }, onSave = { updated -> onSave(updated) { postponing = false } })
+        onDismiss = { postponing = false }, onSave = { updated -> onSave(updated) { postponing = false } }, subjects = subjects)
 }

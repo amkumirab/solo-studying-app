@@ -114,13 +114,19 @@ fun blockProgress(plan: StudyPlan, bosses: List<BossEntity>): List<StudyBlockPro
     }
 }
 
-fun remainingPlannerCourses(plan: StudyPlan, bosses: List<BossEntity>): List<PlannerCourse> =
+fun remainingPlannerCourses(plan: StudyPlan, bosses: List<BossEntity>, subjects: List<PlannerSubject> = emptyList()): List<PlannerCourse> =
     plan.config.courses.mapNotNull { course ->
         val boss = bosses.firstOrNull { it.id == course.bossId } ?: return@mapNotNull null
         if (boss.isCompleted) return@mapNotNull null
         val credit = (boss.timeSpentSeconds.coerceAtLeast(0) - course.baselineSeconds).coerceIn(0, course.remainingMinutes * 60L)
         val remainingMinutes = ((course.remainingMinutes * 60L - credit + 59) / 60).toInt()
-        if (remainingMinutes == 0) null else course.copy(remainingMinutes = remainingMinutes, baselineSeconds = boss.timeSpentSeconds.coerceAtLeast(0))
+        val subject = subjects.firstOrNull { it.bossId == course.bossId }
+        if (remainingMinutes == 0) null else course.copy(
+            remainingMinutes = remainingMinutes, baselineSeconds = boss.timeSpentSeconds.coerceAtLeast(0),
+            priority = subject?.priority ?: course.priority,
+            // A cleared exam deadline does not erase an accepted schedule's finish date.
+            finishBy = subject?.deadline ?: course.finishBy,
+        )
     }
 
 fun moveStudyBlock(plan: StudyPlan, blockId: Int, date: LocalDate, today: LocalDate, creditedSeconds: Long): StudyPlan? {

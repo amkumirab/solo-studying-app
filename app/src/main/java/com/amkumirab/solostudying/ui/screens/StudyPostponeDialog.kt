@@ -20,6 +20,7 @@ private data class PostponePreview(val source: StudyPlan, val goals: List<BossEn
 internal fun StudyPostponeDialog(
     plan: StudyPlan, bosses: List<BossEntity>, today: LocalDate, unavailable: Boolean,
     error: String?, onDismiss: () -> Unit, onSave: (StudyPlan) -> Unit,
+    subjects: List<PlannerSubject> = emptyList(),
 ) {
     val preview by produceState<PostponePreview?>(null, plan, bosses, today) {
         value = null
@@ -35,10 +36,10 @@ internal fun StudyPostponeDialog(
                 if (result == null) Text("Checking available study days…")
                 else if (result.unmovedMinutes.isNotEmpty()) {
                     Text("Not enough room before the deadlines", color = MaterialTheme.colorScheme.error)
-                    result.unmovedMinutes.forEach { (id, minutes) -> Text("${bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min cannot move with the current session sizes.") }
+                    result.unmovedMinutes.forEach { (id, minutes) -> Text("${subjects.firstOrNull { it.bossId == id }?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min cannot move with the current session sizes.") }
                     Text("Nothing will change. Open the weekly plan to adjust dates or available time.")
                 } else {
-                    result.moves.forEach { block -> Text("${bosses.firstOrNull { it.id == block.bossId }?.name ?: "Removed course"} · ${block.minutes} min slot → ${block.date}") }
+                    result.moves.forEach { block -> Text("${subjects.firstOrNull { it.bossId == block.bossId }?.name ?: bosses.firstOrNull { it.id == block.bossId }?.name ?: "Removed course"} · ${block.minutes} min slot → ${block.date}") }
                     if (result.moves.isEmpty()) Text("No unfinished sessions remain to move.")
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

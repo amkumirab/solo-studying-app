@@ -30,6 +30,7 @@ internal fun PlannerTimeBudgetCard(
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    subjects: List<PlannerSubject> = emptyList(),
 ) {
     val report = remember(scenario) { analyzePlannerTimeBudget(scenario) }
     val originalReport = remember(original) { analyzePlannerTimeBudget(original) }
@@ -111,7 +112,7 @@ internal fun PlannerTimeBudgetCard(
                     Text("Finish by ${deadline.finishBy}", style = MaterialTheme.typography.titleMedium)
                     deadline.courseIds.forEach { id ->
                         val course = scenario.courses.first { it.bossId == id }
-                        Text("${bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: ${plannerTimeLabel(course.remainingMinutes)} remaining")
+                        Text("${subjects.firstOrNull { it.bossId == id }?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: ${plannerTimeLabel(course.remainingMinutes)} remaining")
                     }
                     Text("All courses due by this date: ${plannerTimeLabel(deadline.requiredMinutes)}\n" +
                         "${deadline.studyDays} study days · ${plannerTimeLabel(deadline.availableMinutes)} available")

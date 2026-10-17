@@ -66,3 +66,24 @@ Implementation lives in the existing `domain/planner`, `planner`,
 `ui/viewmodel` and `ui/screens` packages, with tests in matching test packages.
 Keep domain classes immutable and persistence outside composables. No new
 dependencies, permissions, network calls, database changes or fabricated data.
+
+### Local verification, 2026-10-17
+
+The final complete regression run passed all 288 tests, with no failures, errors
+or skips. Subject tests cover strict storage, legacy priorities, CRUD, recovery,
+draft restoration, stale-save retries, explicit rebuild, guided defaults, names,
+colors and linked-goal starts. Native layout checks verify long subject names and
+48 dp priority controls at 288 dp width with 1.5 font scale. Lint reports 0 errors
+and 34 existing warnings; Debug and unsigned Release APKs were built.
+
+The first combined test/build run hit an Espresso idle timeout in existing
+accessibility tests. Those 24 tests passed in isolation, followed by a successful
+complete test run, without test deletions, skips or relaxed assertions.
+
+Manual check: install the debug APK over the existing app without clearing data.
+Open Study → Plan → Subjects, link an existing goal, edit all fields and restart.
+Clear a deadline and confirm it stays absent. Verify accepted session dates stay
+unchanged until editing or confirming a rebuild; cancel subject removal before
+confirming it. Check the linked goal and recorded progress remain intact. Rotate
+with an unsaved draft, inspect large fonts and keyboard scrolling, and test in
+airplane mode. No phone or emulator was attached, so these device checks are pending.

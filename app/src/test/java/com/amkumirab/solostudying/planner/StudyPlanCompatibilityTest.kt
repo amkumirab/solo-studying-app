@@ -48,21 +48,21 @@ class StudyPlanCompatibilityTest {
         }
     }
 
-    @Test fun `explicit save upgrades legacy storage to version two`() {
+    @Test fun `explicit save upgrades legacy storage to version three`() {
         preferences.edit().putString("plan", legacy).commit()
         val store = StudyPlannerStore(context)
         assertTrue(store.write(checkNotNull(store.read().plan)))
         val saved = JSONObject(preferences.getString("plan", null)!!)
-        assertEquals(2, saved.getInt("version"))
+        assertEquals(3, saved.getInt("version"))
         assertEquals("date_only", saved.getString("kind"))
         assertEquals(expected, StudyPlannerStore(context).read().plan)
     }
 
-    @Test fun `new saves use a deterministic version two envelope`() {
+    @Test fun `new saves use a deterministic version three envelope`() {
         val saved = encodeStudyPlan(expected)
         val json = JSONObject(saved)
         assertEquals(setOf("version", "kind", "plan"), json.keys().asSequence().toSet())
-        assertEquals(2, json.getInt("version"))
+        assertEquals(3, json.getInt("version"))
         assertEquals("date_only", json.getString("kind"))
         assertEquals(expected, decodeStudyPlan(saved))
         assertEquals(saved, encodeStudyPlan(decodeStudyPlan(saved)))

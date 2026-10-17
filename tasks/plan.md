@@ -37,3 +37,18 @@ Contract and rationale: `docs/decisions/0001-planner-storage-versions.md`.
 Preserve block IDs, list order, dates, capacity, priorities and progress baselines.
 Upgrade only on explicit save. Future timed sessions, locks and new priority
 levels must land with their mutation policies, not as silently discarded fields.
+
+## Planner subjects
+
+Approved scope: subject management from the university planner prompt.
+Contract: `docs/PLANNER_SUBJECTS.md`. Preferred hours means weekly study hours.
+
+1. Test and implement the subject model, strict catalog codec, v3 priorities and
+   transactional snapshot storage. Verify domain/storage tests; commit foundation.
+2. Add the subject list/editor and view-model mutations, with Compose tests for
+   validation, restoration, deletion and recovery; commit working management UI.
+3. Connect catalog defaults and colors to wizard/week/Today and explicit rebuild.
+   Verify full regression suite, lint and both APK builds; commit integration.
+
+Preserve the distinction between weekly preference and remaining lifetime effort.
+No automatic relocation of accepted sessions or renumbering of surviving blocks.

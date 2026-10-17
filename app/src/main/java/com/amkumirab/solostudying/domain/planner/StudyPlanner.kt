@@ -14,7 +14,7 @@ data class PlannerCourse(
     val baselineSeconds: Long,
 ) {
     init {
-        require(bossId > 0 && remainingMinutes in 1..60000 && priority in 1..3 && baselineSeconds >= 0)
+        require(bossId > 0 && remainingMinutes in 1..60000 && priority in 1..5 && baselineSeconds >= 0)
     }
 }
 

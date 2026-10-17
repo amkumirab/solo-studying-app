@@ -42,3 +42,15 @@
 - [x] Document verification and remaining physical-device checks.
   - The version-1 fixture and version-2 record retain equal data and study credit.
   - Physical upgrade testing remains pending; no phone installation was performed.
+
+## Planner subjects
+
+- [x] Subject validation, v3 plan compatibility and atomic catalog persistence.
+  - Verify legacy1/2 bounds, strict schemas, deletion credit and stale-save guards.
+  - Red: new subject contracts were missing. Green: focused storage tests and
+    full regression suite passed; lintDebug and assembleDebug succeeded.
+- [ ] Accessible subject-management UI and persistent state.
+  - Verify add/edit/remove, duplicates, missing goals, drafts, error recovery.
+- [ ] Planner integration and final checks.
+  - Verify catalog defaults, cleared optional deadline, weekly effort distinction,
+    color labels and confirmed rebuild. Run full tests, lint and both APK builds.

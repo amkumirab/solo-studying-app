@@ -9,7 +9,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
 
-private const val CURRENT_VERSION = 2
+private const val CURRENT_VERSION = 3
 private const val MAX_RECORD_CHARACTERS = 2_000_000
 private val planFields = setOf("start", "sessionMinutes", "capacity", "courses", "blocks")
 private val courseFields = setOf("bossId", "remainingMinutes", "finishBy", "priority", "baselineSeconds")
@@ -50,25 +50,26 @@ fun encodeStudyPlan(plan: StudyPlan): String {
     }.toString().also { require(it.length <= MAX_RECORD_CHARACTERS) }
 }
 
-/** Reads versions 1 and 2 without writing storage; invalid or unknown schemas throw. */
+/** Reads versions 1–3 without writing storage; legacy priority bounds remain enforced. */
 fun decodeStudyPlan(text: String): StudyPlan {
     require(text.length <= MAX_RECORD_CHARACTERS)
     val tokens = JSONTokener(text)
     val json = tokens.nextValue()
     require(json is JSONObject && tokens.nextClean() == '\u0000')
-    val body = when (json.strictLong("version")) {
+    val version = json.strictLong("version")
+    val body = when (version) {
         1L -> json.also { it.requireFields(planFields + "version") }
-        CURRENT_VERSION.toLong() -> {
+        2L, 3L -> {
             json.requireFields(setOf("version", "kind", "plan"))
             require(json.get("kind") == "date_only")
             json.getJSONObject("plan").also { it.requireFields(planFields) }
         }
         else -> throw IllegalArgumentException("Unsupported study plan version")
     }
-    return decodePlanBody(body)
+    return decodePlanBody(body, if (version < 3) 3 else 5)
 }
 
-private fun decodePlanBody(json: JSONObject): StudyPlan {
+private fun decodePlanBody(json: JSONObject, maxPriority: Int): StudyPlan {
     val courses = json.getJSONArray("courses")
     val capacity = json.getJSONArray("capacity")
     val blocks = json.getJSONArray("blocks")
@@ -78,6 +79,7 @@ private fun decodePlanBody(json: JSONObject): StudyPlan {
         courses = List(courses.length()) { index ->
             val course = courses.getJSONObject(index)
             course.requireFields(courseFields)
+            require(course.strictInt("priority") in 1..maxPriority)
             PlannerCourse(
                 course.strictInt("bossId"), course.strictInt("remainingMinutes"), course.strictDate("finishBy"),
                 course.strictInt("priority"), course.strictLong("baselineSeconds"),

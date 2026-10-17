@@ -24,7 +24,7 @@ class StudyPlannerStore(context: Context) {
     }
     // Explicit commit preserves the success result; KTX edit returns Unit.
     @SuppressLint("UseKtx")
-    fun write(plan: StudyPlan): Boolean = synchronized(mutationLock) {
+    internal fun write(plan: StudyPlan): Boolean = synchronized(mutationLock) {
         try {
             // Do not discard a newer schema or corrupt record behind an already-open editor.
             preferences.getString("plan", null)?.let(::decodeStudyPlan)

@@ -32,12 +32,15 @@ fun StudyPlannerEntry(
 ) {
     val state by plannerViewModel.state.collectAsStateWithLifecycle()
     var open by rememberSaveable { mutableStateOf(false) }
+    var subjectsOpen by rememberSaveable { mutableStateOf(false) }
     var editing by rememberSaveable { mutableStateOf(false) }
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var actionError by rememberSaveable { mutableStateOf<String?>(null) }
     var rebuilding by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val busy = state.busy || rebuilding
+    // A failed compare-and-swap invalidates remembered drafts and pending move dialogs.
+    key(state.editorGeneration) {
     content(state.plan) {
         if (!showDailySessions) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -54,21 +57,33 @@ fun StudyPlannerEntry(
         } else {
             StudyPlannerToday(state.plan, bosses, today, state.loaded, isSessionActive || busy, state.error,
                 onOpen = { open = true }, onStart = onStart,
-                onSave = { updated, saved -> plannerViewModel.save(updated, saved) })
+                onSave = { updated, saved -> plannerViewModel.save(updated, state.snapshot, saved) })
         }
     }
     if (open) Dialog(onDismissRequest = { if (!busy) open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
                 TextButton(onClick = { open = false }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close planner") }
+                Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = !subjectsOpen, onClick = { subjectsOpen = false }, enabled = !busy,
+                        label = { Text("Schedule") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp))
+                    FilterChip(selected = subjectsOpen, onClick = { subjectsOpen = true }, enabled = !busy,
+                        label = { Text("Subjects") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp))
+                }
                 state.error?.let { error ->
                     Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
                     if (state.unreadableRecord) OutlinedButton(onClick = { confirmation = "clear" }, enabled = !busy, modifier = Modifier.padding(16.dp)) { Text("Clear saved plan") }
                 }
                 val plan = state.plan
-                if (editing || (plan == null && !state.unreadableRecord)) {
+                if (subjectsOpen) {
+                    PlannerSubjectsScreen(state.subjects, bosses, today, busy, state.subjectError, state.unreadableSubjects,
+                        onSave = { subject, saved -> plannerViewModel.saveSubject(subject, bosses, saved) },
+                        onRemove = { id, removed -> plannerViewModel.removeSubject(id, removed) },
+                        onReset = { reset -> plannerViewModel.clearSubjects(reset) }, modifier = Modifier.weight(1f))
+                } else if (editing || (plan == null && !state.unreadableRecord)) {
+                    val draftSnapshot = remember { state.snapshot }
                     StudyPlannerWizard(bosses, today, plan, weekdayDefaults, busy,
-                        onAccept = { accepted -> plannerViewModel.save(accepted) { editing = false; actionError = null } },
+                        onAccept = { accepted -> plannerViewModel.save(accepted, draftSnapshot) { editing = false; actionError = null } },
                         onCancel = { if (plan == null) open = false else editing = false },
                         modifier = Modifier.weight(1f))
                 } else if (plan != null) {
@@ -81,10 +96,11 @@ fun StudyPlannerEntry(
                     StudyPlannerWeek(plan, bosses, today, isSessionActive || busy,
                         onStart = { boss, minutes ->
                             if (!isSessionActive && !busy) { onStart(boss, minutes); open = false }
-                        }, onMove = { plannerViewModel.save(it) }, modifier = Modifier.weight(1f))
+                        }, onMove = { plannerViewModel.save(it, state.snapshot) }, modifier = Modifier.weight(1f))
                 }
             }
         }
+    }
     }
     confirmation?.let { action ->
         AlertDialog(onDismissRequest = { confirmation = null },
@@ -95,6 +111,7 @@ fun StudyPlannerEntry(
                 confirmation = null
                 if (action == "clear") plannerViewModel.clear { editing = false; actionError = null }
                 else state.plan?.let { plan ->
+                    val rebuildSnapshot = state.snapshot
                     val remaining = remainingPlannerCourses(plan, bosses)
                     when {
                         remaining.isEmpty() -> actionError = "All available courses are complete. Edit answers to choose new goals."
@@ -108,7 +125,7 @@ fun StudyPlannerEntry(
                                     actionError = "Could not rebuild this plan. Edit answers to review your course dates and capacity."
                                 } else if (rebuilt.shortfalls.isNotEmpty()) {
                                     actionError = "Remaining work no longer fits your schedule. Edit answers to review capacity warnings. Your current plan is unchanged."
-                                } else plannerViewModel.save(rebuilt) { actionError = null }
+                                } else plannerViewModel.save(rebuilt, rebuildSnapshot) { actionError = null }
                             }
                         }
                     }

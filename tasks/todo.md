@@ -65,3 +65,20 @@
   - Lint: 0 errors and 34 existing warnings. Debug and unsigned Release APKs built.
   - No attached Android device/emulator; physical upgrade and Activity recreation
     remain manual checks. Weekly weighted allocation belongs to a later slice.
+
+## Weekly availability
+
+- [x] Validated windows and versioned persistence.
+  - Verify half-hour bounds, adjacency/overlap, all-rest days, strict JSON,
+    unchanged legacy records, atomic conflicts and separate recovery.
+  - Foundation regression: 297 tests passed with no failures, errors or skips.
+  - Literal catalog bytes remain unchanged on availability-only saves.
+  - Existing subject tests now explicitly drain Robolectric's paused main looper
+    while awaiting asynchronous loading; assertions and timeout are unchanged.
+- [ ] Availability editor and persistent state.
+  - Verify adding/editing/removing windows, sliders, toggles, errors, saving,
+    cancellation, restoration and stale retries with Compose tests.
+- [ ] Planner capacity integration and final checks.
+  - Verify explicit wizard/rebuild application and budget ceilings, then run
+    full tests, lintDebug, assembleDebug and assembleRelease.
+  - Check English text, accessible layouts and document physical-device status.

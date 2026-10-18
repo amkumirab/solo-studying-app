@@ -52,3 +52,21 @@ Contract: `docs/PLANNER_SUBJECTS.md`. Preferred hours means weekly study hours.
 
 Preserve the distinction between weekly preference and remaining lifetime effort.
 No automatic relocation of accepted sessions or renumbering of surviving blocks.
+
+## Weekly availability
+
+Approved next capability: Monday-to-Sunday study windows in half-hour increments.
+Contract: `docs/PLANNER_AVAILABILITY.md`. Build order: validated windows and
+atomic storage → editor and state → capacity integration and final verification.
+
+1. Add window/day/week validation and a strict version-1 codec. Extend snapshots
+   and the store additively; prove legacy bytes and stale-save protection.
+2. Build the Availability editor and view-model mutations. Verify multiple
+   windows, errors, disabled days, cancellation, recovery and restored drafts.
+3. Seed wizard capacity and confirmed rebuilds from saved availability. Prevent
+   budget previews from exceeding windows; preserve legacy flows without settings.
+4. Review, run the full suite, lint and both APK builds; document device limits.
+
+Use three local commits for foundation, working editor and planner integration.
+Do not push until requested. Do not assign clock times to date-only sessions or
+implement weighted allocation/calendar locking in this slice.

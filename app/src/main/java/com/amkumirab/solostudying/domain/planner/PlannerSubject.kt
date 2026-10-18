@@ -27,7 +27,10 @@ fun validatePlannerSubjects(subjects: List<PlannerSubject>) {
     require(subjects.map { it.name.replace(Regex("\\s+"), " ").lowercase(Locale.ROOT) }.distinct().size == subjects.size)
 }
 
-data class PlannerSnapshot(val plan: StudyPlan? = null, val subjects: List<PlannerSubject> = emptyList()) {
+data class PlannerSnapshot(
+    val plan: StudyPlan? = null, val subjects: List<PlannerSubject> = emptyList(),
+    val availability: WeeklyAvailability? = null,
+) {
     init { validatePlannerSubjects(subjects) }
 
     fun withoutSubject(bossId: Int): PlannerSnapshot {

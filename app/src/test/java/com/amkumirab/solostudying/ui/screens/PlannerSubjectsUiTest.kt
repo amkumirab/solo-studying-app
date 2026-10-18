@@ -39,7 +39,11 @@ class PlannerSubjectsUiTest {
             SoloStudyingTheme { StudyPlannerEntry(goals, today, List(7) { 60 }, false, { _, _ -> }, plannerViewModel = model, showDailySessions = false) }
         }
         if (restoration == null) rule.setContent(content) else restoration.setContent(content)
-        rule.waitUntil(10000) { model.state.value.loaded }
+        rule.waitUntil(10000) {
+            // Disk-read completion posts back to Robolectric's paused main looper.
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            model.state.value.loaded
+        }
         rule.onNodeWithTag("open_study_planner").performClick()
         rule.waitUntil(10000) { rule.onAllNodesWithText("Subjects").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Subjects", useUnmergedTree = true).performClick()
@@ -131,7 +135,10 @@ class PlannerSubjectsUiTest {
         assertTrue(store.writeSnapshot(store.readData().snapshot, before))
         val model = StudyPlannerViewModel(app)
         rule.setContent { }
-        rule.waitUntil(10000) { model.state.value.loaded }
+        rule.waitUntil(10000) {
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            model.state.value.loaded
+        }
         assertTrue(store.writeSnapshot(before, before.withoutSubject(1)))
         var saves = 0
         repeat(2) {

@@ -31,6 +31,7 @@ internal fun PlannerTimeBudgetCard(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     subjects: List<PlannerSubject> = emptyList(),
+    availability: WeeklyAvailability? = null,
 ) {
     val report = remember(scenario) { analyzePlannerTimeBudget(scenario) }
     val originalReport = remember(original) { analyzePlannerTimeBudget(original) }
@@ -81,14 +82,15 @@ internal fun PlannerTimeBudgetCard(
                 ) { Text("-15 min / day") }
                 OutlinedButton(
                     onClick = { onAdjustmentChange(dailyAdjustment + 15) },
-                    enabled = enabled && adjustPlannerDailyTime(scenario, 15) != null,
+                    enabled = enabled && adjustPlannerDailyTime(scenario, 15)?.fitsAvailability(availability) == true,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("budget_increase"),
                 ) { Text("+15 min / day") }
             }
             Text("Applies equally to each study weekday. Rest days stay unchanged; study days stay within 1 to 480 min.",
                 style = MaterialTheme.typography.bodySmall)
+            if (availability != null) Text("Saved availability is the daily ceiling. Edit your windows to add more capacity.", style = MaterialTheme.typography.bodySmall)
             if (requiredConfig != null) {
-                OutlinedButton(onClick = onUseRequired, enabled = enabled && requiredConfig != scenario,
+                OutlinedButton(onClick = onUseRequired, enabled = enabled && requiredConfig != scenario && requiredConfig.fitsAvailability(availability),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("budget_use_required")) {
                     Text("Use required daily time")
                 }

@@ -28,6 +28,11 @@ existing expected-snapshot mutation guard. Corrupt/future records block writes;
 confirmed availability recovery clears only that record. Never migrate on read
 or rewrite legacy plan bytes to invent clock times. Existing plan codecs stay v3.
 
+Restored editors wait for storage to load. The availability draft retains a
+SHA-256 identity of its original expected snapshot across recreation. If saved
+settings changed while it was closed, saving is rejected with an explicit
+cancel/reopen instruction rather than silently rebasing the old draft.
+
 For a first unsaved editor draft, suggest clock windows using the existing daily
 minutes rounded down to half hours. Explain that suggested times require review.
 Do not change saved daily budgets merely by opening the screen.
@@ -59,6 +64,25 @@ overlap, midnight, half-hour rounding, disabled/all-rest days, totals, strict JS
 legacy bytes, atomic conflicts/retries, recovery, save/cancel/restoration, wizard
 and rebuild capacity, budget ceilings and larger-font layouts. Device rotation,
 restart and airplane-mode checks remain manual when no device is attached.
+
+## Component references
+
+- [Compose sliders](https://developer.android.com/develop/ui/compose/components/slider):
+  controlled value and selectable endpoints; interior steps select half hours.
+- [Compose state saving](https://developer.android.com/develop/ui/compose/state-saving):
+  saveable form strings retain incomplete drafts across recreation. Store only a
+  compact baseline identity, not the entire accepted plan, in the saved UI state.
+
+## Verification record
+
+On 2026-10-18, the full local regression suite passed: 314 tests, zero failures,
+errors or skipped tests. Coverage includes strict storage validation, unchanged
+legacy records, stale saves, draft restoration during asynchronous loading,
+window editing, large-font layouts, budget ceilings and confirmed rebuilds.
+`lintDebug` completed with zero errors and 34 existing warnings. Both Debug and
+unsigned Release APKs were built successfully.
+There was no connected Android device or emulator; installation, rotation and
+airplane-mode checks on a physical device remain manual verification steps.
 
 ```powershell
 $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'

@@ -187,6 +187,32 @@ class PlannerAvailabilityUiTest {
         rule.runOnIdle { assertEquals(StudyDayAvailability(true, listOf(StudyTimeWindow(1410, 1440))), saved!!.days[0]) }
     }
 
+    @Test fun `confirmed rebuild uses saved capacity but cancel leaves accepted sessions unchanged`() {
+        val original = buildStudyPlan(PlannerConfig(today, listOf(PlannerCourse(1, 6000, today.plusDays(60), 3, 0)), List(7) { 480 }, 25))
+        assertTrue(store.writeSnapshot(PlannerSnapshot(), PlannerSnapshot(plan = original, availability = defaultWeeklyAvailability(List(7) { 120 }))))
+        open()
+        rule.onNodeWithText("Schedule", useUnmergedTree = true).performScrollTo().performClick()
+        rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.onNodeWithText("Cancel").performClick()
+        assertEquals(original, store.readData().plan)
+        rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.onNodeWithText("Confirm").performClick()
+        rule.waitUntil(10000) { shadowOf(Looper.getMainLooper()).idle(); store.readData().plan?.config?.weekdayMinutes == List(7) { 120 } }
+        assertEquals(6000, store.readData().plan!!.config.courses.single().remainingMinutes)
+    }
+
+    @Test fun `all rest rebuild preserves the accepted plan`() {
+        val original = buildStudyPlan(PlannerConfig(today, listOf(PlannerCourse(1, 6000, today.plusDays(60), 3, 0)), List(7) { 480 }, 25))
+        val rest = week.copy(days = week.days.map { it.copy(enabled = false) })
+        assertTrue(store.writeSnapshot(PlannerSnapshot(), PlannerSnapshot(plan = original, availability = rest)))
+        open()
+        rule.onNodeWithText("Schedule", useUnmergedTree = true).performScrollTo().performClick()
+        rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.onNodeWithText("Confirm").performClick()
+        rule.onNodeWithText("Enable at least one study day in Availability before rebuilding. Your current plan is unchanged.").assertExists()
+        assertEquals(original, store.readData().plan)
+    }
+
     @Test fun `unreadable availability reset keeps the accepted plan and subjects`() {
         val plan = buildStudyPlan(PlannerConfig(today, listOf(PlannerCourse(1, 60, today.plusDays(6), 3, 0)), List(7) { 60 }, 25))
         val before = PlannerSnapshot(plan, listOf(PlannerSubject(1, "Physics")))

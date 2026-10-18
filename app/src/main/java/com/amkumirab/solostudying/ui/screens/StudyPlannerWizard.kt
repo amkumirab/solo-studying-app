@@ -28,6 +28,7 @@ fun StudyPlannerWizard(
     bosses: List<BossEntity>, today: LocalDate, initialPlan: StudyPlan?,
     weekdayDefaults: List<Int>, busy: Boolean, onAccept: (StudyPlan) -> Unit,
     onCancel: () -> Unit, modifier: Modifier = Modifier, subjects: List<PlannerSubject> = emptyList(),
+    availability: WeeklyAvailability? = null,
 ) {
     val initialCourses = remember { initialPlan?.let { remainingPlannerCourses(it, bosses, subjects) }.orEmpty() }
     var step by rememberSaveable { mutableIntStateOf(0) }
@@ -37,7 +38,7 @@ fun StudyPlannerWizard(
     var dates by rememberSaveable { mutableStateOf(mapOf<Int, String>()) }
     var priorities by rememberSaveable { mutableStateOf(mapOf<Int, Int>()) }
     var capacity by rememberSaveable {
-        mutableStateOf((initialPlan?.config?.weekdayMinutes ?: weekdayDefaults).let { values ->
+        mutableStateOf((availability?.weekdayMinutes ?: initialPlan?.config?.weekdayMinutes ?: weekdayDefaults).let { values ->
             List(7) { values.getOrNull(it)?.coerceIn(0, 480)?.toString() ?: "60" }
         })
     }
@@ -76,7 +77,7 @@ fun StudyPlannerWizard(
     }.getOrNull() else null
     val scenarioConfig = config?.let { original ->
         val base = if (usingRequiredBudget) requiredPlannerDailyTime(original) else original
-        base?.let { adjustPlannerDailyTime(it, dailyAdjustment) }
+        base?.let { adjustPlannerDailyTime(it, dailyAdjustment) }?.takeIf { it.fitsAvailability(availability) }
     }
     val preview by produceState<StudyPlan?>(null, scenarioConfig) {
         value = null
@@ -135,6 +136,10 @@ fun StudyPlannerWizard(
             } else Text("This course is no longer available. Go back and select another goal.")
             2 -> {
                 Text("When can you study?", style = MaterialTheme.typography.headlineSmall)
+                if (availability != null) {
+                    AvailabilityWeekSummary(availability)
+                    Text("Using your saved windows. Edit them in Availability to change daily capacity. Session clock times are not assigned yet.")
+                } else {
                 Text("Enter focused minutes for each weekday. Use 0 for a rest day; leave extra time for breaks.")
                 listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday").forEachIndexed { index, day ->
                     OutlinedTextField(
@@ -143,6 +148,7 @@ fun StudyPlannerWizard(
                         singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().testTag("planner_capacity_$index"),
                     )
+                }
                 }
                 if (!validCapacity) Text("Use 0 to 480 minutes per day, with at least one study day.", color = MaterialTheme.colorScheme.error)
             }
@@ -161,7 +167,8 @@ fun StudyPlannerWizard(
                     PlannerTimeBudgetCard(config, scenarioConfig, bosses, dailyAdjustment, usingRequiredBudget,
                         onAdjustmentChange = { dailyAdjustment = it },
                         onUseRequired = { usingRequiredBudget = true; dailyAdjustment = 0 },
-                        onReset = { usingRequiredBudget = false; dailyAdjustment = 0 }, enabled = !busy, subjects = subjects)
+                        onReset = { usingRequiredBudget = false; dailyAdjustment = 0 }, enabled = !busy, subjects = subjects,
+                        availability = availability)
                     // A result from an older draft must never be saved while its replacement builds.
                     preview?.takeIf { it.config == scenarioConfig }?.let {
                         StudyPlannerPreview(it, bosses, busy, onAccept, subjects)

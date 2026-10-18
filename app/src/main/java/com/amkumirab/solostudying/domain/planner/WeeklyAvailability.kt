@@ -1,5 +1,9 @@
 package com.amkumirab.solostudying.domain.planner
 
+/** A smaller daily budget is valid, but spare capacity on another day cannot cover it. */
+fun PlannerConfig.fitsAvailability(availability: WeeklyAvailability?): Boolean =
+    availability == null || weekdayMinutes.zip(availability.weekdayMinutes).all { (minutes, ceiling) -> minutes <= ceiling }
+
 /** Local wall-clock minutes; 1440 means the exclusive end of the same day. */
 data class StudyTimeWindow(val startMinute: Int, val endMinute: Int) {
     init {

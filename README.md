@@ -35,6 +35,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Independent goal sessions with 25/45/60-minute presets, custom durations, and daily-plan suggestions
 - Offline guided exam planner with course effort estimates, daily capacity, weekly sessions, progress credit, and confirmed rescheduling
 - Goal-linked planner subjects with editable names, five priority levels, named colors, optional deadlines, and saved weekly-hour preferences
+- Weekly availability with multiple local-time windows per day, half-hour editing, rest days, and daily capacity ceilings
 - Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
 - One-tap focus presets that remember the last duration and skill
@@ -74,6 +75,21 @@ course details without renaming or deleting the linked goals. Edit answers or
 confirm **Rebuild remaining** to apply priority and deadline changes to a schedule.
 Preferred weekly hours are saved separately from total remaining effort;
 weighted weekly allocation is a later planner update. See [subject settings](docs/PLANNER_SUBJECTS.md).
+
+Choose **Availability** in the same planner to set Monday–Sunday study windows.
+Enable a day, open **Edit windows**, and enter local 24-hour start/end times in
+30-minute steps, or use the duration slider. Add separate windows for breaks;
+adjacent windows are allowed but overlapping or overnight windows are not.
+Use 24:00 only as an end time. Each day supports up to eight study hours.
+**Done** updates the weekly draft; **Save availability** persists it. Cancel
+discards the draft. Disabled days retain their windows without adding capacity.
+
+Saving windows does not move accepted sessions. Use **Edit answers** or confirm
+**Rebuild remaining** to apply their capacity. Budget comparisons cannot exceed
+these daily ceilings. An all-rest week can be saved, but cannot generate a plan.
+Without saved windows, existing daily-minute settings continue to work as before.
+Individual sessions still have dates and durations, not assigned clock times.
+See [availability settings](docs/PLANNER_AVAILABILITY.md).
 
 ## Tech stack
 

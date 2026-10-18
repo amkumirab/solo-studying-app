@@ -100,8 +100,11 @@ fun StudyPlannerEntry(
                         StudyPlannerWizard(bosses, today, plan, weekdayDefaults, busy,
                             onAccept = { accepted -> plannerViewModel.save(accepted, draftSnapshot) { editing = false; actionError = null } },
                             onCancel = { if (plan == null) open = false else editing = false },
-                            modifier = Modifier.weight(1f), subjects = state.subjects)
+                            modifier = Modifier.weight(1f), subjects = state.subjects, availability = state.availability)
                     } else if (plan != null) {
+                        if (state.availability?.weekdayMinutes?.let { it != plan.config.weekdayMinutes } == true) {
+                            Text("Availability differs from this accepted plan. Edit answers or confirm a rebuild to apply it; existing sessions are unchanged.", modifier = Modifier.padding(horizontal = 16.dp))
+                        }
                         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = { editing = true }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Edit answers") }
                             OutlinedButton(onClick = { confirmation = "rebuild" }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Rebuild remaining") }
@@ -130,12 +133,14 @@ fun StudyPlannerEntry(
                     val rebuildSnapshot = state.snapshot
                     val remaining = remainingPlannerCourses(plan, bosses, state.subjects)
                     when {
+                        state.availability?.totalMinutes == 0 -> actionError = "Enable at least one study day in Availability before rebuilding. Your current plan is unchanged."
                         remaining.isEmpty() -> actionError = "All available courses are complete. Edit answers to choose new goals."
                         remaining.any { it.finishBy !in today..today.plusDays(365) } -> actionError = "A finish date is outside the next year. Edit answers to choose new dates before rebuilding."
                         else -> {
                             rebuilding = true
                             scope.launch {
-                                val rebuilt = withContext(Dispatchers.Default) { runCatching { buildStudyPlan(plan.config.copy(start = today, courses = remaining)) }.getOrNull() }
+                                val rebuilt = withContext(Dispatchers.Default) { runCatching { buildStudyPlan(plan.config.copy(start = today, courses = remaining,
+                                    weekdayMinutes = rebuildSnapshot.availability?.weekdayMinutes ?: plan.config.weekdayMinutes)) }.getOrNull() }
                                 rebuilding = false
                                 if (rebuilt == null) {
                                     actionError = "Could not rebuild this plan. Edit answers to review your course dates and capacity."

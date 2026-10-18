@@ -82,7 +82,13 @@
     changed saved settings are rejected rather than silently rebasing the draft.
   - Narrow-screen checks at 1.5 font scale verify complete labels and 48 dp
     controls, including an explicitly sized Material slider thumb.
-- [ ] Planner capacity integration and final checks.
+- [x] Planner capacity integration and final checks.
   - Verify explicit wizard/rebuild application and budget ceilings, then run
     full tests, lintDebug, assembleDebug and assembleRelease.
   - Check English text, accessible layouts and document physical-device status.
+  - Final regression on 2026-10-18: 314 tests; no failures, errors or skips.
+  - Lint: 0 errors, 34 existing warnings. Debug and unsigned Release APKs built.
+  - Confirmed rebuild applies saved windows; cancellation and all-rest rejection
+    leave accepted sessions unchanged. Budget shifts respect each day's ceiling.
+  - No device or emulator connected. Physical upgrade, rotation and offline
+    checks remain manual. Individual sessions still do not have clock times.

@@ -37,6 +37,10 @@ class AvailabilityCapacityTest {
         rule.onNodeWithTag("budget_decrease").performScrollTo().performClick()
         rule.onNodeWithTag("budget_increase").performScrollTo().assertIsEnabled().performClick()
         rule.onNodeWithTag("budget_increase").assertIsNotEnabled()
+        rule.runOnIdle { assertNull(accepted) }
+        // Budget edits rebuild the preview off the main thread. Wait for its save control,
+        // just as on first opening; slower CI runners may still be calculating here.
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("planner_accept").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
         rule.runOnIdle { assertEquals(week.weekdayMinutes, accepted!!.config.weekdayMinutes) }
     }

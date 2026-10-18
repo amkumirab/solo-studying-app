@@ -75,9 +75,13 @@
   - Literal catalog bytes remain unchanged on availability-only saves.
   - Existing subject tests now explicitly drain Robolectric's paused main looper
     while awaiting asynchronous loading; assertions and timeout are unchanged.
-- [ ] Availability editor and persistent state.
+- [x] Availability editor and persistent state.
   - Verify adding/editing/removing windows, sliders, toggles, errors, saving,
     cancellation, restoration and stale retries with Compose tests.
+  - Restored drafts retain their original baseline through asynchronous loading;
+    changed saved settings are rejected rather than silently rebasing the draft.
+  - Narrow-screen checks at 1.5 font scale verify complete labels and 48 dp
+    controls, including an explicitly sized Material slider thumb.
 - [ ] Planner capacity integration and final checks.
   - Verify explicit wizard/rebuild application and budget ceilings, then run
     full tests, lintDebug, assembleDebug and assembleRelease.

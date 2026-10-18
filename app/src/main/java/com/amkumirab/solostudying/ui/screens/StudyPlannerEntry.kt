@@ -1,9 +1,12 @@
 package com.amkumirab.solostudying.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -32,7 +35,7 @@ fun StudyPlannerEntry(
 ) {
     val state by plannerViewModel.state.collectAsStateWithLifecycle()
     var open by rememberSaveable { mutableStateOf(false) }
-    var subjectsOpen by rememberSaveable { mutableStateOf(false) }
+    var selectedSection by rememberSaveable { mutableStateOf("Schedule") }
     var editing by rememberSaveable { mutableStateOf(false) }
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
     var actionError by rememberSaveable { mutableStateOf<String?>(null) }
@@ -41,6 +44,7 @@ fun StudyPlannerEntry(
     val busy = state.busy || rebuilding
     // A failed compare-and-swap invalidates remembered drafts and pending move dialogs.
     key(state.editorGeneration) {
+        val restoredEditor = rememberSaveableStateHolder()
         content(state.plan) {
             if (!showDailySessions) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -64,18 +68,29 @@ fun StudyPlannerEntry(
             Surface(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
                     TextButton(onClick = { open = false }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close planner") }
-                    Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(selected = !subjectsOpen, onClick = { subjectsOpen = false }, enabled = !busy,
-                            label = { Text("Schedule") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp))
-                        FilterChip(selected = subjectsOpen, onClick = { subjectsOpen = true }, enabled = !busy,
-                            label = { Text("Subjects") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp))
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Schedule", "Subjects", "Availability").forEach { section ->
+                            FilterChip(selected = selectedSection == section, onClick = { selectedSection = section }, enabled = !busy,
+                                label = { Text(section) }, modifier = Modifier.heightIn(min = 48.dp))
+                        }
                     }
                     state.error?.let { error ->
                         Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
                         if (state.unreadableRecord) OutlinedButton(onClick = { confirmation = "clear" }, enabled = !busy, modifier = Modifier.padding(16.dp)) { Text("Clear saved plan") }
                     }
                     val plan = state.plan
-                    if (subjectsOpen) {
+                    if (state.unreadableAvailability && selectedSection != "Availability") {
+                        TextButton(onClick = { selectedSection = "Availability" }, enabled = !busy,
+                            modifier = Modifier.padding(horizontal = 16.dp).heightIn(min = 48.dp)) { Text("Review unreadable availability settings") }
+                    }
+                    if (!state.loaded) {
+                        Text("Loading planner settings…", modifier = Modifier.padding(16.dp))
+                    } else restoredEditor.SaveableStateProvider("planner-editor") {
+                    if (selectedSection == "Availability") {
+                        PlannerAvailabilityScreen(state.snapshot, plan?.config?.weekdayMinutes ?: weekdayDefaults, busy, state.availabilityError, state.unreadableAvailability,
+                            onSave = { value, expected, saved -> plannerViewModel.saveAvailability(value, expected, saved) },
+                            onReset = { plannerViewModel.clearAvailability(it) }, modifier = Modifier.weight(1f))
+                    } else if (selectedSection == "Subjects") {
                         PlannerSubjectsScreen(state.subjects, bosses, today, busy, state.subjectError, state.unreadableSubjects,
                             onSave = { subject, saved -> plannerViewModel.saveSubject(subject, bosses, saved) },
                             onRemove = { id, removed -> plannerViewModel.removeSubject(id, removed) },
@@ -97,6 +112,7 @@ fun StudyPlannerEntry(
                             onStart = { boss, minutes ->
                                 if (!isSessionActive && !busy) { onStart(boss, minutes); open = false }
                             }, onMove = { plannerViewModel.save(it, state.snapshot) }, modifier = Modifier.weight(1f), subjects = state.subjects)
+                    }
                     }
                 }
             }

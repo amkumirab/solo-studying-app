@@ -92,3 +92,21 @@
     leave accepted sessions unchanged. Budget shifts respect each day's ceiling.
   - No device or emulator connected. Physical upgrade, rotation and offline
     checks remain manual. Individual sessions still do not have clock times.
+
+## Weekly study target and allocation preview
+
+- [x] Deterministic capped allocation with exact totals and shortage reporting.
+  - Nine domain tests include 100 generated deadline-prefix scenarios.
+- [x] Optional weekly goal persistence with strict v4 and unchanged legacy reads.
+  - Three storage tests verify round trips, legacy bytes and malformed schemas.
+- [x] Goal editor, live preview, actual weekly totals and restored drafts.
+  - Four interaction tests and one native large-font layout test passed.
+  - Exact saved minutes survive editing despite rounded hour labels.
+- [x] Review, focused tests, full suite, lint and Debug/Release builds.
+  - Final verification on 2026-10-19: 331 tests, no failures, errors or skips.
+  - Debug and unsigned Release builds succeeded; lint has 0 errors and 34 existing warnings.
+  - An initial combined run encountered existing AccessibilitySemanticsTest idle
+    timeouts and was stopped. Its unchanged 24-test suite and the final full
+    regression passed in fresh workers. No assertions or timeouts were weakened.
+  - Native layout verification uses 288 dp content width with 1.5 font scale.
+  - No attached device/emulator; installation and physical rotation remain manual.

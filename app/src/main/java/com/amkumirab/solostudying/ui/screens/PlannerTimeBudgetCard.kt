@@ -127,7 +127,7 @@ internal fun PlannerTimeBudgetCard(
     }
 }
 
-private fun plannerTimeLabel(minutes: Int): String = when {
+internal fun plannerTimeLabel(minutes: Int): String = when {
     minutes < 60 -> "$minutes min"
     minutes % 60 == 0 -> "${minutes / 60} h"
     else -> "${minutes / 60} h ${minutes % 60} min"

@@ -36,6 +36,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Offline guided exam planner with course effort estimates, daily capacity, weekly sessions, progress credit, and confirmed rescheduling
 - Goal-linked planner subjects with editable names, five priority levels, named colors, optional deadlines, and saved weekly-hour preferences
 - Weekly availability with multiple local-time windows per day, half-hour editing, rest days, and daily capacity ceilings
+- Optional weekly study goals with a weighted course-hour recommendation and separate scheduled-time totals
 - Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
 - One-tap focus presets that remember the last duration and skill
@@ -73,8 +74,8 @@ Your data stays on your device. See [the layout contract](docs/APP_ORGANIZATION.
 In **Study → Plan**, open the weekly planner and choose **Subjects** to manage
 course details without renaming or deleting the linked goals. Edit answers or
 confirm **Rebuild remaining** to apply priority and deadline changes to a schedule.
-Preferred weekly hours are saved separately from total remaining effort;
-weighted weekly allocation is a later planner update. See [subject settings](docs/PLANNER_SUBJECTS.md).
+Preferred weekly hours remain separate from total remaining effort and cap the
+optional weekly recommendation. See [subject settings](docs/PLANNER_SUBJECTS.md).
 
 Choose **Availability** in the same planner to set Monday–Sunday study windows.
 Enable a day, open **Edit windows**, and enter local 24-hour start/end times in
@@ -90,6 +91,13 @@ these daily ceilings. An all-rest week can be saved, but cannot generate a plan.
 Without saved windows, existing daily-minute settings continue to work as before.
 Individual sessions still have dates and durations, not assigned clock times.
 See [availability settings](docs/PLANNER_AVAILABILITY.md).
+
+In **Schedule → Create weekly plan / Edit answers**, enter an optional weekly
+study goal in the availability step. Preview the recommended hours for each
+course and any unallocated goal. Recommendations consider priority, finish dates,
+remaining work and preferred weekly limits. The weekly schedule also shows actual
+scheduled time against your goal. Recommendations do not automatically move
+sessions; see [weekly targets](docs/PLANNER_WEEKLY_TARGET.md).
 
 ## Tech stack
 

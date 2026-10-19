@@ -36,12 +36,17 @@ accounts, subscriptions, new permissions, or new dependencies.
 - Persist versioned, validated local plan and subject records. Corrupt or unsupported records
   report an error instead of being silently overwritten. Clear requires confirmation.
   Version-1 and version-2 plans remain readable without rewriting them on open;
-  changed plans use the version-3 date-only envelope with five priority levels.
+  plans without a weekly goal use the version-3 date-only envelope with five priority levels.
+  Plans with an optional weekly goal use version 4; versions 1–4 remain readable.
   Legacy numeric priorities retain their exact values and 1–3 bounds.
   Migration preserves block IDs,
   ordering and progress baselines. Unknown fields or versions prevent a save
   from replacing the existing record. See the [storage decision](decisions/0001-planner-storage-versions.md)
   and [subject catalog decision](decisions/0002-planner-subject-catalog.md).
+
+- Set an optional [weekly study target](PLANNER_WEEKLY_TARGET.md) and preview
+  recommended per-course hours separately from the date-only schedule. The weekly
+  view reports scheduled time, free capacity and the gap against the saved goal.
 
 ## Implementation slices
 

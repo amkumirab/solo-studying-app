@@ -38,6 +38,7 @@ fun StudyPlannerWeek(
         item {
             Text("Weekly study plan", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
             Text("$weekStart — ${weekStart.plusDays(6)}")
+            WeeklyGoalSummary(plan, weekStart)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { weekOffset-- }, enabled = weekStart > firstMonday, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Previous week") }
                 OutlinedButton(onClick = { weekOffset++ }, enabled = weekStart.plusDays(6) < finish, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Next week") }

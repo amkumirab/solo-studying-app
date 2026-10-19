@@ -70,3 +70,19 @@ atomic storage → editor and state → capacity integration and final verificat
 Use three local commits for foundation, working editor and planner integration.
 Do not push until requested. Do not assign clock times to date-only sessions or
 implement weighted allocation/calendar locking in this slice.
+
+## Weekly study target and allocation preview
+
+Approved next slice: configure a weekly goal and preview recommended hours per
+subject using priority, deadline proximity, preferred weekly limits and capacity.
+
+1. Verify pure deterministic capped allocation, exact minute totals and shortages.
+2. Persist an optional weekly goal in an additive v4 date-only plan. Continue
+   writing v3 for plans without a goal; preserve all legacy reads and credit IDs.
+3. Add goal input and reactive recommendations to the guided preview. Show actual
+   scheduled hours separately in the weekly view and preserve draft restoration.
+4. Run domain, storage and Compose tests, full regression, lint and APK builds.
+
+Recommendations are planning advice; the existing deadline-first date-only
+schedule remains visible separately. Timed scheduling and applying weighted
+quotas to generated sessions are subsequent roadmap work. No new dependencies.

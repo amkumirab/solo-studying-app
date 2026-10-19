@@ -69,7 +69,7 @@ internal fun PlannerSubjectEditor(
         SubjectPrioritySelector(priority, { priority = it }, enabled = !busy)
         SubjectColorSelector(color, { colorName = it.name }, enabled = !busy)
         OutlinedTextField(weeklyHours, { weeklyHours = it.take(12) }, label = { Text("Preferred weekly hours (optional)") },
-            supportingText = { Text("A weekly preference, not the goal's total remaining hours. Weighted allocation is a later planner update.") },
+            supportingText = { Text("A ceiling for the weekly recommendation, separate from the goal's total remaining hours.") },
             enabled = !busy, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             isError = weeklyHours.isNotBlank() && minutes == null,
             modifier = Modifier.fillMaxWidth().testTag("subject_weekly_hours"))

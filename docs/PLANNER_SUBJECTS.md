@@ -10,8 +10,9 @@ case and repeated spaces. A goal can belong to only one catalog entry.
 
 Weekly preferences are positive, up to 168 hours. Blank means unspecified, not
 zero. They remain distinct from the goal's total effort and recorded progress.
-Weighted weekly allocation and clock-time scheduling belong to later slices;
-this slice must not claim those features already work.
+The [weekly-target slice](PLANNER_WEEKLY_TARGET.md) uses preferred hours as a
+ceiling in its recommendation preview. Applying those recommended quotas to the
+timetable and assigning clock times remain later work.
 
 ## Integration and storage
 

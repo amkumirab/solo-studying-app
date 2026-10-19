@@ -45,6 +45,9 @@ fun StudyPlannerWizard(
     var sessionMinutes by rememberSaveable { mutableIntStateOf(initialPlan?.config?.sessionMinutes ?: 25) }
     var dailyAdjustment by rememberSaveable { mutableIntStateOf(0) }
     var usingRequiredBudget by rememberSaveable { mutableStateOf(false) }
+    val originalWeeklyGoal = remember { initialPlan?.config?.weeklyGoalMinutes }
+    val originalWeeklyHours = remember { originalWeeklyGoal?.let(::subjectHours).orEmpty() }
+    var weeklyHours by rememberSaveable { mutableStateOf(originalWeeklyHours) }
     val available = bosses.filter { !it.isCompleted }
     val selected = selectedIds.mapNotNull { id -> available.firstOrNull { it.id == id } }
     fun remaining(boss: BossEntity): Int = initialCourses.firstOrNull { it.bossId == boss.id }?.remainingMinutes
@@ -67,13 +70,17 @@ fun StudyPlannerWizard(
     DisposableEffect(Unit) { onDispose { datePicker.value?.dismiss() } }
     val current = selected.getOrNull(courseIndex)
     val capacities = capacity.map { it.toIntOrNull() }
-    val validCapacity = capacities.all { it != null && it in 0..480 } && capacities.any { it != null && it > 0 }
+    // Keep exact saved minutes when the displayed two-decimal hours were not edited.
+    val parsedWeeklyGoal = if (weeklyHours == originalWeeklyHours) originalWeeklyGoal else weeklyGoalMinutes(weeklyHours)
+    val validWeeklyGoal = weeklyHours.isBlank() || parsedWeeklyGoal != null
+    val validCapacity = capacities.all { it != null && it in 0..480 } && capacities.any { it != null && it > 0 } && validWeeklyGoal
     val validCourse = current != null && minutes(current) != null && finishBy(current)?.let { it in today..today.plusDays(365) } == true
     val config = if (step == 4) runCatching {
         require(selected.size == selectedIds.size)
         PlannerConfig(today, selected.map { boss -> PlannerCourse(boss.id, minutes(boss)!!, finishBy(boss)!!,
             priority(boss),
-            boss.timeSpentSeconds.coerceAtLeast(0)) }, capacities.map { it!! }, sessionMinutes)
+            boss.timeSpentSeconds.coerceAtLeast(0)) }, capacities.map { it!! }, sessionMinutes,
+            if (weeklyHours.isBlank()) null else parsedWeeklyGoal.also { require(it != null) })
     }.getOrNull() else null
     val scenarioConfig = config?.let { original ->
         val base = if (usingRequiredBudget) requiredPlannerDailyTime(original) else original
@@ -131,11 +138,12 @@ fun StudyPlannerWizard(
                 Text("Earlier deadlines come first. Priority decides between equal deadlines.", style = MaterialTheme.typography.bodySmall)
                 subject(current)?.preferredWeeklyMinutes?.let {
                     Text("Preferred: ${subjectHours(it)} h per week")
-                    Text("Saved for future weighted allocation; this plan uses remaining effort and your available days.", style = MaterialTheme.typography.bodySmall)
+                    Text("Used as a ceiling in the weekly recommendation. The deadline plan still uses your total remaining effort.", style = MaterialTheme.typography.bodySmall)
                 }
             } else Text("This course is no longer available. Go back and select another goal.")
             2 -> {
                 Text("When can you study?", style = MaterialTheme.typography.headlineSmall)
+                WeeklyStudyGoalEditor(weeklyHours, { weeklyHours = it }, !busy)
                 if (availability != null) {
                     AvailabilityWeekSummary(availability)
                     Text("Using your saved windows. Edit them in Availability to change daily capacity. Session clock times are not assigned yet.")
@@ -150,7 +158,8 @@ fun StudyPlannerWizard(
                     )
                 }
                 }
-                if (!validCapacity) Text("Use 0 to 480 minutes per day, with at least one study day.", color = MaterialTheme.colorScheme.error)
+                if (!validWeeklyGoal) Text("Use 0 to 56 weekly hours, or leave the goal blank.", color = MaterialTheme.colorScheme.error)
+                if (capacities.any { it == null || it !in 0..480 } || capacities.none { it != null && it > 0 }) Text("Use 0 to 480 minutes per day, with at least one study day.", color = MaterialTheme.colorScheme.error)
             }
             3 -> {
                 Text("How long should each focus block be?", style = MaterialTheme.typography.headlineSmall)
@@ -196,6 +205,7 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Your study plan", style = MaterialTheme.typography.headlineSmall)
         Text("${plan.config.courses.size} courses · ${plan.blocks.sumOf { it.minutes }} scheduled minutes\n${plan.config.start} to ${plan.config.courses.maxOf { it.finishBy }}")
+        WeeklyAllocationCard(plan, bosses, subjects)
         if (plan.shortfalls.isEmpty()) Text("Your preparation fits the available study time.")
         else {
             Text("Not enough study time", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.error)

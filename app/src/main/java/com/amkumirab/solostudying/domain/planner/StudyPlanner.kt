@@ -23,12 +23,14 @@ data class PlannerConfig(
     val courses: List<PlannerCourse>,
     val weekdayMinutes: List<Int>,
     val sessionMinutes: Int,
+    val weeklyGoalMinutes: Int? = null,
 ) {
     init {
         require(courses.size in 1..20 && courses.distinctBy { it.bossId }.size == courses.size)
         require(courses.all { ChronoUnit.DAYS.between(start, it.finishBy) in 0..365 })
         require(weekdayMinutes.size == 7 && weekdayMinutes.all { it in 0..480 } && weekdayMinutes.any { it > 0 })
         require(sessionMinutes in 15..120)
+        require(weeklyGoalMinutes == null || weeklyGoalMinutes in 0..3360)
     }
     fun capacity(date: LocalDate) = weekdayMinutes[date.dayOfWeek.value - 1]
 }

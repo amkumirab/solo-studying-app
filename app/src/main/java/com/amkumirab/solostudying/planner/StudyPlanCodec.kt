@@ -9,7 +9,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
 
-private const val CURRENT_VERSION = 3
 private const val MAX_RECORD_CHARACTERS = 2_000_000
 private val planFields = setOf("start", "sessionMinutes", "capacity", "courses", "blocks")
 private val courseFields = setOf("bossId", "remainingMinutes", "finishBy", "priority", "baselineSeconds")
@@ -20,6 +19,7 @@ fun encodeStudyPlan(plan: StudyPlan): String {
     val body = JSONObject().apply {
         put("start", plan.config.start.toString())
         put("sessionMinutes", plan.config.sessionMinutes)
+        plan.config.weeklyGoalMinutes?.let { put("weeklyGoalMinutes", it) }
         put("capacity", JSONArray(plan.config.weekdayMinutes))
         put("courses", JSONArray().apply {
             plan.config.courses.forEach { course ->
@@ -44,13 +44,13 @@ fun encodeStudyPlan(plan: StudyPlan): String {
         })
     }
     return JSONObject().apply {
-        put("version", CURRENT_VERSION)
+        put("version", if (plan.config.weeklyGoalMinutes == null) 3 else 4)
         put("kind", "date_only")
         put("plan", body)
     }.toString().also { require(it.length <= MAX_RECORD_CHARACTERS) }
 }
 
-/** Reads versions 1–3 without writing storage; legacy priority bounds remain enforced. */
+/** Reads versions 1–4 without writing storage; legacy priority bounds remain enforced. */
 fun decodeStudyPlan(text: String): StudyPlan {
     require(text.length <= MAX_RECORD_CHARACTERS)
     val tokens = JSONTokener(text)
@@ -59,17 +59,17 @@ fun decodeStudyPlan(text: String): StudyPlan {
     val version = json.strictLong("version")
     val body = when (version) {
         1L -> json.also { it.requireFields(planFields + "version") }
-        2L, 3L -> {
+        2L, 3L, 4L -> {
             json.requireFields(setOf("version", "kind", "plan"))
             require(json.get("kind") == "date_only")
-            json.getJSONObject("plan").also { it.requireFields(planFields) }
+            json.getJSONObject("plan").also { it.requireFields(if (version == 4L) planFields + "weeklyGoalMinutes" else planFields) }
         }
         else -> throw IllegalArgumentException("Unsupported study plan version")
     }
-    return decodePlanBody(body, if (version < 3) 3 else 5)
+    return decodePlanBody(body, if (version < 3) 3 else 5, version)
 }
 
-private fun decodePlanBody(json: JSONObject, maxPriority: Int): StudyPlan {
+private fun decodePlanBody(json: JSONObject, maxPriority: Int, version: Long): StudyPlan {
     val courses = json.getJSONArray("courses")
     val capacity = json.getJSONArray("capacity")
     val blocks = json.getJSONArray("blocks")
@@ -87,6 +87,7 @@ private fun decodePlanBody(json: JSONObject, maxPriority: Int): StudyPlan {
         },
         weekdayMinutes = List(7) { index -> strictNumber(capacity.get(index)).also { require(it in 0..480) }.toInt() },
         sessionMinutes = json.strictInt("sessionMinutes"),
+        weeklyGoalMinutes = if (version == 4L) json.strictInt("weeklyGoalMinutes") else null,
     )
     return StudyPlan(config, List(blocks.length()) { index ->
         val block = blocks.getJSONObject(index)

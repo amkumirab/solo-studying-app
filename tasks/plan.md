@@ -86,3 +86,18 @@ subject using priority, deadline proximity, preferred weekly limits and capacity
 Recommendations are planning advice; the existing deadline-first date-only
 schedule remains visible separately. Timed scheduling and applying weighted
 quotas to generated sessions are subsequent roadmap work. No new dependencies.
+
+## Weighted weekly sessions
+
+Approved scope: turn weekly allocations into real date-only blocks after preview
+and explicit acceptance. Persist a v5 weekly-scheduling policy with frozen course
+limits; v1–4 plans retain exact data and behavior until explicitly rebuilt/edited.
+
+1. Test a pure weekly builder: target ceilings, priority shares, deadline reserves,
+   subject limits, partial weeks, zero goals, exact minutes and deterministic IDs.
+2. Persist the policy and enforce it in plan validation, Move and No time today.
+   Preserve study-credit IDs/baselines and atomic storage conflict guards.
+3. Connect wizard and confirmed rebuilds. Show actual weekly shares, truthful
+   shortfalls and a clear distinction from old recommendation-only plans.
+4. Review, run focused/full tests, lint and Debug/Release builds. Keep commits
+   local until publication is requested. Clock times/calendar locking are later.

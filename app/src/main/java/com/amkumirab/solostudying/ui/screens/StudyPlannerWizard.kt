@@ -80,7 +80,7 @@ fun StudyPlannerWizard(
         PlannerConfig(today, selected.map { boss -> PlannerCourse(boss.id, minutes(boss)!!, finishBy(boss)!!,
             priority(boss),
             boss.timeSpentSeconds.coerceAtLeast(0)) }, capacities.map { it!! }, sessionMinutes,
-            if (weeklyHours.isBlank()) null else parsedWeeklyGoal.also { require(it != null) })
+            if (weeklyHours.isBlank()) null else parsedWeeklyGoal.also { require(it != null) }).withWeeklyScheduling(subjects)
     }.getOrNull() else null
     val scenarioConfig = config?.let { original ->
         val base = if (usingRequiredBudget) requiredPlannerDailyTime(original) else original
@@ -138,7 +138,7 @@ fun StudyPlannerWizard(
                 Text("Earlier deadlines come first. Priority decides between equal deadlines.", style = MaterialTheme.typography.bodySmall)
                 subject(current)?.preferredWeeklyMinutes?.let {
                     Text("Preferred: ${subjectHours(it)} h per week")
-                    Text("Used as a ceiling in the weekly recommendation. The deadline plan still uses your total remaining effort.", style = MaterialTheme.typography.bodySmall)
+                    Text("With a weekly goal, this limits the course's scheduled time each week. Remaining effort still defines the total work.", style = MaterialTheme.typography.bodySmall)
                 }
             } else Text("This course is no longer available. Go back and select another goal.")
             2 -> {
@@ -209,8 +209,9 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
         if (plan.shortfalls.isEmpty()) Text("Your preparation fits the available study time.")
         else {
             Text("Not enough study time", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.error)
-            plan.shortfalls.forEach { (id, minutes) -> Text("${subjects.firstOrNull { it.bossId == id }?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min cannot fit before the finish date.") }
-            Text("Add available minutes, reduce the remaining effort, or extend a finish date. Saving this plan does not solve the shortage.")
+            plan.shortfalls.forEach { (id, minutes) -> Text("${subjects.firstOrNull { it.bossId == id }?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min remain unscheduled before the finish date.") }
+            Text(if (plan.config.weeklyScheduling != null) "Review your weekly goal and course limits, add available minutes, reduce remaining effort, or extend a finish date. Saving does not solve the shortage."
+                else "Add available minutes, reduce the remaining effort, or extend a finish date. Saving this plan does not solve the shortage.")
             FilterChip(selected = acknowledged, onClick = { acknowledged = !acknowledged },
                 label = { Text("I understand this plan is incomplete") }, modifier = Modifier.heightIn(min = 48.dp).testTag("planner_acknowledge"))
         }

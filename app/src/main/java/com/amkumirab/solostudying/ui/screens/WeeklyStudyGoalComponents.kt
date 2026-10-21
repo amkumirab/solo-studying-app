@@ -25,7 +25,7 @@ internal fun weeklyGoalMinutes(text: String): Int? = when {
 internal fun WeeklyStudyGoalEditor(value: String, onChange: (String) -> Unit, enabled: Boolean, modifier: Modifier = Modifier) {
     OutlinedTextField(value, { onChange(it.take(12)) }, enabled = enabled,
         label = { Text("Weekly goal (hours)") },
-        supportingText = { Text("0 to 56 hours. Add a goal to preview a recommended split between your courses. Leave blank to keep only your deadline plan.") },
+        supportingText = { Text("0 to 56 hours. Sets the maximum scheduled time per Monday–Sunday week. Course weekly limits also apply. Leave blank for deadline-only scheduling.") },
         isError = value.isNotBlank() && weeklyGoalMinutes(value) == null,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true,
         modifier = modifier.fillMaxWidth().testTag("planner_weekly_goal"))
@@ -34,6 +34,10 @@ internal fun WeeklyStudyGoalEditor(value: String, onChange: (String) -> Unit, en
 @Composable
 internal fun WeeklyAllocationCard(plan: StudyPlan, bosses: List<BossEntity>, subjects: List<PlannerSubject>, modifier: Modifier = Modifier) {
     if (plan.config.weeklyGoalMinutes == null) return
+    if (plan.config.weeklyScheduling != null) {
+        ScheduledWeeklyAllocationCard(plan, bosses, subjects, modifier)
+        return
+    }
     val weekStart = plan.config.start.minusDays(plan.config.start.dayOfWeek.value - 1L)
     val allocation = remember(plan.config, subjects, weekStart) { recommendWeeklyHours(plan.config, subjects, weekStart) }
     OutlinedCard(modifier.fillMaxWidth()) {
@@ -67,6 +71,38 @@ internal fun WeeklyAllocationCard(plan: StudyPlan, bosses: List<BossEntity>, sub
 }
 
 @Composable
+private fun ScheduledWeeklyAllocationCard(plan: StudyPlan, bosses: List<BossEntity>, subjects: List<PlannerSubject>, modifier: Modifier) {
+    val start = plan.config.start.minusDays(plan.config.start.dayOfWeek.value - 1L)
+    val end = start.plusDays(6)
+    val goal = plan.config.weeklyGoalMinutes!!
+    val shares = remember(plan, start) { plan.blocks.filter { it.date in start..end }.groupBy { it.bossId }.mapValues { (_, blocks) -> blocks.sumOf { it.minutes } } }
+    val total = shares.values.sum()
+    val available = (0L..6L).sumOf { offset -> start.plusDays(offset).let { if (it < plan.config.start) 0 else plan.config.capacity(it) } }
+    OutlinedCard(modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Scheduled weekly split", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+            Text("${maxOf(start, plan.config.start)} to $end", style = MaterialTheme.typography.bodySmall)
+            Text("Goal: ${plannerTimeLabel(goal)} · Available: ${plannerTimeLabel(available)}")
+            Text("Scheduled: ${plannerTimeLabel(total)}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("weekly_recommended_total"))
+            Text("Deadline-required work comes first. Remaining weekly time is shared by priority and nearby finish dates, within saved course limits.", style = MaterialTheme.typography.bodySmall)
+            if (start != plan.config.start) Text("Partial week: days before your plan starts are excluded.", style = MaterialTheme.typography.bodySmall)
+            plan.config.courses.forEach { course ->
+                val subject = subjects.firstOrNull { it.bossId == course.bossId }
+                val minutes = shares[course.bossId] ?: 0
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    PlannerSubjectTitle(subject?.name ?: bosses.firstOrNull { it.id == course.bossId }?.name ?: "Removed course", subject?.color)
+                    Text("${plannerTimeLabel(minutes)} scheduled · Priority ${course.priority}", modifier = Modifier.testTag("weekly_share_${course.bossId}"))
+                    plan.config.weeklyScheduling?.courseMinuteLimits?.get(course.bossId)?.let { Text("Saved weekly limit: ${plannerTimeLabel(it)}", style = MaterialTheme.typography.bodySmall) }
+                    LinearProgressIndicator(progress = { if (goal == 0) 0f else minutes.toFloat() / goal }, modifier = Modifier.fillMaxWidth())
+                }
+            }
+            Text("Unused goal: ${plannerTimeLabel(goal - total)} · Free capacity: ${plannerTimeLabel(available - total)}")
+            Text("Only remaining course work is scheduled. Unused goal time is not extra work or completed study. Saving keeps these date-only sessions.", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
 internal fun WeeklyGoalSummary(plan: StudyPlan, weekStart: LocalDate, modifier: Modifier = Modifier) {
     val goal = plan.config.weeklyGoalMinutes ?: return
     val weekEnd = weekStart.plusDays(6)
@@ -83,7 +119,8 @@ internal fun WeeklyGoalSummary(plan: StudyPlan, weekStart: LocalDate, modifier: 
             Text("Available: ${plannerTimeLabel(available)} · Free: ${plannerTimeLabel((available - scheduled).coerceAtLeast(0))}")
             Text(if (scheduled > goal) "Scheduled above your goal: ${plannerTimeLabel(scheduled - goal)}"
                 else "Still to schedule: ${plannerTimeLabel(goal - scheduled)}")
-            Text("Scheduled time is planned work, not completed study. Edit answers to review your recommended split.", style = MaterialTheme.typography.bodySmall)
+            Text(if (plan.config.weeklyScheduling != null) "Scheduled time is planned work, not completed study. Weekly and saved course limits apply to moves too. Edit answers to preview a different split."
+                else "Scheduled time is planned work, not completed study. Edit answers to review your recommended split.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

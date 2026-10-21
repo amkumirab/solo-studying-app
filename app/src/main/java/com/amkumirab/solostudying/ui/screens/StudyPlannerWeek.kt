@@ -91,7 +91,8 @@ fun StudyPlannerWeek(
                                     datePicker.value = pickPlannerDate(context, maxOf(today, date), today, deadline) { picked ->
                                         val latestEntry = blockProgress(latestPlan, latestBosses).firstOrNull { it.block.id == block.id && !it.missingCourse }
                                         val moved = latestEntry?.let { moveStudyBlock(latestPlan, block.id, picked, today, it.creditedSeconds) }
-                                        if (moved == null) moveError = "That day is unavailable, full, or this block has already been studied."
+                                        if (moved == null) moveError = if (latestPlan.config.weeklyScheduling != null) "That day or week is full, outside the course dates, or this block has already been studied. Course weekly limits also apply."
+                                            else "That day is unavailable, full, or this block has already been studied."
                                         else { moveError = null; onMove(moved) }
                                     }
                                 }, enabled = !isSessionActive && entry.creditedSeconds == 0L && deadline >= today,

@@ -42,6 +42,7 @@ internal fun PlannerTimeBudgetCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Study time check", style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.semantics { heading() })
+            if (scenario.weeklyScheduling != null) Text("This checks daily capacity only. Weekly goals and course limits may leave work unscheduled; review the actual sessions below.", style = MaterialTheme.typography.bodySmall)
             Text("${plannerTimeLabel(report.requiredMinutes)} remaining · ${report.studyDays} study days")
             val required = report.requiredDailyMinutes
             if (required == null) {
@@ -70,7 +71,8 @@ internal fun PlannerTimeBudgetCard(
                 val shortage = report.deadlines.firstOrNull { it.balanceMinutes < 0 }
                 if (shortage != null) Text("Deadline shortage: ${plannerTimeLabel(-shortage.balanceMinutes)} by ${shortage.finishBy}. Later spare time cannot cover this deadline.",
                     color = MaterialTheme.colorScheme.error)
-                else Text("All deadlines fit this budget.", color = MaterialTheme.colorScheme.primary)
+                else Text(if (scenario.weeklyScheduling != null) "Daily windows cover this work. Weekly limits still apply."
+                    else "All deadlines fit this budget.", color = MaterialTheme.colorScheme.primary)
             }
             Text("Try a different daily budget", style = MaterialTheme.typography.titleMedium)
             Text("${if (dailyAdjustment > 0) "+" else ""}$dailyAdjustment min per study day from ${if (usingRequiredBudget) "the required" else "your entered"} budget")

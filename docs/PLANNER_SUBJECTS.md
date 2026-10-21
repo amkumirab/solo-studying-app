@@ -10,9 +10,10 @@ case and repeated spaces. A goal can belong to only one catalog entry.
 
 Weekly preferences are positive, up to 168 hours. Blank means unspecified, not
 zero. They remain distinct from the goal's total effort and recorded progress.
-The [weekly-target slice](PLANNER_WEEKLY_TARGET.md) uses preferred hours as a
-ceiling in its recommendation preview. Applying those recommended quotas to the
-timetable and assigning clock times remain later work.
+New [weekly-limited schedules](PLANNER_WEEKLY_SESSIONS.md) use preferred hours as
+an actual per-course ceiling, frozen when the plan is accepted. Existing v4 plans
+retain advisory recommendations until edited or explicitly rebuilt. Assigning
+clock times remains later work.
 
 ## Integration and storage
 

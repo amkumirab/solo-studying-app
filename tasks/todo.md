@@ -110,3 +110,21 @@
     regression passed in fresh workers. No assertions or timeouts were weakened.
   - Native layout verification uses 288 dp content width with 1.5 font scale.
   - No attached device/emulator; installation and physical rotation remain manual.
+
+## Weighted weekly sessions
+
+- [x] Weekly scheduling policy, deterministic generation and deadline reservations.
+  - Ten domain tests include 150 generated constraint/accounting scenarios.
+- [x] Strict v5 persistence, legacy preservation and safe move/postpone/deletion.
+  - Four storage tests cover malformed policies and exact legacy data preservation.
+- [x] Wizard preview, confirmed rebuilds and actual weekly shares.
+  - Interaction coverage includes legacy upgrade confirmation, zero-goal warnings,
+    restored exact-minute goals and actual deadline-reserved shares.
+  - Native layout coverage verifies actual shares and frozen limits at 288 dp
+    content width with 1.5 font scale.
+- [x] Full regression, lint, APK builds and final review.
+  - Verified on 2026-10-21: 349 tests, zero failures, errors or skips.
+  - Debug and unsigned Release builds succeeded; lint: 0 errors, 34 existing warnings.
+  - Reviewed bounds, schema rejection, credit preservation and off-main generation.
+  - No new dependencies, permissions, network services or Room schema changes.
+  - No device/emulator connected; installation and physical rotation remain manual.

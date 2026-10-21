@@ -30,6 +30,38 @@ import org.robolectric.annotation.GraphicsMode
 class WeeklyStudyGoalLayoutTest {
     @get:Rule val rule = createComposeRule()
 
+    @Test fun `actual weekly shares and frozen limit labels wrap at large text sizes`() {
+        val start = LocalDate.of(2026, 10, 19)
+        val subjects = listOf(PlannerSubject(1, "Operating Systems", preferredWeeklyMinutes = 180))
+        val plan = buildStudyPlan(PlannerConfig(start, listOf(PlannerCourse(1, 600, start.plusDays(41), 5, 0)), List(7) { 60 }, 30, 240).withWeeklyScheduling(subjects))
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1.5f)) {
+                SoloStudyingTheme {
+                    Column(Modifier.width(320.dp).verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        WeeklyAllocationCard(plan, emptyList(), subjects)
+                    }
+                }
+            }
+        }
+        listOf("Scheduled weekly split", "Scheduled: 3 h", "3 h scheduled · Priority 5", "Saved weekly limit: 3 h",
+            "Unused goal: 1 h · Free capacity: 4 h").forEach { text ->
+            val layouts = mutableListOf<TextLayoutResult>()
+            rule.onNodeWithText(text, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            assertTrue(text, layouts.isNotEmpty())
+            layouts.forEach { layout ->
+                assertFalse(text, layout.multiParagraph.didExceedMaxLines)
+                assertEquals(text.length, layout.getLineEnd(layout.lineCount - 1))
+                repeat(layout.lineCount) { line ->
+                    assertFalse(text, layout.isLineEllipsized(line))
+                    assertTrue(text, layout.getLineLeft(line) >= 0f)
+                    assertTrue(text, layout.getLineRight(line) <= layout.size.width)
+                    assertTrue(text, layout.getLineBottom(line) <= layout.size.height)
+                }
+            }
+        }
+    }
+
     @Test fun `goal and recommendation labels remain complete on a narrow screen with large text`() {
         val start = LocalDate.of(2026, 10, 19)
         val plan = buildStudyPlan(PlannerConfig(start, listOf(PlannerCourse(1, 600, start.plusDays(13), 5, 0)), List(7) { 60 }, 30, 240))

@@ -33,6 +33,7 @@ internal fun StudyPostponeDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Only today's unfinished sessions move. Existing future sessions, recorded study time and rewards stay unchanged. Partly studied sessions reserve their full slot on the new day.")
+                if (plan.config.weeklyScheduling != null) Text("Full weeks and course weekly limits are respected. Sessions may move to a later week, but never past their deadline.")
                 if (result == null) Text("Checking available study days…")
                 else if (result.unmovedMinutes.isNotEmpty()) {
                     Text("Not enough room before the deadlines", color = MaterialTheme.colorScheme.error)

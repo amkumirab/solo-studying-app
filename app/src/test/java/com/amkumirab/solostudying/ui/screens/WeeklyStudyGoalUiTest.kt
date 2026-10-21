@@ -37,9 +37,15 @@ class WeeklyStudyGoalUiTest {
         rule.onNodeWithTag("planner_weekly_goal").performScrollTo().assertTextContains("4")
         repeat(2) { rule.onNodeWithTag("planner_next").performScrollTo().performClick() }
         rule.waitUntil(10000) { rule.onAllNodesWithTag("planner_accept").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithTag("weekly_recommended_total").performScrollTo().assertTextEquals("Recommended: 4 h")
+        rule.onNodeWithTag("weekly_recommended_total").performScrollTo().assertTextEquals("Scheduled: 4 h")
+        rule.onNodeWithTag("planner_accept").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("planner_acknowledge").performScrollTo().performClick()
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
-        rule.runOnIdle { assertEquals(240, accepted!!.config.weeklyGoalMinutes) }
+        rule.runOnIdle {
+            assertEquals(240, accepted!!.config.weeklyGoalMinutes)
+            assertNotNull(accepted!!.config.weeklyScheduling)
+            assertEquals(120, accepted!!.shortfalls[1])
+        }
     }
 
     @Test fun `recommendation changes with priorities while actual sessions stay distinct`() {
@@ -62,8 +68,12 @@ class WeeklyStudyGoalUiTest {
         } }
         repeat(4) { rule.onNodeWithTag("planner_next").performScrollTo().performClick() }
         rule.waitUntil(10000) { rule.onAllNodesWithTag("planner_accept").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("planner_acknowledge").performScrollTo().performClick()
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
-        rule.runOnIdle { assertEquals(1, accepted!!.config.weeklyGoalMinutes) }
+        rule.runOnIdle {
+            assertEquals(1, accepted!!.config.weeklyGoalMinutes)
+            assertEquals(2, accepted!!.blocks.sumOf { it.minutes })
+        }
     }
 
     @Test fun `zero target reports actual scheduled time without marking it as completed`() {

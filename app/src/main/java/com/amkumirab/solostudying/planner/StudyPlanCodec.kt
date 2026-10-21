@@ -4,6 +4,7 @@ import com.amkumirab.solostudying.domain.planner.PlannerConfig
 import com.amkumirab.solostudying.domain.planner.PlannerCourse
 import com.amkumirab.solostudying.domain.planner.StudyBlock
 import com.amkumirab.solostudying.domain.planner.StudyPlan
+import com.amkumirab.solostudying.domain.planner.WeeklySchedulingPolicy
 import java.time.LocalDate
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,6 +21,13 @@ fun encodeStudyPlan(plan: StudyPlan): String {
         put("start", plan.config.start.toString())
         put("sessionMinutes", plan.config.sessionMinutes)
         plan.config.weeklyGoalMinutes?.let { put("weeklyGoalMinutes", it) }
+        plan.config.weeklyScheduling?.let { policy ->
+            put("weeklyCourseLimits", JSONArray().apply {
+                policy.courseMinuteLimits.toSortedMap().forEach { (id, minutes) ->
+                    put(JSONObject().put("bossId", id).put("minutes", minutes))
+                }
+            })
+        }
         put("capacity", JSONArray(plan.config.weekdayMinutes))
         put("courses", JSONArray().apply {
             plan.config.courses.forEach { course ->
@@ -44,13 +52,17 @@ fun encodeStudyPlan(plan: StudyPlan): String {
         })
     }
     return JSONObject().apply {
-        put("version", if (plan.config.weeklyGoalMinutes == null) 3 else 4)
+        put("version", when {
+            plan.config.weeklyScheduling != null -> 5
+            plan.config.weeklyGoalMinutes != null -> 4
+            else -> 3
+        })
         put("kind", "date_only")
         put("plan", body)
     }.toString().also { require(it.length <= MAX_RECORD_CHARACTERS) }
 }
 
-/** Reads versions 1–4 without writing storage; legacy priority bounds remain enforced. */
+/** Reads versions 1–5 without writing storage; legacy priority bounds remain enforced. */
 fun decodeStudyPlan(text: String): StudyPlan {
     require(text.length <= MAX_RECORD_CHARACTERS)
     val tokens = JSONTokener(text)
@@ -59,10 +71,15 @@ fun decodeStudyPlan(text: String): StudyPlan {
     val version = json.strictLong("version")
     val body = when (version) {
         1L -> json.also { it.requireFields(planFields + "version") }
-        2L, 3L, 4L -> {
+        2L, 3L, 4L, 5L -> {
             json.requireFields(setOf("version", "kind", "plan"))
             require(json.get("kind") == "date_only")
-            json.getJSONObject("plan").also { it.requireFields(if (version == 4L) planFields + "weeklyGoalMinutes" else planFields) }
+            val fields = when (version) {
+                5L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits")
+                4L -> planFields + "weeklyGoalMinutes"
+                else -> planFields
+            }
+            json.getJSONObject("plan").also { it.requireFields(fields) }
         }
         else -> throw IllegalArgumentException("Unsupported study plan version")
     }
@@ -87,13 +104,25 @@ private fun decodePlanBody(json: JSONObject, maxPriority: Int, version: Long): S
         },
         weekdayMinutes = List(7) { index -> strictNumber(capacity.get(index)).also { require(it in 0..480) }.toInt() },
         sessionMinutes = json.strictInt("sessionMinutes"),
-        weeklyGoalMinutes = if (version == 4L) json.strictInt("weeklyGoalMinutes") else null,
+        weeklyGoalMinutes = if (version >= 4L) json.strictInt("weeklyGoalMinutes") else null,
+        weeklyScheduling = if (version == 5L) decodeWeeklyPolicy(json.getJSONArray("weeklyCourseLimits")) else null,
     )
     return StudyPlan(config, List(blocks.length()) { index ->
         val block = blocks.getJSONObject(index)
         block.requireFields(blockFields)
         StudyBlock(block.strictInt("id"), block.strictInt("bossId"), block.strictDate("date"), block.strictInt("minutes"))
     })
+}
+
+private fun decodeWeeklyPolicy(values: JSONArray): WeeklySchedulingPolicy {
+    require(values.length() <= 20)
+    val limits = List(values.length()) { index ->
+        val entry = values.getJSONObject(index)
+        entry.requireFields(setOf("bossId", "minutes"))
+        entry.strictInt("bossId") to entry.strictInt("minutes")
+    }
+    require(limits.map { it.first }.distinct().size == limits.size)
+    return WeeklySchedulingPolicy(limits.toMap())
 }
 
 private fun JSONObject.requireFields(expected: Set<String>) {

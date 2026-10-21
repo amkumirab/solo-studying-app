@@ -19,18 +19,23 @@ fun postponeTodayStudy(plan: StudyPlan, bosses: List<BossEntity>, today: LocalDa
         .filter { !it.missingCourse && it.remainingSeconds > 0 }
         .sortedWith(compareBy<StudyBlockProgress> { courses.getValue(it.block.bossId).finishBy }
             .thenByDescending { courses.getValue(it.block.bossId).priority }.thenBy { it.block.id })
-    val used = plan.blocks.groupBy { it.date }.mapValues { (_, blocks) -> blocks.sumOf { it.minutes } }.toMutableMap()
+    val ledger = PlannerCapacityLedger(plan.config, plan.blocks)
     val moves = mutableListOf<StudyBlock>()
     val unmoved = mutableMapOf<Int, Int>()
     for (entry in remaining) {
         val block = entry.block
         val deadline = courses.getValue(block.bossId).finishBy
+        ledger.release(block)
         var date = today.plusDays(1)
-        while (date <= deadline && (used[date] ?: 0) + block.minutes > plan.config.capacity(date)) date = date.plusDays(1)
-        if (date > deadline) unmoved[block.bossId] = (unmoved[block.bossId] ?: 0) + entry.remainingMinutes
+        while (date <= deadline && !ledger.canPlace(block, date)) date = date.plusDays(1)
+        if (date > deadline) {
+            ledger.reserve(block)
+            unmoved[block.bossId] = (unmoved[block.bossId] ?: 0) + entry.remainingMinutes
+        }
         else {
-            moves += block.copy(date = date)
-            used[date] = (used[date] ?: 0) + block.minutes
+            val moved = block.copy(date = date)
+            moves += moved
+            ledger.reserve(moved)
         }
     }
     val movedById = moves.associateBy { it.id }

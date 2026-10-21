@@ -24,6 +24,7 @@ data class PlannerConfig(
     val weekdayMinutes: List<Int>,
     val sessionMinutes: Int,
     val weeklyGoalMinutes: Int? = null,
+    val weeklyScheduling: WeeklySchedulingPolicy? = null,
 ) {
     init {
         require(courses.size in 1..20 && courses.distinctBy { it.bossId }.size == courses.size)
@@ -31,6 +32,8 @@ data class PlannerConfig(
         require(weekdayMinutes.size == 7 && weekdayMinutes.all { it in 0..480 } && weekdayMinutes.any { it > 0 })
         require(sessionMinutes in 15..120)
         require(weeklyGoalMinutes == null || weeklyGoalMinutes in 0..3360)
+        require(weeklyScheduling == null || weeklyGoalMinutes != null &&
+            weeklyScheduling.courseMinuteLimits.keys.all { id -> courses.any { it.bossId == id } })
     }
     fun capacity(date: LocalDate) = weekdayMinutes[date.dayOfWeek.value - 1]
 }
@@ -47,6 +50,14 @@ data class StudyPlan(val config: PlannerConfig, val blocks: List<StudyBlock>) {
         })
         require(blocks.groupBy { it.date }.all { (date, values) -> values.sumOf { it.minutes } <= config.capacity(date) })
         require(config.courses.all { course -> blocks.filter { it.bossId == course.bossId }.sumOf { it.minutes } <= course.remainingMinutes })
+        if (config.weeklyScheduling != null) {
+            require(blocks.groupBy { plannerWeekStart(it.date) }.all { (_, week) ->
+                week.sumOf { it.minutes } <= config.weeklyGoalMinutes!! &&
+                    week.groupBy { it.bossId }.all { (id, course) ->
+                        course.sumOf { it.minutes } <= (config.weeklyScheduling.courseMinuteLimits[id] ?: Int.MAX_VALUE)
+                    }
+            })
+        }
     }
     val shortfalls: Map<Int, Int>
         get() = config.courses.associate { course ->
@@ -56,6 +67,7 @@ data class StudyPlan(val config: PlannerConfig, val blocks: List<StudyBlock>) {
 
 /** Evenly use capacity while reserving enough work today for every deadline prefix. */
 fun buildStudyPlan(config: PlannerConfig): StudyPlan {
+    if (config.weeklyScheduling != null) return buildWeightedWeeklyPlan(config)
     val days = ChronoUnit.DAYS.between(config.start, config.courses.maxOf { it.finishBy }).toInt() + 1
     val capacityPrefix = IntArray(days + 1)
     repeat(days) { index -> capacityPrefix[index + 1] = capacityPrefix[index] + config.capacity(config.start.plusDays(index.toLong())) }
@@ -135,8 +147,9 @@ fun moveStudyBlock(plan: StudyPlan, blockId: Int, date: LocalDate, today: LocalD
     val block = plan.blocks.firstOrNull { it.id == blockId } ?: return null
     val course = plan.config.courses.first { it.bossId == block.bossId }
     if (creditedSeconds != 0L || date < today || date < plan.config.start || date > course.finishBy) return null
-    val used = plan.blocks.filter { it.date == date && it.id != blockId }.sumOf { it.minutes }
-    if (used + block.minutes > plan.config.capacity(date)) return null
+    val ledger = PlannerCapacityLedger(plan.config, plan.blocks)
+    ledger.release(block)
+    if (!ledger.canPlace(block, date)) return null
     return plan.copy(blocks = plan.blocks.map { if (it.id == blockId) it.copy(date = date) else it })
 }
 

@@ -36,7 +36,9 @@ data class PlannerSnapshot(
     fun withoutSubject(bossId: Int): PlannerSnapshot {
         val courses = plan?.config?.courses?.filterNot { it.bossId == bossId }.orEmpty()
         val remainingPlan = if (courses.isEmpty()) null else plan?.copy(
-            config = plan.config.copy(courses = courses), blocks = plan.blocks.filterNot { it.bossId == bossId },
+            config = plan.config.copy(courses = courses, weeklyScheduling = plan.config.weeklyScheduling?.let { policy ->
+                policy.copy(courseMinuteLimits = policy.courseMinuteLimits - bossId)
+            }), blocks = plan.blocks.filterNot { it.bossId == bossId },
         )
         return copy(plan = remainingPlan, subjects = subjects.filterNot { it.bossId == bossId })
     }

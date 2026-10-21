@@ -128,3 +128,18 @@
   - Reviewed bounds, schema rejection, credit preservation and off-main generation.
   - No new dependencies, permissions, network services or Room schema changes.
   - No device/emulator connected; installation and physical rotation remain manual.
+
+## Timed study sessions
+
+- [x] Exact window packing, validation and strict v6 compatibility.
+  - Nine domain tests include 100 generated cases and a 20-course/year-long bound.
+  - Three storage tests verify strict records and unchanged date-only reads.
+- [x] Safe timed date moves/postponement preserving credit and caps.
+- [x] Explicit wizard/rebuild integration and chronological time displays.
+  - Three interaction tests and a native 288 dp/1.5-font-scale label check passed.
+  - First checkpoint: 365 tests passed; lint: 0 errors, 34 existing warnings;
+    assembleDebug succeeded. A new lazy-list test now scrolls to each target
+    before comparing ordering. An initial run hit the existing accessibility
+    idle timeout; its unchanged suite and the fresh full run passed.
+- [ ] Explicit-time move editor with validation, cancellation and restoration.
+- [ ] Full regression, lint, APKs, review and three local commits.

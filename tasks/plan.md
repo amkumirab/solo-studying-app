@@ -101,3 +101,15 @@ limits; v1–4 plans retain exact data and behavior until explicitly rebuilt/edi
    shortfalls and a clear distinction from old recommendation-only plans.
 4. Review, run focused/full tests, lint and Debug/Release builds. Keep commits
    local until publication is requested. Clock times/calendar locking are later.
+
+## Timed study sessions
+
+Approved three-commit slice: `docs/PLANNER_TIMED_SESSIONS.md`.
+Freeze saved windows only on explicit acceptance/rebuild; legacy plans stay exact.
+
+1. Pack dated work into local windows with exact totals, validate non-overlap,
+   persist strict v6, and preserve credit through moves/postponement.
+2. Connect wizard/rebuild and show chronological, readable times in preview,
+   week and Today. Without windows keep the existing date-only flow.
+3. Add explicit-time move editing, guard invalid/stale slots, verify full tests,
+   lint and both APK builds. Keep three commits local; no locks or custom sessions.

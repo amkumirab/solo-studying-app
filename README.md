@@ -36,6 +36,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Offline guided exam planner with course effort estimates, daily capacity, weekly sessions, progress credit, and confirmed rescheduling
 - Goal-linked planner subjects with editable names, five priority levels, named colors, optional deadlines, and saved weekly-hour preferences
 - Weekly availability with multiple local-time windows per day, half-hour editing, rest days, and daily capacity ceilings
+- Local start/end times inside accepted study windows, with exact-minute sessions and overlap-safe rescheduling
 - Optional weekly study goals with priority-weighted sessions, saved course limits, and honest unscheduled-work warnings
 - Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
@@ -89,8 +90,15 @@ Saving windows does not move accepted sessions. Use **Edit answers** or confirm
 **Rebuild remaining** to apply their capacity. Budget comparisons cannot exceed
 these daily ceilings. An all-rest week can be saved, but cannot generate a plan.
 Without saved windows, existing daily-minute settings continue to work as before.
-Individual sessions still have dates and durations, not assigned clock times.
+With saved windows, newly accepted plans assign local start/end times to each
+session. Old plans stay date-only until explicitly edited or rebuilt. Without
+saved windows, the date-and-duration flow remains available.
 See [availability settings](docs/PLANNER_AVAILABILITY.md).
+
+The weekly view and Today show planned clock times without restricting when you
+can study. Times and accepted windows persist across reopening. No time today
+finds complete free slots without moving other sessions or changing study credit.
+See [timed sessions](docs/PLANNER_TIMED_SESSIONS.md).
 
 In **Schedule → Create weekly plan / Edit answers**, enter an optional weekly
 study goal in the availability step. Preview actual weekly sessions based on

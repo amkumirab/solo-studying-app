@@ -40,7 +40,7 @@ internal fun StudyPostponeDialog(
                     result.unmovedMinutes.forEach { (id, minutes) -> Text("${subjects.firstOrNull { it.bossId == id }?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"}: $minutes min cannot move with the current session sizes.") }
                     Text("Nothing will change. Open the weekly plan to adjust dates or available time.")
                 } else {
-                    result.moves.forEach { block -> Text("${subjects.firstOrNull { it.bossId == block.bossId }?.name ?: bosses.firstOrNull { it.id == block.bossId }?.name ?: "Removed course"} · ${block.minutes} min slot → ${block.date}") }
+                    result.moves.forEach { block -> Text("${subjects.firstOrNull { it.bossId == block.bossId }?.name ?: bosses.firstOrNull { it.id == block.bossId }?.name ?: "Removed course"} · ${block.minutes} min slot → ${block.date}${block.clockRange()?.let { " · $it" }.orEmpty()}") }
                     if (result.moves.isEmpty()) Text("No unfinished sessions remain to move.")
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

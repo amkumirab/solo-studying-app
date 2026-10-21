@@ -1,5 +1,9 @@
 # Weighted weekly study sessions
 
+With saved availability windows, new plans also assign local clock times while
+preserving these allocation limits. See [timed study sessions](PLANNER_TIMED_SESSIONS.md).
+The date-only mode remains supported when no windows are configured.
+
 ## Use
 
 Open Study → Plan → Schedule and create a weekly plan or choose Edit answers.

@@ -30,6 +30,7 @@ fun StudyPlannerWizard(
     onCancel: () -> Unit, modifier: Modifier = Modifier, subjects: List<PlannerSubject> = emptyList(),
     availability: WeeklyAvailability? = null,
 ) {
+    val windows = availability ?: initialPlan?.config?.studyWindows
     val initialCourses = remember { initialPlan?.let { remainingPlannerCourses(it, bosses, subjects) }.orEmpty() }
     var step by rememberSaveable { mutableIntStateOf(0) }
     var courseIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -38,7 +39,7 @@ fun StudyPlannerWizard(
     var dates by rememberSaveable { mutableStateOf(mapOf<Int, String>()) }
     var priorities by rememberSaveable { mutableStateOf(mapOf<Int, Int>()) }
     var capacity by rememberSaveable {
-        mutableStateOf((availability?.weekdayMinutes ?: initialPlan?.config?.weekdayMinutes ?: weekdayDefaults).let { values ->
+        mutableStateOf((windows?.weekdayMinutes ?: initialPlan?.config?.weekdayMinutes ?: weekdayDefaults).let { values ->
             List(7) { values.getOrNull(it)?.coerceIn(0, 480)?.toString() ?: "60" }
         })
     }
@@ -80,11 +81,11 @@ fun StudyPlannerWizard(
         PlannerConfig(today, selected.map { boss -> PlannerCourse(boss.id, minutes(boss)!!, finishBy(boss)!!,
             priority(boss),
             boss.timeSpentSeconds.coerceAtLeast(0)) }, capacities.map { it!! }, sessionMinutes,
-            if (weeklyHours.isBlank()) null else parsedWeeklyGoal.also { require(it != null) }).withWeeklyScheduling(subjects)
+            if (weeklyHours.isBlank()) null else parsedWeeklyGoal.also { require(it != null) }, studyWindows = windows).withWeeklyScheduling(subjects)
     }.getOrNull() else null
     val scenarioConfig = config?.let { original ->
         val base = if (usingRequiredBudget) requiredPlannerDailyTime(original) else original
-        base?.let { adjustPlannerDailyTime(it, dailyAdjustment) }?.takeIf { it.fitsAvailability(availability) }
+        base?.let { adjustPlannerDailyTime(it, dailyAdjustment) }?.takeIf { it.fitsAvailability(windows) }
     }
     val preview by produceState<StudyPlan?>(null, scenarioConfig) {
         value = null
@@ -144,10 +145,11 @@ fun StudyPlannerWizard(
             2 -> {
                 Text("When can you study?", style = MaterialTheme.typography.headlineSmall)
                 WeeklyStudyGoalEditor(weeklyHours, { weeklyHours = it }, !busy)
-                if (availability != null) {
-                    AvailabilityWeekSummary(availability)
-                    Text("Using your saved windows. Edit them in Availability to change daily capacity. Session clock times are not assigned yet.")
+                if (windows != null) {
+                    AvailabilityWeekSummary(windows)
+                    Text("The preview assigns local start and end times inside these windows. Edit Availability to change them. Windows are frozen when you save the plan.")
                 } else {
+                Text("To assign session clock times, save study windows in Availability first. Otherwise this plan will use dates and durations only.")
                 Text("Enter focused minutes for each weekday. Use 0 for a rest day; leave extra time for breaks.")
                 listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday").forEachIndexed { index, day ->
                     OutlinedTextField(
@@ -177,7 +179,7 @@ fun StudyPlannerWizard(
                         onAdjustmentChange = { dailyAdjustment = it },
                         onUseRequired = { usingRequiredBudget = true; dailyAdjustment = 0 },
                         onReset = { usingRequiredBudget = false; dailyAdjustment = 0 }, enabled = !busy, subjects = subjects,
-                        availability = availability)
+                        availability = windows)
                     // A result from an older draft must never be saved while its replacement builds.
                     preview?.takeIf { it.config == scenarioConfig }?.let {
                         StudyPlannerPreview(it, bosses, busy, onAccept, subjects)
@@ -206,6 +208,7 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
         Text("Your study plan", style = MaterialTheme.typography.headlineSmall)
         Text("${plan.config.courses.size} courses · ${plan.blocks.sumOf { it.minutes }} scheduled minutes\n${plan.config.start} to ${plan.config.courses.maxOf { it.finishBy }}")
         WeeklyAllocationCard(plan, bosses, subjects)
+        if (plan.config.studyWindows != null) Text("Local clock times · no automatic breaks. A session may be split between windows without losing study time.")
         if (plan.shortfalls.isEmpty()) Text("Your preparation fits the available study time.")
         else {
             Text("Not enough study time", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.error)
@@ -220,7 +223,11 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
             val date = plan.config.start.plusDays(index.toLong())
             val blocks = plan.blocks.filter { it.date == date }
             Text("${date.dayOfWeek} · $date: ${blocks.sumOf { it.minutes }} min")
-            blocks.groupBy { it.bossId }.forEach { (id, values) ->
+            if (plan.config.studyWindows != null) blocks.sortedBy { it.startMinute }.forEach { block ->
+                val subject = subjects.firstOrNull { it.bossId == block.bossId }
+                PlannerSubjectTitle(subject?.name ?: bosses.firstOrNull { it.id == block.bossId }?.name ?: "Removed course", subject?.color)
+                PlannerSessionTime(block, plan.config.courses.first { it.bossId == block.bossId }.priority, Modifier.testTag("preview_clock_${block.id}"))
+            } else blocks.groupBy { it.bossId }.forEach { (id, values) ->
                 val subject = subjects.firstOrNull { it.bossId == id }
                 PlannerSubjectTitle("${subject?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"} — ${values.sumOf { it.minutes }} min", subject?.color)
             }

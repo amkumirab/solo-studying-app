@@ -42,7 +42,11 @@ class AvailabilityCapacityTest {
         // just as on first opening; slower CI runners may still be calculating here.
         rule.waitUntil(10000) { rule.onAllNodesWithTag("planner_accept").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
-        rule.runOnIdle { assertEquals(week.weekdayMinutes, accepted!!.config.weekdayMinutes) }
+        rule.runOnIdle {
+            assertEquals(week.weekdayMinutes, accepted!!.config.weekdayMinutes)
+            assertEquals(week, accepted!!.config.studyWindows)
+            assertTrue(accepted!!.blocks.all { it.startMinute != null })
+        }
     }
 
     @Test fun `all rest availability prevents generation`() {

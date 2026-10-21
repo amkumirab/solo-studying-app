@@ -39,6 +39,8 @@ accounts, subscriptions, new permissions, or new dependencies.
   plans without a weekly goal use the version-3 date-only envelope with five priority levels.
   New weekly-limited plans use version 5 with frozen course limits; versions 1–5
   remain readable. Version-4 goals stay advisory until an explicit edit/rebuild.
+  Timed plans use version 6, retaining frozen windows and exact start minutes;
+  readers accept versions 1–6 without inventing clock times on legacy reads.
   Legacy numeric priorities retain their exact values and 1–3 bounds.
   Migration preserves block IDs,
   ordering and progress baselines. Unknown fields or versions prevent a save
@@ -49,6 +51,10 @@ accounts, subscriptions, new permissions, or new dependencies.
   [weighted weekly sessions](PLANNER_WEEKLY_SESSIONS.md). Preview actual shares
   and unscheduled work before saving. Weekly and frozen course limits also apply
   to moves/postponement. Scheduled time is never reported as completed work.
+- Save availability windows to generate [timed sessions](PLANNER_TIMED_SESSIONS.md)
+  on explicit acceptance/rebuild. Windows are frozen in accepted plans; dates,
+  local start/end times and priority appear in chronological mobile day lists.
+  Original credit order stays unchanged. No clock restriction is imposed on Study.
 
 ## Implementation slices
 

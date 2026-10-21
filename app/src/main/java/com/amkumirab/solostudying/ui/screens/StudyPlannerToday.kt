@@ -38,12 +38,13 @@ internal fun StudyPlannerToday(
                 Text("${credited / 60} of $total planned minutes credited", style = MaterialTheme.typography.bodySmall)
                 LinearProgressIndicator(progress = { (credited.toFloat() / (total * 60L)).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
                 if (pending.isEmpty()) Text("Today's planned sessions are complete.")
-                val ordered = available.sortedWith(compareBy<StudyBlockProgress> { it.remainingSeconds == 0L }.thenBy { it.block.id })
+                val ordered = available.sortedWith(compareBy<StudyBlockProgress> { it.remainingSeconds == 0L }.thenBy { it.block.startMinute ?: 0 }.thenBy { it.block.id })
                 (if (expanded) ordered else ordered.take(3)).forEach { entry ->
                     val boss = bosses.first { it.id == entry.block.bossId }
                     val subject = subjects.firstOrNull { it.bossId == boss.id }
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         PlannerSubjectTitle(subject?.name ?: boss.name, subject?.color)
+                        PlannerSessionTime(entry.block, plan.config.courses.first { it.bossId == boss.id }.priority, Modifier.testTag("today_clock_${entry.block.id}"))
                         Text(if (entry.remainingSeconds == 0L) "Done · ${entry.block.minutes} min"
                             else "${entry.remainingMinutes} min left · ${entry.creditedSeconds / 60} min credited", style = MaterialTheme.typography.bodySmall)
                         if (entry.remainingSeconds > 0) Button(

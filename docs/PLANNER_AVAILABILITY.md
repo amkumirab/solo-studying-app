@@ -1,5 +1,10 @@
 # Weekly availability
 
+Current integration: explicit plan acceptance/rebuild assigns session clock times
+inside saved windows; see [timed study sessions](PLANNER_TIMED_SESSIONS.md). Accepted
+windows are frozen independently of later edits. Existing date-only plans are not
+rewritten on read. The original capacity-only slice is documented below.
+
 ## Objective and scope
 
 Roadmap slice 3 adds editable local study windows for Monday through Sunday.
@@ -16,7 +21,7 @@ promises about elapsed time across daylight-saving transitions.
 
 This slice stores clock windows and applies their capacity to explicit schedule
 editing/rebuilding. It does not assign start/end times to individual sessions.
-Weighted allocation, timed calendars and locked sessions belong to later slices.
+The original slice did not include weighted allocation, timed calendars or locks.
 Accepted date-only plans keep their exact sessions, credit IDs and baselines until
 the user explicitly edits or confirms a rebuild. No changes to goals or history.
 

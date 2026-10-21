@@ -105,7 +105,7 @@ fun StudyPlannerEntry(
                         if (plan.config.weeklyGoalMinutes != null && plan.config.weeklyScheduling == null) {
                             Text("Your saved weekly goal is advisory. Edit answers to preview weekly-limited sessions, or confirm a rebuild to apply it. Existing sessions are unchanged.", modifier = Modifier.padding(horizontal = 16.dp))
                         }
-                        if (state.availability?.weekdayMinutes?.let { it != plan.config.weekdayMinutes } == true) {
+                        if (state.availability?.let { it != plan.config.studyWindows } == true) {
                             Text("Availability differs from this accepted plan. Edit answers or confirm a rebuild to apply it; existing sessions are unchanged.", modifier = Modifier.padding(horizontal = 16.dp))
                         }
                         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -128,7 +128,7 @@ fun StudyPlannerEntry(
         AlertDialog(onDismissRequest = { confirmation = null },
             title = { Text(if (action == "clear") "Remove this study plan?" else "Rebuild the remaining plan?") },
             text = { Text(if (action == "clear") "Only planning settings are removed. Your goals, sessions and rewards are kept."
-                else "Replace planned blocks using recorded progress and your available days, starting today. Missed work is included. Any weekly goal and current course weekly limits will apply. If time is insufficient, edit your answers to review a new plan.") },
+                else "Replace planned blocks using recorded progress and your available days, starting today. Missed work is included. Weekly goals, current course limits and saved clock windows will apply. If time is insufficient, edit your answers to review a new plan.") },
             confirmButton = { TextButton(onClick = {
                 confirmation = null
                 if (action == "clear") plannerViewModel.clear { editing = false; actionError = null }
@@ -144,7 +144,7 @@ fun StudyPlannerEntry(
                             scope.launch {
                                 val rebuilt = withContext(Dispatchers.Default) { runCatching { buildStudyPlan(plan.config.copy(start = today, courses = remaining,
                                     weekdayMinutes = rebuildSnapshot.availability?.weekdayMinutes ?: plan.config.weekdayMinutes,
-                                    weeklyScheduling = null).withWeeklyScheduling(rebuildSnapshot.subjects)) }.getOrNull() }
+                                    weeklyScheduling = null, studyWindows = rebuildSnapshot.availability ?: plan.config.studyWindows).withWeeklyScheduling(rebuildSnapshot.subjects)) }.getOrNull() }
                                 rebuilding = false
                                 if (rebuilt == null) {
                                     actionError = "Could not rebuild this plan. Edit answers to review your course dates and capacity."

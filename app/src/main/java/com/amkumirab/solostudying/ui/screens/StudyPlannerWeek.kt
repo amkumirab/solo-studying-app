@@ -27,6 +27,7 @@ fun StudyPlannerWeek(
     DisposableEffect(Unit) { onDispose { datePicker.value?.dismiss() } }
     var weekOffset by rememberSaveable { mutableIntStateOf(0) }
     var moveError by rememberSaveable { mutableStateOf<String?>(null) }
+    var movingTimedBlock by rememberSaveable { mutableStateOf<Int?>(null) }
     val currentMonday = today.minusDays(today.dayOfWeek.value - 1L)
     val weekStart = currentMonday.plusWeeks(weekOffset.toLong())
     val firstMonday = plan.config.start.minusDays(plan.config.start.dayOfWeek.value - 1L)
@@ -89,13 +90,16 @@ fun StudyPlannerWeek(
                                 Button(onClick = { onStart(boss, entry.remainingMinutes) }, enabled = !isSessionActive,
                                     modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("planner_start_${block.id}")) { Text("Study course") }
                                 OutlinedButton(onClick = {
-                                    datePicker.value?.dismiss()
-                                    datePicker.value = pickPlannerDate(context, maxOf(today, date), today, deadline) { picked ->
-                                        val latestEntry = blockProgress(latestPlan, latestBosses).firstOrNull { it.block.id == block.id && !it.missingCourse }
-                                        val moved = latestEntry?.let { moveStudyBlock(latestPlan, block.id, picked, today, it.creditedSeconds) }
-                                        if (moved == null) moveError = if (latestPlan.config.weeklyScheduling != null) "That day or week is full, outside the course dates, or this block has already been studied. Course weekly limits also apply."
-                                            else "That day is unavailable, full, or this block has already been studied."
-                                        else { moveError = null; onMove(moved) }
+                                    if (plan.config.studyWindows != null) movingTimedBlock = block.id
+                                    else {
+                                        datePicker.value?.dismiss()
+                                        datePicker.value = pickPlannerDate(context, maxOf(today, date), today, deadline) { picked ->
+                                            val latestEntry = blockProgress(latestPlan, latestBosses).firstOrNull { it.block.id == block.id && !it.missingCourse }
+                                            val moved = latestEntry?.let { moveStudyBlock(latestPlan, block.id, picked, today, it.creditedSeconds) }
+                                            if (moved == null) moveError = if (latestPlan.config.weeklyScheduling != null) "That day or week is full, outside the course dates, or this block has already been studied. Course weekly limits also apply."
+                                                else "That day is unavailable, full, or this block has already been studied."
+                                            else { moveError = null; onMove(moved) }
+                                        }
                                     }
                                 }, enabled = !isSessionActive && entry.creditedSeconds == 0L && deadline >= today,
                                     modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("planner_move_${block.id}")) { Text("Move") }
@@ -105,5 +109,9 @@ fun StudyPlannerWeek(
                 }
             }
         }
+    }
+    movingTimedBlock?.let { id ->
+        TimedStudyMoveDialog(plan, bosses, today, id, isSessionActive,
+            onDismiss = { movingTimedBlock = null }, onMove = { moveError = null; onMove(it) }, subjects = subjects)
     }
 }

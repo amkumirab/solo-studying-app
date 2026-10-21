@@ -65,3 +65,13 @@ internal fun firstStudySlot(windows: List<StudyTimeWindow>, occupied: List<Study
     }
     return null
 }
+
+/** Move one unstudied slot, preserving list order, ID, duration and credit baselines. */
+fun moveTimedStudyBlock(plan: StudyPlan, blockId: Int, date: LocalDate, startMinute: Int, today: LocalDate, creditedSeconds: Long): StudyPlan? {
+    if (plan.config.studyWindows == null || creditedSeconds != 0L || date < today) return null
+    val block = plan.blocks.firstOrNull { it.id == blockId } ?: return null
+    val ledger = PlannerCapacityLedger(plan.config, plan.blocks)
+    ledger.release(block)
+    if (!ledger.canPlaceAt(block, date, startMinute)) return null
+    return plan.copy(blocks = plan.blocks.map { if (it.id == blockId) it.copy(date = date, startMinute = startMinute) else it })
+}

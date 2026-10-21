@@ -141,5 +141,17 @@
     assembleDebug succeeded. A new lazy-list test now scrolls to each target
     before comparing ordering. An initial run hit the existing accessibility
     idle timeout; its unchanged suite and the fresh full run passed.
-- [ ] Explicit-time move editor with validation, cancellation and restoration.
-- [ ] Full regression, lint, APKs, review and three local commits.
+- [x] Explicit-time move editor with validation, cancellation and restoration.
+  - Four domain and six interaction tests verify exact slots, date selection,
+    invalid clocks, overlap/cap rejection, busy/credit guards and restored drafts.
+  - Confirmed-rebuild test verifies new windows only apply on confirmation and
+    preserve recorded progress. Native dialog labels and 48 dp actions pass at
+    1.5 font scale on a narrow screen.
+- [x] Full regression, lint, APKs, review and three local commits.
+  - Final check on 2026-10-21: 377 tests, no failures, errors or skipped tests.
+  - lintDebug: 0 errors, 34 existing warnings. Debug and unsigned Release built.
+  - Reviewed window bounds, strict schemas, overlap/cap guards, restored drafts,
+    preserved credit ordering, and explicit acceptance of new clock windows.
+  - No dependency, permission, Room, timer/reward or CI changes.
+  - No attached phone/emulator; device installation, rotation and TalkBack remain
+    manual. Local commits only; no publication or main-branch merge in this slice.

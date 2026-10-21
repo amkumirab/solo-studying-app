@@ -98,6 +98,9 @@ See [availability settings](docs/PLANNER_AVAILABILITY.md).
 The weekly view and Today show planned clock times without restricting when you
 can study. Times and accepted windows persist across reopening. No time today
 finds complete free slots without moving other sessions or changing study credit.
+Choose **Move** on an unstudied timed session to select its date and local start
+time. The editor previews the end time and rejects overlaps, dates outside the
+course horizon and accepted capacity limits. Cancel never saves the draft.
 See [timed sessions](docs/PLANNER_TIMED_SESSIONS.md).
 
 In **Schedule → Create weekly plan / Edit answers**, enter an optional weekly

@@ -59,3 +59,26 @@ rewrite legacy records on read. Use the checked-in wrapper with JDK 21:
 Physical installation, rotation, TalkBack and an upgrade over real phone data
 remain manual unless a device is connected. Keep all commits local until asked
 to publish. No unrelated cleanup or changes to timer/reward behavior.
+
+## Device test path
+
+Install the debug APK over the existing app without uninstalling or clearing
+data. In Study → Plan, save Availability windows, then Edit answers, review times
+and Save plan. Check an old plan before saving: opening it must not add times.
+Review the weekly list and Today, use Move to try both an overlapping time and
+a free slot, and test Cancel. Confirm No time today shows new dates and times
+before applying them. Study credit and rewards must remain unchanged by moves.
+
+## Verified locally, 2026-10-21
+
+The complete command above passed with 377 tests, zero failures, errors or skips,
+zero lint errors and 34 existing warnings. Debug and unsigned Release APKs built.
+Coverage includes 100 generated timed-allocation cases, a 20-course/year-long
+capacity bound, strict storage compatibility, clock/date editing, cancellation,
+saved drafts, credit/capacity guards and confirmed window updates. Native text
+checks cover 288 dp content width and a narrow dialog at 1.5 font scale.
+
+An initial combined run encountered an existing accessibility idle timeout.
+Its unchanged suite and subsequent full regression runs passed in fresh workers.
+No test was disabled or assertion weakened. No phone/emulator was connected;
+the device checklist remains pending and is not claimed as automated coverage.

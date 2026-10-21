@@ -27,6 +27,14 @@ internal class PlannerCapacityLedger(private val config: PlannerConfig, blocks: 
         return firstStudySlot(day.windows, slots.values.filter { it.date == date }, block.minutes)
     }
 
+    fun canPlaceAt(block: StudyBlock, date: LocalDate, start: Int): Boolean {
+        if (start !in 0..1439 || config.studyWindows == null || !canPlace(block, date)) return false
+        val day = config.studyWindows.days[date.dayOfWeek.value - 1]
+        if (!day.windows.any { start >= it.startMinute && start + block.minutes <= it.endMinute }) return false
+        return slots.values.none { other -> other.date == date &&
+            start < other.startMinute!! + other.minutes && start + block.minutes > other.startMinute }
+    }
+
     fun reserve(block: StudyBlock) = change(block, block.minutes)
     fun release(block: StudyBlock) = change(block, -block.minutes)
     private fun change(block: StudyBlock, delta: Int) {

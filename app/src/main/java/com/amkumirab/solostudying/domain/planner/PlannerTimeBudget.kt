@@ -54,12 +54,17 @@ fun adjustPlannerDailyTime(config: PlannerConfig, adjustmentMinutes: Int): Plann
             adjusted.toInt()
         }
     }
-    return config.copy(weekdayMinutes = budgets)
+    return config.withDailyBudgets(budgets)
 }
 
 /** Uses the required uniform daily budget without changing weekdays or course answers. */
 fun requiredPlannerDailyTime(config: PlannerConfig): PlannerConfig? {
     val required = analyzePlannerTimeBudget(config).requiredDailyMinutes ?: return null
     if (required !in 1..480) return null
-    return config.copy(weekdayMinutes = config.weekdayMinutes.map { if (it == 0) 0 else required })
+    return config.withDailyBudgets(config.weekdayMinutes.map { if (it == 0) 0 else required })
+}
+
+private fun PlannerConfig.withDailyBudgets(minutes: List<Int>): PlannerConfig? {
+    if (studyWindows?.weekdayMinutes?.zip(minutes)?.any { (ceiling, budget) -> budget > ceiling } == true) return null
+    return copy(weekdayMinutes = minutes)
 }

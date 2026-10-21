@@ -15,7 +15,7 @@ private val planFields = setOf("start", "sessionMinutes", "capacity", "courses",
 private val courseFields = setOf("bossId", "remainingMinutes", "finishBy", "priority", "baselineSeconds")
 private val blockFields = setOf("id", "bossId", "date", "minutes")
 
-/** Encodes the current date-only schema. No scheduling or credit recalculation occurs. */
+/** Encodes accepted data without scheduling or credit recalculation. */
 fun encodeStudyPlan(plan: StudyPlan): String {
     val body = JSONObject().apply {
         put("start", plan.config.start.toString())
@@ -27,6 +27,11 @@ fun encodeStudyPlan(plan: StudyPlan): String {
                     put(JSONObject().put("bossId", id).put("minutes", minutes))
                 }
             })
+        }
+        plan.config.studyWindows?.let { windows ->
+            put("studyWindows", JSONObject(encodeWeeklyAvailability(windows)))
+            if (plan.config.weeklyGoalMinutes == null) put("weeklyGoalMinutes", JSONObject.NULL)
+            if (plan.config.weeklyScheduling == null) put("weeklyCourseLimits", JSONObject.NULL)
         }
         put("capacity", JSONArray(plan.config.weekdayMinutes))
         put("courses", JSONArray().apply {
@@ -47,22 +52,24 @@ fun encodeStudyPlan(plan: StudyPlan): String {
                     put("bossId", block.bossId)
                     put("date", block.date.toString())
                     put("minutes", block.minutes)
+                    block.startMinute?.let { put("startMinute", it) }
                 })
             }
         })
     }
     return JSONObject().apply {
         put("version", when {
+            plan.config.studyWindows != null -> 6
             plan.config.weeklyScheduling != null -> 5
             plan.config.weeklyGoalMinutes != null -> 4
             else -> 3
         })
-        put("kind", "date_only")
+        put("kind", if (plan.config.studyWindows == null) "date_only" else "timed")
         put("plan", body)
     }.toString().also { require(it.length <= MAX_RECORD_CHARACTERS) }
 }
 
-/** Reads versions 1–5 without writing storage; legacy priority bounds remain enforced. */
+/** Reads versions 1–6 without writing storage; legacy priority bounds remain enforced. */
 fun decodeStudyPlan(text: String): StudyPlan {
     require(text.length <= MAX_RECORD_CHARACTERS)
     val tokens = JSONTokener(text)
@@ -71,10 +78,11 @@ fun decodeStudyPlan(text: String): StudyPlan {
     val version = json.strictLong("version")
     val body = when (version) {
         1L -> json.also { it.requireFields(planFields + "version") }
-        2L, 3L, 4L, 5L -> {
+        2L, 3L, 4L, 5L, 6L -> {
             json.requireFields(setOf("version", "kind", "plan"))
-            require(json.get("kind") == "date_only")
+            require(json.get("kind") == if (version == 6L) "timed" else "date_only")
             val fields = when (version) {
+                6L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits", "studyWindows")
                 5L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits")
                 4L -> planFields + "weeklyGoalMinutes"
                 else -> planFields
@@ -104,13 +112,15 @@ private fun decodePlanBody(json: JSONObject, maxPriority: Int, version: Long): S
         },
         weekdayMinutes = List(7) { index -> strictNumber(capacity.get(index)).also { require(it in 0..480) }.toInt() },
         sessionMinutes = json.strictInt("sessionMinutes"),
-        weeklyGoalMinutes = if (version >= 4L) json.strictInt("weeklyGoalMinutes") else null,
-        weeklyScheduling = if (version == 5L) decodeWeeklyPolicy(json.getJSONArray("weeklyCourseLimits")) else null,
+        weeklyGoalMinutes = if (version < 4L || version == 6L && json.isNull("weeklyGoalMinutes")) null else json.strictInt("weeklyGoalMinutes"),
+        weeklyScheduling = if (version == 5L || version == 6L && !json.isNull("weeklyCourseLimits")) decodeWeeklyPolicy(json.getJSONArray("weeklyCourseLimits")) else null,
+        studyWindows = if (version == 6L) decodeWeeklyAvailability(json.getJSONObject("studyWindows").toString()) else null,
     )
     return StudyPlan(config, List(blocks.length()) { index ->
         val block = blocks.getJSONObject(index)
-        block.requireFields(blockFields)
-        StudyBlock(block.strictInt("id"), block.strictInt("bossId"), block.strictDate("date"), block.strictInt("minutes"))
+        block.requireFields(if (version == 6L) blockFields + "startMinute" else blockFields)
+        StudyBlock(block.strictInt("id"), block.strictInt("bossId"), block.strictDate("date"), block.strictInt("minutes"),
+            if (version == 6L) block.strictInt("startMinute") else null)
     })
 }
 

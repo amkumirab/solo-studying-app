@@ -33,7 +33,7 @@ fun postponeTodayStudy(plan: StudyPlan, bosses: List<BossEntity>, today: LocalDa
             unmoved[block.bossId] = (unmoved[block.bossId] ?: 0) + entry.remainingMinutes
         }
         else {
-            val moved = block.copy(date = date)
+            val moved = block.copy(date = date, startMinute = if (plan.config.studyWindows == null) null else ledger.earliestStart(block, date))
             moves += moved
             ledger.reserve(moved)
         }

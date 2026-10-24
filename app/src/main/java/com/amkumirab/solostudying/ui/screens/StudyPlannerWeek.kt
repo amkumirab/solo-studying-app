@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
@@ -40,7 +41,7 @@ fun StudyPlannerWeek(
             Text("Weekly study plan", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
             Text("$weekStart — ${weekStart.plusDays(6)}")
             WeeklyGoalSummary(plan, weekStart)
-            if (plan.config.studyWindows != null) Text("Local clock times · saved study windows apply. Study can start early; times are a plan, not a lock.", style = MaterialTheme.typography.bodySmall)
+            if (plan.config.studyWindows != null) Text("Local clock times · saved study windows apply. Study can start early. Lock a session to keep its slot when rebuilding.", style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { weekOffset-- }, enabled = weekStart > firstMonday, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Previous week") }
                 OutlinedButton(onClick = { weekOffset++ }, enabled = weekStart.plusDays(6) < finish, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Next week") }
@@ -78,6 +79,7 @@ fun StudyPlannerWeek(
                         val subject = subjects.firstOrNull { it.bossId == block.bossId }
                         PlannerSubjectTitle(subject?.name ?: boss?.name ?: "Removed course", subject?.color)
                         PlannerSessionTime(block, plan.config.courses.first { it.bossId == block.bossId }.priority, Modifier.testTag("week_clock_${block.id}"))
+                        if (block.locked) Text("Locked · kept when rebuilding", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
                         Text(when {
                             entry.missingCourse -> "This goal was deleted. Edit answers to remove it."
                             entry.remainingSeconds == 0L -> "Done · ${block.minutes} min"
@@ -101,8 +103,19 @@ fun StudyPlannerWeek(
                                             else { moveError = null; onMove(moved) }
                                         }
                                     }
-                                }, enabled = !isSessionActive && entry.creditedSeconds == 0L && deadline >= today,
+                                }, enabled = !isSessionActive && !block.locked && entry.creditedSeconds == 0L && deadline >= today,
                                     modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("planner_move_${block.id}")) { Text("Move") }
+                            }
+                        }
+                        if (plan.config.studyWindows != null) {
+                            TextButton(onClick = {
+                                val updated = setStudyBlockLocked(latestPlan, block.id, !block.locked, latestBosses, today)
+                                if (updated == null) moveError = "Only unstudied sessions dated today or later can be locked. Unlocking never changes study credit."
+                                else { moveError = null; onMove(updated) }
+                            }, enabled = !isSessionActive && (block.locked || !entry.missingCourse && entry.creditedSeconds == 0L && date >= today),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("planner_lock_${block.id}")
+                                    .semantics { stateDescription = if (block.locked) "Locked" else "Unlocked" }) {
+                                Text(if (block.locked) "Unlock session" else "Lock session")
                             }
                         }
                     }

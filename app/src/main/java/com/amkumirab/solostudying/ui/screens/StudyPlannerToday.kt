@@ -45,6 +45,7 @@ internal fun StudyPlannerToday(
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         PlannerSubjectTitle(subject?.name ?: boss.name, subject?.color)
                         PlannerSessionTime(entry.block, plan.config.courses.first { it.bossId == boss.id }.priority, Modifier.testTag("today_clock_${entry.block.id}"))
+                        if (entry.block.locked) Text("Locked session", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         Text(if (entry.remainingSeconds == 0L) "Done · ${entry.block.minutes} min"
                             else "${entry.remainingMinutes} min left · ${entry.creditedSeconds / 60} min credited", style = MaterialTheme.typography.bodySmall)
                         if (entry.remainingSeconds > 0) Button(

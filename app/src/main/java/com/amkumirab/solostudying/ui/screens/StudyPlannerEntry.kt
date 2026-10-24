@@ -128,7 +128,7 @@ fun StudyPlannerEntry(
         AlertDialog(onDismissRequest = { confirmation = null },
             title = { Text(if (action == "clear") "Remove this study plan?" else "Rebuild the remaining plan?") },
             text = { Text(if (action == "clear") "Only planning settings are removed. Your goals, sessions and rewards are kept."
-                else "Replace planned blocks using recorded progress and your available days, starting today. Missed work is included. Weekly goals, current course limits and saved clock windows will apply. If time is insufficient, edit your answers to review a new plan.") },
+                else "Replace unlocked blocks using recorded progress and your available days, starting today. Locked sessions keep their exact slots. Past, studied or conflicting locks must be unlocked first. Weekly goals, current course limits and saved clock windows will apply. Your current plan stays unchanged if rebuilding cannot fit the work.") },
             confirmButton = { TextButton(onClick = {
                 confirmation = null
                 if (action == "clear") plannerViewModel.clear { editing = false; actionError = null }
@@ -142,12 +142,13 @@ fun StudyPlannerEntry(
                         else -> {
                             rebuilding = true
                             scope.launch {
-                                val rebuilt = withContext(Dispatchers.Default) { runCatching { buildStudyPlan(plan.config.copy(start = today, courses = remaining,
+                                val proposal = withContext(Dispatchers.Default) { runCatching { rebuildWithStudyLocks(plan.config.copy(start = today, courses = remaining,
                                     weekdayMinutes = rebuildSnapshot.availability?.weekdayMinutes ?: plan.config.weekdayMinutes,
-                                    weeklyScheduling = null, studyWindows = rebuildSnapshot.availability ?: plan.config.studyWindows).withWeeklyScheduling(rebuildSnapshot.subjects)) }.getOrNull() }
+                                    weeklyScheduling = null, studyWindows = rebuildSnapshot.availability ?: plan.config.studyWindows).withWeeklyScheduling(rebuildSnapshot.subjects), plan, bosses, today) }.getOrNull() }
                                 rebuilding = false
+                                val rebuilt = proposal?.plan
                                 if (rebuilt == null) {
-                                    actionError = "Could not rebuild this plan. Edit answers to review your course dates and capacity."
+                                    actionError = proposal?.error ?: "Could not rebuild this plan. Edit answers to review your course dates and capacity."
                                 } else if (rebuilt.shortfalls.isNotEmpty()) {
                                     actionError = "Remaining work no longer fits your schedule. Edit answers to review capacity warnings. Your current plan is unchanged."
                                 } else plannerViewModel.save(rebuilt, rebuildSnapshot) { actionError = null }

@@ -26,6 +26,9 @@ accounts, subscriptions, new permissions, or new dependencies.
   budget. A final surplus never hides an earlier deadline shortage.
 - Browse seven-day windows. Launch a block through the existing bounded goal
   timer; opening a block never creates study credit or rewards.
+- [Lock unstudied timed sessions](PLANNER_SESSION_LOCKS.md) to preserve their
+  exact slots during rebuilding and answer edits. Conflicting, past or studied
+  locks require explicit unlocking; moves and postponement cannot bypass locks.
 - Credit only increases in recorded course study time since acceptance. Partial
   sessions count, completed goals need no further work, deleted goals are flagged.
 - Credit follows original block IDs, not edited dates, so moving a block cannot

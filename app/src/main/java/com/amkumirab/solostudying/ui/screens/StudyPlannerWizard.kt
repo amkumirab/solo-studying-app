@@ -23,6 +23,9 @@ import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private data class PlannerBuildPreview(val config: PlannerConfig, val source: StudyPlan?, val goals: List<BossEntity>,
+    val today: LocalDate, val result: LockedStudyRebuild)
+
 @Composable
 fun StudyPlannerWizard(
     bosses: List<BossEntity>, today: LocalDate, initialPlan: StudyPlan?,
@@ -87,9 +90,11 @@ fun StudyPlannerWizard(
         val base = if (usingRequiredBudget) requiredPlannerDailyTime(original) else original
         base?.let { adjustPlannerDailyTime(it, dailyAdjustment) }?.takeIf { it.fitsAvailability(windows) }
     }
-    val preview by produceState<StudyPlan?>(null, scenarioConfig) {
+    val preview by produceState<PlannerBuildPreview?>(null, scenarioConfig, initialPlan, bosses, today) {
         value = null
-        if (scenarioConfig != null) value = withContext(Dispatchers.Default) { buildStudyPlan(scenarioConfig) }
+        if (scenarioConfig != null) value = withContext(Dispatchers.Default) {
+            PlannerBuildPreview(scenarioConfig, initialPlan, bosses, today, rebuildWithStudyLocks(scenarioConfig, initialPlan, bosses, today))
+        }
     }
     val canContinue = when (step) {
         0 -> selected.isNotEmpty() && selected.size == selectedIds.size
@@ -103,6 +108,7 @@ fun StudyPlannerWizard(
             0 -> {
                 Text("Which courses are you preparing for?", style = MaterialTheme.typography.headlineSmall)
                 Text("Choose up to 20 unfinished goals. Your existing study history stays unchanged.")
+                if (initialPlan?.blocks?.any { it.locked } == true) Text("Locked sessions will be kept. To remove their courses or change incompatible settings, return to the weekly plan and unlock them first.")
                 if (available.isEmpty()) Text("Create a course goal in Study Hub first, then return here.")
                 available.forEach { boss ->
                     FilterChip(
@@ -181,8 +187,10 @@ fun StudyPlannerWizard(
                         onReset = { usingRequiredBudget = false; dailyAdjustment = 0 }, enabled = !busy, subjects = subjects,
                         availability = windows)
                     // A result from an older draft must never be saved while its replacement builds.
-                    preview?.takeIf { it.config == scenarioConfig }?.let {
-                        StudyPlannerPreview(it, bosses, busy, onAccept, subjects)
+                    preview?.takeIf { it.config == scenarioConfig && it.source == initialPlan && it.goals == bosses && it.today == today }?.let {
+                        val accepted = it.result.plan
+                        if (accepted != null) StudyPlannerPreview(accepted, bosses, busy, onAccept, subjects)
+                        else Text(it.result.error.orEmpty(), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("planner_lock_conflict"))
                     } ?: Text("Building your local plan…")
                 }
             }
@@ -209,6 +217,7 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
         Text("${plan.config.courses.size} courses · ${plan.blocks.sumOf { it.minutes }} scheduled minutes\n${plan.config.start} to ${plan.config.courses.maxOf { it.finishBy }}")
         WeeklyAllocationCard(plan, bosses, subjects)
         if (plan.config.studyWindows != null) Text("Local clock times · no automatic breaks. A session may be split between windows without losing study time.")
+        if (plan.blocks.any { it.locked }) Text("${plan.blocks.count { it.locked }} locked sessions keep their exact slots.")
         if (plan.shortfalls.isEmpty()) Text("Your preparation fits the available study time.")
         else {
             Text("Not enough study time", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.error)

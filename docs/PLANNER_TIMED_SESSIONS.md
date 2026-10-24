@@ -35,8 +35,9 @@ nullable weekly-goal/policy fields and required integral `startMinute` per block
 Reuse the validated availability codec. Read versions 1–5 losslessly with no
 clock fields; preserve strict unknown-field rejection and snapshot conflict
 protection. No new dependency, permission, Room migration or network service.
-Manual locks, custom sessions, duration/subject edits and configurable gaps are
-subsequent roadmap work, not partially implemented fields.
+Session locks are added separately in [session locks](PLANNER_SESSION_LOCKS.md)
+with strict v7 timed records. Custom sessions, duration/subject edits and
+configurable gaps remain subsequent roadmap work.
 
 ## Implementation order and verification
 

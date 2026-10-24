@@ -113,3 +113,12 @@ Freeze saved windows only on explicit acceptance/rebuild; legacy plans stay exac
    week and Today. Without windows keep the existing date-only flow.
 3. Add explicit-time move editing, guard invalid/stale slots, verify full tests,
    lint and both APK builds. Keep three commits local; no locks or custom sessions.
+
+## Session locks
+
+Approved next slice: `docs/PLANNER_SESSION_LOCKS.md`. Preserve timed session slots
+through explicit rebuilding and answer edits; surface conflicts without saving.
+
+1. Domain/storage tests first, then lock mutations and reserved-slot generation.
+2. Weekly controls and guarded rebuild/preview paths with interaction tests.
+3. Scoped review, full regression, lint and both APK builds; local commits only.

@@ -155,3 +155,21 @@
   - No dependency, permission, Room, timer/reward or CI changes.
   - No attached phone/emulator; device installation, rotation and TalkBack remain
     manual. Local commits only; no publication or main-branch merge in this slice.
+
+## Session locks
+
+- [x] Domain lock guards, deterministic reserved-slot rebuild and strict v7 storage.
+  - Verify credit/order preservation, invalid locks, caps, deadlines and legacy bytes.
+- [x] Weekly controls, rebuild and answer-edit integration with clear conflicts.
+  - Verify busy states, unlock, blocked moves, cancellation and snapshot protection.
+- [x] Scoped review, full suite, lint, Debug/Release builds and device handoff.
+  - Verified on 2026-10-24: 396 tests, no failures, errors or skipped tests.
+  - New coverage includes 80 generated multi-lock cases, exact slot/ID retention,
+    progress rebasing, full reserved days, strict booleans and stale-save guards.
+  - Four initial interaction tests failed before UI integration; all now pass,
+    with compatible/conflicting previews and narrow-screen native text checks.
+  - lintDebug: 0 errors and 34 existing warnings. Debug and unsigned Release built.
+  - Reviewed domain invariants, storage compatibility, busy/credit guards and
+    atomic rejection of lock conflicts. No dependencies, permissions or CI changes.
+  - No attached Android device/emulator; physical upgrade, rotation and TalkBack
+    remain manual. Keep the two commits local until publication is requested.

@@ -103,6 +103,13 @@ time. The editor previews the end time and rejects overlaps, dates outside the
 course horizon and accepted capacity limits. Cancel never saves the draft.
 See [timed sessions](docs/PLANNER_TIMED_SESSIONS.md).
 
+Choose **Lock session** to keep an unstudied timed slot fixed during rebuilding
+and answer edits. Locked slots reserve their full duration against daily, weekly
+and course limits. Conflicts are explained without replacing the accepted plan.
+Use **Unlock session** before moving a slot, postponing a locked day, or
+rebuilding past/studied locks. Locking never prevents starting study early and
+does not lock the phone. See [session locks](docs/PLANNER_SESSION_LOCKS.md).
+
 In **Schedule → Create weekly plan / Edit answers**, enter an optional weekly
 study goal in the availability step. Preview actual weekly sessions based on
 priority, finish dates, remaining effort and course weekly limits. Review any

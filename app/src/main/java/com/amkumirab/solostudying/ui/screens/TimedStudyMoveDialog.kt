@@ -31,7 +31,7 @@ internal fun TimedStudyMoveDialog(
     var clockText by rememberSaveable(plan, blockId) { mutableStateOf(plannerClockLabel(block.startMinute!!)) }
     val date = runCatching { LocalDate.parse(dateText) }.getOrNull()
     val start = parsePlannerClock(clockText)
-    val editable = !unavailable && entry != null && !entry.missingCourse && entry.creditedSeconds == 0L
+    val editable = !unavailable && !block.locked && entry != null && !entry.missingCourse && entry.creditedSeconds == 0L
     val proposal = remember(plan, blockId, today, date, start, editable) {
         if (!editable || date == null || start == null) null else moveTimedStudyBlock(plan, blockId, date, start, today, 0)
     }
@@ -62,7 +62,8 @@ internal fun TimedStudyMoveDialog(
                         "${plannerClockLabel(it.startMinute)}–${plannerClockLabel(it.endMinute)}"
                     })
                 }
-                if (!editable) Text("Finish the active session or choose an unstudied session before moving it.", color = MaterialTheme.colorScheme.error)
+                if (!editable) Text(if (block.locked) "Unlock this session in the weekly plan before moving it."
+                    else "Finish the active session or choose an unstudied session before moving it.", color = MaterialTheme.colorScheme.error)
                 else if (proposal == null) Text(if (start == null) "Enter a valid time from 00:00 to 23:59."
                     else "This slot is outside saved windows or course dates, overlaps another session, or exceeds a daily or weekly limit.", color = MaterialTheme.colorScheme.error)
                 else Text("New slot: ${proposal.blocks.first { it.id == blockId }.clockRange()}")

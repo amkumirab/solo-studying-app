@@ -40,11 +40,12 @@ data class PlannerConfig(
     fun capacity(date: LocalDate) = weekdayMinutes[date.dayOfWeek.value - 1]
 }
 
-data class StudyBlock(val id: Int, val bossId: Int, val date: LocalDate, val minutes: Int, val startMinute: Int? = null)
+data class StudyBlock(val id: Int, val bossId: Int, val date: LocalDate, val minutes: Int, val startMinute: Int? = null, val locked: Boolean = false)
 
 data class StudyPlan(val config: PlannerConfig, val blocks: List<StudyBlock>) {
     init {
         require(blocks.size <= 18000 && blocks.map { it.id }.distinct().size == blocks.size)
+        require(config.studyWindows != null || blocks.none { it.locked })
         require(blocks.all { block ->
             val course = config.courses.firstOrNull { it.bossId == block.bossId }
             block.id > 0 && block.minutes in 1..config.sessionMinutes && course != null &&
@@ -150,7 +151,7 @@ fun remainingPlannerCourses(plan: StudyPlan, bosses: List<BossEntity>, subjects:
 fun moveStudyBlock(plan: StudyPlan, blockId: Int, date: LocalDate, today: LocalDate, creditedSeconds: Long): StudyPlan? {
     val block = plan.blocks.firstOrNull { it.id == blockId } ?: return null
     val course = plan.config.courses.first { it.bossId == block.bossId }
-    if (creditedSeconds != 0L || date < today || date < plan.config.start || date > course.finishBy) return null
+    if (block.locked || creditedSeconds != 0L || date < today || date < plan.config.start || date > course.finishBy) return null
     val ledger = PlannerCapacityLedger(plan.config, plan.blocks)
     ledger.release(block)
     if (!ledger.canPlace(block, date)) return null

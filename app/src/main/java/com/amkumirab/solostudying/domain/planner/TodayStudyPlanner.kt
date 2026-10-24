@@ -24,6 +24,10 @@ fun postponeTodayStudy(plan: StudyPlan, bosses: List<BossEntity>, today: LocalDa
     val unmoved = mutableMapOf<Int, Int>()
     for (entry in remaining) {
         val block = entry.block
+        if (block.locked) {
+            unmoved[block.bossId] = (unmoved[block.bossId] ?: 0) + entry.remainingMinutes
+            continue
+        }
         val deadline = courses.getValue(block.bossId).finishBy
         ledger.release(block)
         var date = today.plusDays(1)

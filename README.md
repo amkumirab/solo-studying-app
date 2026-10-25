@@ -110,6 +110,13 @@ Use **Unlock session** before moving a slot, postponing a locked day, or
 rebuilding past/studied locks. Locking never prevents starting study early and
 does not lock the phone. See [session locks](docs/PLANNER_SESSION_LOCKS.md).
 
+Use **Edit duration** on an unstudied, unlocked timed session to choose 1–120
+minutes without changing the preferred generated length. Review the new end time,
+week totals and every later session that will be shortened or removed before
+**Apply change**. Only the same course's later-day, unstudied, unlocked time can
+be transferred. Shortening returns time to unscheduled work, not completed study.
+Cancel saves nothing. See [duration editing](docs/PLANNER_SESSION_DURATIONS.md).
+
 In **Schedule → Create weekly plan / Edit answers**, enter an optional weekly
 study goal in the availability step. Preview actual weekly sessions based on
 priority, finish dates, remaining effort and course weekly limits. Review any

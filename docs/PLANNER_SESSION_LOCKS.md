@@ -28,6 +28,10 @@ compatibility and the existing v3–6 writer. Reads never rewrite saved bytes.
 Use existing snapshot conflict guards. No Room migration, dependencies,
 permissions, cloud services or changes to timer/reward behavior.
 
+Plans with [edited durations](PLANNER_SESSION_DURATIONS.md) use v8. Locked edited
+durations remain fixed through rebuilding even when they exceed the preferred
+generated length; the explicit override is bounded to 120 minutes.
+
 ## Implementation and verification
 
 1. Domain locks, reserved-slot scheduling and strict storage: focused JUnit tests.

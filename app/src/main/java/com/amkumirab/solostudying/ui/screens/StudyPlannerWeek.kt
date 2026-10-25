@@ -29,6 +29,7 @@ fun StudyPlannerWeek(
     var weekOffset by rememberSaveable { mutableIntStateOf(0) }
     var moveError by rememberSaveable { mutableStateOf<String?>(null) }
     var movingTimedBlock by rememberSaveable { mutableStateOf<Int?>(null) }
+    var resizingBlock by rememberSaveable { mutableStateOf<Int?>(null) }
     val currentMonday = today.minusDays(today.dayOfWeek.value - 1L)
     val weekStart = currentMonday.plusWeeks(weekOffset.toLong())
     val firstMonday = plan.config.start.minusDays(plan.config.start.dayOfWeek.value - 1L)
@@ -80,6 +81,7 @@ fun StudyPlannerWeek(
                         PlannerSubjectTitle(subject?.name ?: boss?.name ?: "Removed course", subject?.color)
                         PlannerSessionTime(block, plan.config.courses.first { it.bossId == block.bossId }.priority, Modifier.testTag("week_clock_${block.id}"))
                         if (block.locked) Text("Locked · kept when rebuilding", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                        if (block.durationEdited) Text("Edited duration", style = MaterialTheme.typography.labelMedium)
                         Text(when {
                             entry.missingCourse -> "This goal was deleted. Edit answers to remove it."
                             entry.remainingSeconds == 0L -> "Done · ${block.minutes} min"
@@ -108,14 +110,19 @@ fun StudyPlannerWeek(
                             }
                         }
                         if (plan.config.studyWindows != null) {
-                            TextButton(onClick = {
-                                val updated = setStudyBlockLocked(latestPlan, block.id, !block.locked, latestBosses, today)
-                                if (updated == null) moveError = "Only unstudied sessions dated today or later can be locked. Unlocking never changes study credit."
-                                else { moveError = null; onMove(updated) }
-                            }, enabled = !isSessionActive && (block.locked || !entry.missingCourse && entry.creditedSeconds == 0L && date >= today),
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("planner_lock_${block.id}")
-                                    .semantics { stateDescription = if (block.locked) "Locked" else "Unlocked" }) {
-                                Text(if (block.locked) "Unlock session" else "Lock session")
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { resizingBlock = block.id },
+                                    enabled = !isSessionActive && !block.locked && !entry.missingCourse && entry.creditedSeconds == 0L && date >= today,
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("planner_duration_${block.id}")) { Text("Edit duration") }
+                                TextButton(onClick = {
+                                    val updated = setStudyBlockLocked(latestPlan, block.id, !block.locked, latestBosses, today)
+                                    if (updated == null) moveError = "Only unstudied sessions dated today or later can be locked. Unlocking never changes study credit."
+                                    else { moveError = null; onMove(updated) }
+                                }, enabled = !isSessionActive && (block.locked || !entry.missingCourse && entry.creditedSeconds == 0L && date >= today),
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("planner_lock_${block.id}")
+                                        .semantics { stateDescription = if (block.locked) "Locked" else "Unlocked" }) {
+                                    Text(if (block.locked) "Unlock session" else "Lock session")
+                                }
                             }
                         }
                     }
@@ -126,5 +133,9 @@ fun StudyPlannerWeek(
     movingTimedBlock?.let { id ->
         TimedStudyMoveDialog(plan, bosses, today, id, isSessionActive,
             onDismiss = { movingTimedBlock = null }, onMove = { moveError = null; onMove(it) }, subjects = subjects)
+    }
+    resizingBlock?.let { id ->
+        TimedStudyDurationDialog(plan, bosses, today, id, isSessionActive,
+            onDismiss = { resizingBlock = null }, onSave = { moveError = null; onMove(it) }, subjects = subjects)
     }
 }

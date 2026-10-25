@@ -122,3 +122,13 @@ through explicit rebuilding and answer edits; surface conflicts without saving.
 1. Domain/storage tests first, then lock mutations and reserved-slot generation.
 2. Weekly controls and guarded rebuild/preview paths with interaction tests.
 3. Scoped review, full regression, lint and both APK builds; local commits only.
+
+## Session duration editing
+
+Approved slice: `docs/PLANNER_SESSION_DURATIONS.md`. Growth may take unstudied,
+unlocked time from later days of the same course, after preview/confirmation.
+
+1. Test atomic proposals and strict v8 duration markers; preserve legacy records.
+2. Add the weekly action and accessible preview dialog; test restoration, credit,
+   busy states and cancellation without saving.
+3. Review, full regression, lint and both APK builds; keep two commits local.

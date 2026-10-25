@@ -173,3 +173,22 @@
     atomic rejection of lock conflicts. No dependencies, permissions or CI changes.
   - No attached Android device/emulator; physical upgrade, rotation and TalkBack
     remain manual. Keep the two commits local until publication is requested.
+
+## Session duration editing
+
+- [x] Atomic resize/transfer proposals and strict v8 persistence.
+  - Verify exact accounting, untouched credit/locks, bounds and legacy records.
+- [x] Weekly duration controls and confirmed preview with restored drafts.
+  - Verify growth/shrink, changed/removed donors, busy/conflict and cancel paths.
+- [x] Full suite, lint, APKs, scoped review and manual-device handoff.
+  - Verified on 2026-10-25: 416 tests; zero failures, errors or skipped tests.
+  - 150 generated cases verify exact accounting and lock/credit preservation.
+  - Coverage includes same-week cap reservations, 24:00, saved drafts, invalid
+    inputs, complete donor removal, real saves and a concurrent-lock conflict.
+  - Native narrow-screen text and 48 dp confirmation checks pass at 1.5 font scale.
+  - lintDebug: 0 errors, 35 warnings, all located in unchanged files; no warnings
+    in the duration feature. SDK/dependency freshness warnings remain separate.
+  - Debug and unsigned Release APKs built. No dependencies, permissions, Room or
+    CI changes, and no tests or assertions were weakened or disabled.
+  - No phone/emulator connected. Physical upgrade, rotation and TalkBack remain
+    manual. Keep both commits local until publication is requested.

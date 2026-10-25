@@ -36,8 +36,9 @@ Reuse the validated availability codec. Read versions 1–5 losslessly with no
 clock fields; preserve strict unknown-field rejection and snapshot conflict
 protection. No new dependency, permission, Room migration or network service.
 Session locks are added separately in [session locks](PLANNER_SESSION_LOCKS.md)
-with strict v7 timed records. Custom sessions, duration/subject edits and
-configurable gaps remain subsequent roadmap work.
+with strict v7 timed records. [Duration editing](PLANNER_SESSION_DURATIONS.md)
+adds strict v8 markers and confirmed same-course time transfers. Custom sessions,
+subject reassignment and configurable gaps remain subsequent roadmap work.
 
 ## Implementation order and verification
 

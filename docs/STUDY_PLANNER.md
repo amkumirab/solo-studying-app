@@ -31,6 +31,9 @@ accounts, subscriptions, new permissions, or new dependencies.
   locks require explicit unlocking; moves and postponement cannot bypass locks.
 - Credit only increases in recorded course study time since acceptance. Partial
   sessions count, completed goals need no further work, deleted goals are flagged.
+- [Edit unstudied timed durations](PLANNER_SESSION_DURATIONS.md) with an exact
+  transfer preview before saving. Shrinking leaves unscheduled work, never study
+  credit; locked slots and recorded history stay unchanged.
 - Credit follows original block IDs, not edited dates, so moving a block cannot
   move previously earned credit. Rebuild rounds fractional remaining minutes up.
 - Move only untouched blocks to a future available day within the course deadline

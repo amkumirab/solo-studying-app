@@ -18,6 +18,7 @@ private val blockFields = setOf("id", "bossId", "date", "minutes")
 /** Encodes accepted data without scheduling or credit recalculation. */
 fun encodeStudyPlan(plan: StudyPlan): String {
     val hasLocks = plan.blocks.any { it.locked }
+    val hasDurationEdits = plan.blocks.any { it.durationEdited }
     val body = JSONObject().apply {
         put("start", plan.config.start.toString())
         put("sessionMinutes", plan.config.sessionMinutes)
@@ -54,13 +55,15 @@ fun encodeStudyPlan(plan: StudyPlan): String {
                     put("date", block.date.toString())
                     put("minutes", block.minutes)
                     block.startMinute?.let { put("startMinute", it) }
-                    if (hasLocks) put("locked", block.locked)
+                    if (hasLocks || hasDurationEdits) put("locked", block.locked)
+                    if (hasDurationEdits) put("durationEdited", block.durationEdited)
                 })
             }
         })
     }
     return JSONObject().apply {
         put("version", when {
+            hasDurationEdits -> 8
             hasLocks -> 7
             plan.config.studyWindows != null -> 6
             plan.config.weeklyScheduling != null -> 5
@@ -72,7 +75,7 @@ fun encodeStudyPlan(plan: StudyPlan): String {
     }.toString().also { require(it.length <= MAX_RECORD_CHARACTERS) }
 }
 
-/** Reads versions 1–7 without writing storage; legacy priority bounds remain enforced. */
+/** Reads versions 1–8 without writing storage; legacy priority bounds remain enforced. */
 fun decodeStudyPlan(text: String): StudyPlan {
     require(text.length <= MAX_RECORD_CHARACTERS)
     val tokens = JSONTokener(text)
@@ -81,11 +84,11 @@ fun decodeStudyPlan(text: String): StudyPlan {
     val version = json.strictLong("version")
     val body = when (version) {
         1L -> json.also { it.requireFields(planFields + "version") }
-        2L, 3L, 4L, 5L, 6L, 7L -> {
+        2L, 3L, 4L, 5L, 6L, 7L, 8L -> {
             json.requireFields(setOf("version", "kind", "plan"))
             require(json.get("kind") == if (version >= 6L) "timed" else "date_only")
             val fields = when (version) {
-                6L, 7L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits", "studyWindows")
+                6L, 7L, 8L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits", "studyWindows")
                 5L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits")
                 4L -> planFields + "weeklyGoalMinutes"
                 else -> planFields
@@ -121,12 +124,14 @@ private fun decodePlanBody(json: JSONObject, maxPriority: Int, version: Long): S
     )
     return StudyPlan(config, List(blocks.length()) { index ->
         val block = blocks.getJSONObject(index)
-        block.requireFields(when { version == 7L -> blockFields + setOf("startMinute", "locked")
+        block.requireFields(when { version == 8L -> blockFields + setOf("startMinute", "locked", "durationEdited")
+            version == 7L -> blockFields + setOf("startMinute", "locked")
             version == 6L -> blockFields + "startMinute"
             else -> blockFields })
         StudyBlock(block.strictInt("id"), block.strictInt("bossId"), block.strictDate("date"), block.strictInt("minutes"),
             if (version >= 6L) block.strictInt("startMinute") else null,
-            if (version == 7L) block.get("locked").also { require(it is Boolean) } as Boolean else false)
+            if (version >= 7L) block.strictBoolean("locked") else false,
+            if (version == 8L) block.strictBoolean("durationEdited") else false)
     })
 }
 
@@ -151,6 +156,7 @@ private fun strictNumber(value: Any): Long {
 }
 
 private fun JSONObject.strictLong(key: String) = strictNumber(get(key))
+private fun JSONObject.strictBoolean(key: String): Boolean = get(key).also { require(it is Boolean) } as Boolean
 private fun JSONObject.strictInt(key: String) = strictLong(key).also { require(it in Int.MIN_VALUE..Int.MAX_VALUE) }.toInt()
 private fun JSONObject.strictDate(key: String): LocalDate {
     val value = get(key)

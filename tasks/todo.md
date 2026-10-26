@@ -218,3 +218,23 @@
   - Reviewed exact credit/ID retention, strict schemas, caps, stale previews and
     guarded saves. No phone/emulator attached; physical upgrade, rotation,
     keyboard and TalkBack remain manual. Keep the two new commits local.
+
+## Timer completion feedback
+
+- [x] Reproduce missing foreground/background completion cues with tests.
+  - New feedback APIs first failed compilation; six integration cases then
+    failed until the real timer and receiver paths were connected.
+- [x] Add bounded themed audio and silent-mode vibration with DND/duplicate guards.
+  - 53 focused feedback, notification, break and study-reliability tests passed.
+  - Audio fixtures provide duration metadata to Robolectric's real player shadow.
+  - Existing break receiver tests now arrange an expired stored break, retaining
+    their assertions while excluding premature/cancelled broadcasts.
+- [x] Full regression, lint, APK builds, scoped review and one local commit.
+  - Final verification on 2026-10-26: 458 tests, zero failures/errors/skips.
+  - Debug and unsigned Release builds succeeded. lintDebug: zero errors and
+    36 warnings (35 existing; one visible UseKtx advisory for the checked native
+    commit result). No new lint suppression or weakened test assertions.
+  - Reviewed silent-mode gating, DND restoration, bounded player lifetime,
+    duplicate claims and normal VIBRATE permission; reward/storage schemas stay
+    unchanged. Phone vibration, lock-screen timing and upgrade remain manual.
+    Keep the single commit local until publication is requested.

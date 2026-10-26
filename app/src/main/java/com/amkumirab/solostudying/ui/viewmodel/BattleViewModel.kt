@@ -21,6 +21,7 @@ import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.FocusShieldManager
 import com.amkumirab.solostudying.focus.StrictFocusStore
 import com.amkumirab.solostudying.focus.reconcileFocusSession
+import com.amkumirab.solostudying.focus.displayTitle
 import com.amkumirab.solostudying.notification.FocusSessionActionEvents
 import com.amkumirab.solostudying.notification.FocusSessionNotifier
 import com.amkumirab.solostudying.sound.RpgSoundManager
@@ -511,7 +512,6 @@ class BattleViewModel(
                     SessionRewardCalculator.completedBoss(checkNotNull(boss).difficulty)
                 }
                 var skillMastered = false
-                var completionResult: SessionCompletionResult? = null
                 var pendingSummary: SessionSummary? = null
 
                 repository.runInTransaction {
@@ -555,7 +555,6 @@ class BattleViewModel(
                         isFreeStudy = completedFreeStudy,
                         bossDefeated = !completedFreeStudy && goalDefeated,
                     )
-                    completionResult = result
                     val sessionId = insertSession(
                         StudySessionEntity(
                             bossId = boss?.id,
@@ -613,10 +612,12 @@ class BattleViewModel(
                 if (skillMastered) {
                     RpgSoundManager.playSkillUnlockSound()
                 }
-                completionResult?.let(::applyProfileCompletionFeedback)
                 pendingSummary?.let(::publishSessionSummary)
 
+                saveFocusSessionState()
+                val completedSnapshot = focusSessionStore.read()
                 resetActiveSession()
+                completedSnapshot?.let { FocusSessionNotifier.showCompleted(context, pendingSummary?.subject ?: it.displayTitle(), it) }
             } finally {
                 isCompletingSession = false
             }

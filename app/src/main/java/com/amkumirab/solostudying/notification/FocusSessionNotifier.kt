@@ -12,6 +12,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.amkumirab.solostudying.MainActivity
 import com.amkumirab.solostudying.R
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
+import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.displayTitle
 import com.amkumirab.solostudying.focuscycle.FocusCyclePhase
 import com.amkumirab.solostudying.focuscycle.FocusCycleStore
@@ -98,8 +99,11 @@ object FocusSessionNotifier {
         postNotificationSafely(context, ACTIVE_NOTIFICATION_ID, builder.build())
     }
 
-    fun showCompleted(context: Context, subject: String) {
+    fun showCompleted(context: Context, subject: String, snapshot: FocusSessionSnapshot? = FocusSessionStore(context).read()) {
         cancelActive(context)
+        snapshot?.takeIf { it.isActive && it.timeLeftSeconds <= 0L }?.let {
+            TimerCompletionFeedback.signal(context, CompletedTimer.FOCUS, it.lastTickTimeMillis)
+        }
         if (!canPostNotifications(context)) return
         NotificationHelper.createNotificationChannel(context)
         val notification = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
@@ -113,6 +117,7 @@ object FocusSessionNotifier {
             .setContentIntent(openSessionIntent(context))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSilent(true)
             .setAutoCancel(true)
             .build()
         postNotificationSafely(context, COMPLETED_NOTIFICATION_ID, notification)

@@ -7,6 +7,8 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.amkumirab.solostudying.MainActivity
+import com.amkumirab.solostudying.breaks.BreakSessionStore
+import com.amkumirab.solostudying.breaks.remainingSeconds
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import kotlinx.coroutines.CoroutineScope
@@ -30,10 +32,17 @@ class NotificationReceiver : BroadcastReceiver() {
         Log.d(TAG, "Notification Received: action=$action")
 
         if (action == ACTION_BREAK_COMPLETE) {
+            val session = BreakSessionStore(context).readSession() ?: return
+            if (session.remainingSeconds(System.currentTimeMillis()) > 0L) {
+                NotificationHelper.scheduleBreakAlarm(context, session.endTimeMillis)
+                return
+            }
+            TimerCompletionFeedback.signal(context, CompletedTimer.BREAK, session.endTimeMillis)
             showNotification(
                 context = context,
                 title = "Break complete",
                 message = "Recovery complete. You are ready for the next focus session.",
+                silent = true,
             )
             return
         }
@@ -112,7 +121,7 @@ class NotificationReceiver : BroadcastReceiver() {
         showNotification(context, title, message)
     }
 
-    private fun showNotification(context: Context, title: String, message: String) {
+    private fun showNotification(context: Context, title: String, message: String, silent: Boolean = false) {
         // Intent to open Main App when clicked
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -134,6 +143,7 @@ class NotificationReceiver : BroadcastReceiver() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
+            .setSilent(silent)
             .setAutoCancel(true)
 
         // Show the notification matching ID based on title hash for distinct morning/evening notifications

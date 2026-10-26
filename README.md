@@ -145,6 +145,13 @@ see [weekly sessions](docs/PLANNER_WEEKLY_SESSIONS.md).
 - Robolectric and JUnit for local tests
 
 The bundled interface sounds come from Kenney's CC0 Interface Sounds pack.
+
+Focus and break completion use a two-short/one-long vibration cue and the bundled
+completion chime. Silent/vibrate modes use vibration only; app sound settings
+control the chime. DND suppresses both cues. Foreground and background delivery
+share duplicate protection, even when notification permission is denied.
+See [timer completion alerts](docs/TIMER_COMPLETION_ALERTS.md) for phone checks
+and Android background-delivery limitations.
 See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the source, license,
 and file mapping.
 

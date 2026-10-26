@@ -11,6 +11,8 @@ import com.amkumirab.solostudying.breaks.BreakSessionSnapshot
 import com.amkumirab.solostudying.breaks.BreakSessionStore
 import com.amkumirab.solostudying.breaks.remainingSeconds
 import com.amkumirab.solostudying.notification.NotificationHelper
+import com.amkumirab.solostudying.notification.CompletedTimer
+import com.amkumirab.solostudying.notification.TimerCompletionFeedback
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -90,6 +92,7 @@ class BreakViewModel(
         val remaining = saved.remainingSeconds(clock())
         if (remaining <= 0L) {
             NotificationHelper.cancelBreakAlarm(applicationContext)
+            TimerCompletionFeedback.signal(applicationContext, CompletedTimer.BREAK, saved.endTimeMillis)
             store.clearSession()
             showBreakComplete = true
             onBreakFinished()
@@ -112,7 +115,10 @@ class BreakViewModel(
     }
 
     private fun finishBreak() {
+        val session = activeBreak ?: return
         timerJob?.cancel()
+        NotificationHelper.cancelBreakAlarm(applicationContext)
+        TimerCompletionFeedback.signal(applicationContext, CompletedTimer.BREAK, session.endTimeMillis)
         store.clearSession()
         activeBreak = null
         breakTimeLeftSeconds = 0L

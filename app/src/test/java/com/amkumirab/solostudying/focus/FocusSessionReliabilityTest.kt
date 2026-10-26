@@ -45,6 +45,7 @@ class FocusSessionReliabilityTest {
     fun setUp() = runBlocking {
         context = ApplicationProvider.getApplicationContext()
         context.deleteSharedPreferences(FocusSessionStore.PREFERENCES_NAME)
+        context.deleteSharedPreferences("solo_studying_timer_feedback")
         database = Room.inMemoryDatabaseBuilder(context, SoloStudyingDatabase::class.java)
             .allowMainThreadQueries()
             .build()
@@ -70,6 +71,30 @@ class FocusSessionReliabilityTest {
         assertEquals(snapshot, FocusSessionStore(context).read())
         FocusSessionStore(context).clear()
         assertNull(FocusSessionStore(context).read())
+    }
+
+    @Test fun `natural foreground expiry records one completion feedback event`() = runBlocking {
+        var now = System.currentTimeMillis()
+        val viewModel = BattleViewModel(repository, context, store, clock = { now })
+        battleViewModel = viewModel
+        viewModel.selectAndStartFreeStudy(1)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        now += 60_000
+        viewModel.syncFocusSessionTime()
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+        assertEquals(now, context.getSharedPreferences("solo_studying_timer_feedback", Context.MODE_PRIVATE).getLong("FOCUS", 0))
+    }
+
+    @Test fun `ending a foreground session early does not ring a completion alert`() = runBlocking {
+        var now = System.currentTimeMillis()
+        val viewModel = BattleViewModel(repository, context, store, clock = { now })
+        battleViewModel = viewModel
+        viewModel.selectAndStartFreeStudy(1)
+        waitForCondition { if (viewModel.isBattleActive) true else null }
+        now += 20_000
+        viewModel.completeActiveBoss()
+        waitForCondition { if (!viewModel.isBattleActive) true else null }
+        assertTrue(context.getSharedPreferences("solo_studying_timer_feedback", Context.MODE_PRIVATE).all.isEmpty())
     }
 
     @Test

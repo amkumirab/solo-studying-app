@@ -105,6 +105,7 @@ class BreakSessionStoreTest {
 
     @Test
     fun `break completion receiver posts a recovery notification`() {
+        store.saveSession(BreakSessionSnapshot(60L, System.currentTimeMillis() - 1L))
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -125,6 +126,7 @@ class BreakSessionStoreTest {
 
     @Test
     fun `break completion receiver skips notification without permission`() {
+        store.saveSession(BreakSessionSnapshot(60L, System.currentTimeMillis() - 1L))
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         shadowOf(context as Application).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)

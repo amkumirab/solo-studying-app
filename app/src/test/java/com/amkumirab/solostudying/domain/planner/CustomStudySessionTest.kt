@@ -128,4 +128,14 @@ class CustomStudySessionTest {
             assertEquals(original.blocks, added.blocks.dropLast(1))
         }
     }
+
+    @Test fun `a full block ledger refuses additions even when effort and clock capacity remain`() {
+        val largeConfig = config.copy(courses = listOf(config.courses.single().copy(remainingMinutes = 18001, finishBy = today.plusDays(180))))
+        val blocks = List(18000) { index -> StudyBlock(index + 1, 1, today.plusDays((index / 120).toLong()), 1, 1020 + index % 120) }
+        val full = StudyPlan(largeConfig, blocks)
+        val result = previewAddStudySession(full, goals, today, 1, today.plusDays(150), 1020, 1)
+        assertNull(result.plan)
+        assertTrue(result.error!!.contains("session limit"))
+        assertEquals(18000, full.blocks.size)
+    }
 }

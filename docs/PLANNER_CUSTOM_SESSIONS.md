@@ -52,3 +52,47 @@ credit, removed/completed courses, restored drafts, cancellation, concurrent
 saves and large-font narrow-screen layout. Never weaken existing tests or
 suppress new warnings. Real-phone upgrade, rotation and TalkBack are manual
 unless a device is connected. Reassignment and configurable breaks are later.
+
+## Device test path
+
+Install the new debug APK over the existing app without uninstalling or clearing
+data. Open Study → Plan → Schedule. If Add session is absent, save Availability
+windows and explicitly accept a timed plan via Edit answers first.
+
+1. If all course work is allocated, shorten an unstudied, unlocked session using
+   Edit duration to release some minutes. Existing study credit must stay exact.
+2. Choose Add session, a course, date, free local start and released minutes.
+   Check its end time and remaining unscheduled work. Cancel must save nothing.
+3. Add and confirm a valid slot. Reopen the planner: the slot and Manual session
+   label must persist. Try an overlapping slot and verify saving is disabled.
+4. Remove the new slot, first cancelling and then confirming. Only the confirmed
+   removal returns its minutes to unscheduled work. The course remains present.
+5. Lock a session: Remove session must be disabled. Unlock it to remove it.
+   Study a session: its recorded credit must prevent removal.
+6. Rotate while editing, reopen the app, and check TalkBack labels and larger
+   system text. Rebuild only when desired: unlocked manual sessions are replaced,
+   while compatible locked manual sessions retain their exact slots.
+
+## Verified locally, 2026-10-26
+
+The complete command above succeeded with 442 tests, zero failures, errors or
+skips. Debug and unsigned Release APKs built. lintDebug reports zero errors and
+35 existing warnings, none in files changed for this feature. SDK tool/schema
+and older API deprecation warnings remain separate from this planner slice.
+
+Coverage includes 120 generated add/remove accounting cases, the full 18,000
+block ledger, midnight end times, immutable locks/credit, strict v9 markers,
+legacy bytes, real saves, concurrent conflicts, restored inputs, course/date
+selection, cancellation and native narrow-screen checks at 1.5 font scale.
+A regression test caught a Remove action appearing in date-only plans; it now
+passes with the action limited to timed plans.
+
+An initial combined run was stopped after existing AccessibilitySemanticsTest
+AppNotIdle failures. Its unchanged 24-test suite passed in a fresh worker, then
+the full 442-test run passed. No test, assertion or timeout was weakened, disabled
+or skipped to obtain that final result. The intermittent test-runner issue is
+not claimed to be fixed by this feature.
+
+Review covered accounting, legacy storage, stale proposals, bounded inputs and
+layout. No Android device/emulator was attached; phone upgrade, real rotation,
+keyboard and TalkBack checks remain manual. No publication was performed.

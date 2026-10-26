@@ -200,5 +200,21 @@
   - Green: 50 focused custom-session, duration and lock tests passed.
 - [x] Domain/storage implementation, focused regression, first local commit.
   - lintDebug and assembleDebug succeeded for the foundation.
-- [ ] Accessible editor, confirmed removal, draft and conflict coverage.
-- [ ] Full tests, lint, Debug/Release builds, review and second local commit.
+- [x] Accessible editor, confirmed removal, draft and conflict coverage.
+  - Initial weekly entry tests failed before the new actions were implemented.
+  - Add/remove confirmation, restored inputs, date/course selection, active and
+    credit guards, real saves and concurrent-snapshot conflicts are covered.
+  - Native 320 dp / 1.5-font-scale checks passed for both dialogs.
+  - A regression test caught a removal action leaking into date-only plans;
+    the action is now confined to timed plans before final full verification.
+- [x] Full tests, lint, Debug/Release builds, review and second local commit.
+  - Final verification on 2026-10-26: 442 tests, zero failures/errors/skips.
+  - lintDebug: 0 errors, 35 existing warnings; none in changed files.
+  - Debug and unsigned Release builds succeeded. No new dependencies, permissions,
+    Room migrations or changes to timer/reward behavior.
+  - An initial full run was stopped on existing accessibility idle failures.
+    Its unchanged 24-test suite and the fresh full run passed; no tests,
+    assertions or timeouts were weakened or disabled.
+  - Reviewed exact credit/ID retention, strict schemas, caps, stale previews and
+    guarded saves. No phone/emulator attached; physical upgrade, rotation,
+    keyboard and TalkBack remain manual. Keep the two new commits local.

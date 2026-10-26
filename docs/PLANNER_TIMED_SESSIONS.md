@@ -37,8 +37,10 @@ clock fields; preserve strict unknown-field rejection and snapshot conflict
 protection. No new dependency, permission, Room migration or network service.
 Session locks are added separately in [session locks](PLANNER_SESSION_LOCKS.md)
 with strict v7 timed records. [Duration editing](PLANNER_SESSION_DURATIONS.md)
-adds strict v8 markers and confirmed same-course time transfers. Custom sessions,
-subject reassignment and configurable gaps remain subsequent roadmap work.
+adds strict v8 markers and confirmed same-course time transfers.
+[Custom sessions](PLANNER_CUSTOM_SESSIONS.md) add strict v9 origin markers and
+confirmed add/remove proposals. Subject reassignment and configurable gaps remain
+subsequent roadmap work.
 
 ## Implementation order and verification
 

@@ -117,6 +117,15 @@ week totals and every later session that will be shortened or removed before
 be transferred. Shortening returns time to unscheduled work, not completed study.
 Cancel saves nothing. See [duration editing](docs/PLANNER_SESSION_DURATIONS.md).
 
+Use **Add session** in a timed weekly plan to choose a course, date, local start
+and 1–120 minutes from that course's unscheduled work. Review the slot and
+remaining work before saving. Other sessions are never shortened automatically.
+**Remove session** returns an unstudied, unlocked slot to unscheduled work after
+confirmation; it does not complete the work or remove its course. Manual sessions
+are labeled separately. Lock them to preserve their slots through rebuilding;
+an explicit rebuild replaces unlocked manual sessions. See
+[custom sessions](docs/PLANNER_CUSTOM_SESSIONS.md).
+
 In **Schedule → Create weekly plan / Edit answers**, enter an optional weekly
 study goal in the availability step. Preview actual weekly sessions based on
 priority, finish dates, remaining effort and course weekly limits. Review any

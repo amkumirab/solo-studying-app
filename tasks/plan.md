@@ -1,5 +1,13 @@
 # App organization
 
+## Custom study sessions
+
+Approved next slice: `docs/PLANNER_CUSTOM_SESSIONS.md`.
+1. Test immutable add/remove proposals, exact credit preservation and strict v9.
+2. Add the editor and confirmed removal using the existing snapshot save path.
+3. Test UI/restoration/conflicts and narrow layouts, run full checks and APKs.
+Keep two new commits local, based on the two unpublished duration commits.
+
 The approved layout contract is in `docs/APP_ORGANIZATION.md`.
 
 1. Four destinations and contextual session return; verify navigation labels.

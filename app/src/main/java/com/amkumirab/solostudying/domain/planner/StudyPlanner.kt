@@ -41,15 +41,15 @@ data class PlannerConfig(
 }
 
 data class StudyBlock(val id: Int, val bossId: Int, val date: LocalDate, val minutes: Int, val startMinute: Int? = null,
-    val locked: Boolean = false, val durationEdited: Boolean = false)
+    val locked: Boolean = false, val durationEdited: Boolean = false, val manual: Boolean = false)
 
 data class StudyPlan(val config: PlannerConfig, val blocks: List<StudyBlock>) {
     init {
         require(blocks.size <= 18000 && blocks.map { it.id }.distinct().size == blocks.size)
-        require(config.studyWindows != null || blocks.none { it.locked || it.durationEdited })
+        require(config.studyWindows != null || blocks.none { it.locked || it.durationEdited || it.manual })
         require(blocks.all { block ->
             val course = config.courses.firstOrNull { it.bossId == block.bossId }
-            block.id > 0 && block.minutes in 1..(if (block.durationEdited) 120 else config.sessionMinutes) && course != null &&
+            block.id > 0 && block.minutes in 1..(if (block.durationEdited || block.manual) 120 else config.sessionMinutes) && course != null &&
                 block.date in config.start..course.finishBy
         })
         require(blocks.groupBy { it.date }.all { (date, values) -> values.sumOf { it.minutes } <= config.capacity(date) })

@@ -192,3 +192,13 @@
     CI changes, and no tests or assertions were weakened or disabled.
   - No phone/emulator connected. Physical upgrade, rotation and TalkBack remain
     manual. Keep both commits local until publication is requested.
+
+## Custom study sessions
+
+- [x] Add/remove domain tests and strict v9 compatibility/persistence tests.
+  - Red: missing add/remove APIs and manual marker failed compilation.
+  - Green: 50 focused custom-session, duration and lock tests passed.
+- [x] Domain/storage implementation, focused regression, first local commit.
+  - lintDebug and assembleDebug succeeded for the foundation.
+- [ ] Accessible editor, confirmed removal, draft and conflict coverage.
+- [ ] Full tests, lint, Debug/Release builds, review and second local commit.

@@ -126,6 +126,13 @@ are labeled separately. Lock them to preserve their slots through rebuilding;
 an explicit rebuild replaces unlocked manual sessions. See
 [custom sessions](docs/PLANNER_CUSTOM_SESSIONS.md).
 
+Use **Change subject** on an unstudied, unlocked timed session to assign its
+fixed date, time and duration to another unfinished course in the accepted plan.
+Review both courses' unscheduled minutes before confirming. The selected course
+needs enough unscheduled work, a matching deadline and room in its saved weekly
+limit. Other sessions, recorded study credit and rewards stay unchanged. See
+[session subjects](docs/PLANNER_SESSION_SUBJECTS.md).
+
 In **Schedule → Create weekly plan / Edit answers**, enter an optional weekly
 study goal in the availability step. Preview actual weekly sessions based on
 priority, finish dates, remaining effort and course weekly limits. Review any

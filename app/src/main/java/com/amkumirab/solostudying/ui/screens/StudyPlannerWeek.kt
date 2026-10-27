@@ -32,6 +32,7 @@ fun StudyPlannerWeek(
     var resizingBlock by rememberSaveable { mutableStateOf<Int?>(null) }
     var addingSession by rememberSaveable { mutableStateOf(false) }
     var removingBlock by rememberSaveable { mutableStateOf<Int?>(null) }
+    var changingSubject by rememberSaveable { mutableStateOf<Int?>(null) }
     val currentMonday = today.minusDays(today.dayOfWeek.value - 1L)
     val weekStart = currentMonday.plusWeeks(weekOffset.toLong())
     val firstMonday = plan.config.start.minusDays(plan.config.start.dayOfWeek.value - 1L)
@@ -132,9 +133,14 @@ fun StudyPlannerWeek(
                                     Text(if (block.locked) "Unlock session" else "Lock session")
                                 }
                             }
-                            TextButton(onClick = { removingBlock = block.id },
-                                enabled = !isSessionActive && !block.locked && !entry.missingCourse && entry.creditedSeconds == 0L && date >= today,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("planner_remove_${block.id}")) { Text("Remove session") }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { changingSubject = block.id },
+                                    enabled = !isSessionActive && !block.locked && boss?.isCompleted == false && entry.creditedSeconds == 0L && date >= today,
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("planner_subject_${block.id}")) { Text("Change subject") }
+                                TextButton(onClick = { removingBlock = block.id },
+                                    enabled = !isSessionActive && !block.locked && !entry.missingCourse && entry.creditedSeconds == 0L && date >= today,
+                                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("planner_remove_${block.id}")) { Text("Remove session") }
+                            }
                         }
                     }
                 }
@@ -154,5 +160,9 @@ fun StudyPlannerWeek(
     removingBlock?.let { id ->
         RemoveStudySessionDialog(plan, bosses, today, id, isSessionActive,
             onDismiss = { removingBlock = null }, onSave = { moveError = null; onMove(it) }, subjects = subjects)
+    }
+    changingSubject?.let { id ->
+        SessionSubjectDialog(plan, bosses, today, id, isSessionActive,
+            onDismiss = { changingSubject = null }, onSave = { moveError = null; onMove(it) }, subjects = subjects)
     }
 }

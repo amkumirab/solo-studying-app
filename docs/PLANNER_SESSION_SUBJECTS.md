@@ -28,9 +28,27 @@ Snapshot compare-and-save rejects a preview if another writer changed storage.
 
 - [x] Pure proposal, accounting, credit-order and boundary regression tests.
 - [x] Version 9 round-trip, legacy read preservation and stale-save tests.
-- [ ] Weekly action, guided preview, cancellation and restored draft tests.
-- [ ] Real entry/save and concurrent-edit protection tests.
-- [ ] Small-screen/large-font checks, full tests, lint and debug/release builds.
+- [x] Weekly action, guided preview, cancellation and restored draft tests.
+- [x] Real entry/save and concurrent-edit protection tests.
+- [x] Small-screen/large-font checks, full tests, lint and debug/release builds.
+
+Verified on 2026-10-27: 474 tests passed with zero failures, errors or skipped
+tests. Debug and unsigned Release builds succeeded. Lint has zero errors and the
+same 36 existing warnings, none in the files changed for this feature.
 
 Physical-device installation and TalkBack testing require a connected device;
 desktop Compose tests are not a substitute for those checks.
+
+## Phone smoke test
+
+1. Install the Debug APK over the current installation without uninstalling it.
+2. Open Study > Plan > Open weekly plan. Use a timed plan with at least two
+   unfinished courses. The destination needs unscheduled work; if all its work is
+   scheduled, explicitly shorten or remove one of its unstudied slots first.
+3. Choose Change subject on an unlocked, unstudied session. Check that its date,
+   clock range and duration stay fixed and both unscheduled totals are correct.
+4. Cancel and verify that nothing changed. Repeat, confirm, then reopen the app:
+   the selected course, priority and color should appear on the same slot.
+5. Start Study course and verify the new course and unchanged duration. Check
+   locked/studied sessions cannot change subject and use TalkBack to review the
+   selector, preview, rejection messages and confirmation.

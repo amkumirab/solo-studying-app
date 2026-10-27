@@ -238,3 +238,31 @@
     duplicate claims and normal VIBRATE permission; reward/storage schemas stay
     unchanged. Phone vibration, lock-screen timing and upgrade remain manual.
     Keep the single commit local until publication is requested.
+
+## Session subject editing
+
+- [x] Define fixed-slot reassignment and credit/storage boundaries.
+- [x] Implement the pure proposal and persist with the existing v9 format.
+  - Red: the new proposal API first failed compilation.
+  - Green: six domain cases and one storage case passed, including 120 duration
+    variants, full ledger capacity, destination credit, deadlines and weekly caps.
+  - Replace only the zero-credit source with a fresh manual ID to avoid stealing
+    earlier destination study credit; no schema or baseline changes.
+- [x] Add a guided weekly editor with explicit confirmation.
+  - Two real entry tests failed on the missing weekly action before UI wiring.
+- [x] Verify cancellation, restoration, guards, real saves and concurrent edits.
+  - 69 focused tests passed, including the existing add/remove, duration and lock
+    workflows. New tests cover changing the Study course binding, no-op drafts,
+    busy/progress invalidation, locked/past/missing sources and weekly-cap errors.
+  - Native 320 dp / 1.5-font-scale tests passed for long course names, previews,
+    wrapping weekly actions and 48 dp touch targets.
+- [x] Verify narrow/large-font layout, full regression, lint and APK builds.
+  - Full verification on 2026-10-27: 474 tests, zero failures/errors/skips.
+    Debug and unsigned Release builds succeeded. lintDebug has zero errors and
+    the same 36 existing warnings, none in files changed for this feature.
+- [x] Review and complete the second local commit; do not push yet.
+  - Reviewed fixed slots, course accounting, credit allocation, stale previews,
+    snapshot conflicts and accessibility. No dependencies, permissions, database
+    migrations or timer/reward changes. No test assertions or checks weakened.
+  - No phone or emulator attached. Physical installation, rotation, keyboard and
+    TalkBack remain manual checks; a phone smoke test is included in the docs.

@@ -1,6 +1,7 @@
 package com.amkumirab.solostudying
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.content.pm.PackageManager
 import android.content.Intent
 import android.os.Bundle
@@ -11,9 +12,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.notification.NotificationHelper
 import com.amkumirab.solostudying.notification.FocusSessionNotifier
+import com.amkumirab.solostudying.notification.TimerAlarmAlerts
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.sound.RpgSoundManager
@@ -21,6 +26,7 @@ import com.amkumirab.solostudying.ui.screens.MainAppScreen
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModelFactory
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
   private lateinit var viewModel: SoloStudyingViewModel
@@ -59,6 +65,17 @@ class MainActivity : ComponentActivity() {
     setContent {
       SoloStudyingTheme {
         MainAppScreen(viewModel = viewModel)
+      }
+    }
+    TimerAlarmAlerts.restore(applicationContext)
+    lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.RESUMED) {
+        TimerAlarmAlerts.events.collect { event ->
+          if (event != null && event.expiresAtMillis > System.currentTimeMillis() &&
+            !getSystemService(KeyguardManager::class.java).isKeyguardLocked) {
+            startActivity(TimerAlarmAlerts.screenIntent(this@MainActivity, event))
+          }
+        }
       }
     }
   }

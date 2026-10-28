@@ -38,6 +38,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 return
             }
             TimerCompletionFeedback.signal(context, CompletedTimer.BREAK, session.endTimeMillis)
+            if (TimerAlarmAlerts.isShowing(CompletedTimer.BREAK)) return
             showNotification(
                 context = context,
                 title = "Break complete",

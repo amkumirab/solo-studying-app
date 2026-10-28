@@ -104,6 +104,7 @@ object FocusSessionNotifier {
         snapshot?.takeIf { it.isActive && it.timeLeftSeconds <= 0L }?.let {
             TimerCompletionFeedback.signal(context, CompletedTimer.FOCUS, it.lastTickTimeMillis)
         }
+        if (TimerAlarmAlerts.isShowing(CompletedTimer.FOCUS)) return
         if (!canPostNotifications(context)) return
         NotificationHelper.createNotificationChannel(context)
         val notification = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)

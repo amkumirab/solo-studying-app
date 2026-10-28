@@ -15,13 +15,14 @@ import android.os.VibratorManager
 import android.util.Log
 import com.amkumirab.solostudying.R
 import com.amkumirab.solostudying.sound.SoundSettingsStore
+import java.util.concurrent.ConcurrentHashMap
 
 internal enum class CompletedTimer { FOCUS, BREAK }
 
 /** Timer feedback is independent of notification permission and never changes device policy. */
 internal object TimerCompletionFeedback {
     const val PREFERENCES_NAME = "solo_studying_timer_feedback"
-    private val playing = mutableSetOf<MediaPlayer>()
+    private val playing = ConcurrentHashMap.newKeySet<MediaPlayer>()
 
     @Synchronized
     fun signal(context: Context, timer: CompletedTimer, endTimeMillis: Long): Boolean {
@@ -30,13 +31,29 @@ internal object TimerCompletionFeedback {
         if (!claimCompletion(context, timer, endTimeMillis)) return false
         val notifications = context.getSystemService(NotificationManager::class.java)
         if (notifications.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL) return true
+        if (TimerAlarmSettingsStore(context).isEnabled() && System.currentTimeMillis() - endTimeMillis in 0..120_000 &&
+            TimerAlarmAlerts.begin(context, timer)) return true
         vibrate(context)
+        playIfAllowed(context)
+        return true
+    }
+
+    internal fun startAlarm(context: Context) {
+        vibrate(context, prolonged = true)
+        playIfAllowed(context)
+    }
+
+    private fun playIfAllowed(context: Context) {
         val audio = context.getSystemService(AudioManager::class.java)
         val settings = SoundSettingsStore(context).read()
         if (audio.ringerMode == AudioManager.RINGER_MODE_NORMAL && settings.enabled && settings.volume > 0f) {
             playChime(context.applicationContext, settings.volume * 0.78f)
         }
-        return true
+    }
+
+    internal fun stop(context: Context) {
+        runCatching { vibrator(context).cancel() }
+        playing.toList().forEach { if (playing.remove(it)) it.release() }
     }
 
     private fun claimCompletion(context: Context, timer: CompletedTimer, endTimeMillis: Long): Boolean {
@@ -48,11 +65,11 @@ internal object TimerCompletionFeedback {
     }
 
     @Suppress("DEPRECATION") // Compatibility paths for the supported Android 7–12 devices.
-    private fun vibrate(context: Context) {
-        val vibrator = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(VibratorManager::class.java).defaultVibrator
-            else context.getSystemService(Vibrator::class.java)
+    private fun vibrate(context: Context, prolonged: Boolean = false) {
+        val vibrator = vibrator(context)
         if (!vibrator.hasVibrator()) return
-        val pattern = longArrayOf(0, 90, 80, 90, 140, 320)
+        val pattern = if (prolonged) longArrayOf(0) + List(12) { listOf(90L, 80L, 90L, 140L, 320L, 1500L) }.flatten().toLongArray()
+            else longArrayOf(0, 90, 80, 90, 140, 320)
         try {
             when {
                 Build.VERSION.SDK_INT >= 33 -> vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1),
@@ -66,6 +83,9 @@ internal object TimerCompletionFeedback {
         }
     }
 
+    private fun vibrator(context: Context): Vibrator = if (Build.VERSION.SDK_INT >= 31)
+        context.getSystemService(VibratorManager::class.java).defaultVibrator else context.getSystemService(Vibrator::class.java)
+
     private fun playChime(context: Context, volume: Float) {
         var player: MediaPlayer? = null
         try {
@@ -74,7 +94,7 @@ internal object TimerCompletionFeedback {
             player = created
             playing += created
             val handler = Handler(Looper.getMainLooper())
-            val cleanup = Runnable { synchronized(this) { if (playing.remove(created)) created.release() } }
+            val cleanup = Runnable { if (playing.remove(created)) created.release() }
             created.setOnCompletionListener { handler.removeCallbacks(cleanup); cleanup.run() }
             created.setOnErrorListener { _, _, _ -> handler.removeCallbacks(cleanup); cleanup.run(); true }
             created.setVolume(volume, volume)

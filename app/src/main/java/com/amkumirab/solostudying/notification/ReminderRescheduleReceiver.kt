@@ -3,6 +3,8 @@ package com.amkumirab.solostudying.notification
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.app.AlarmManager
+import android.os.Build
 import com.amkumirab.solostudying.breaks.BreakSessionStore
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import com.amkumirab.solostudying.focus.FocusShieldManager
@@ -12,6 +14,8 @@ import com.amkumirab.solostudying.focus.reconcileFocusSession
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (Build.VERSION.SDK_INT >= 31 && intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED &&
+            (!TimerAlarmSettingsStore(context).isEnabled() || !hasPreciseTimerAccess(context))) return
         if (intent.action in SUPPORTED_ACTIONS) {
             val applicationContext = context.applicationContext
             NotificationHelper.scheduleDailyAlarms(applicationContext)
@@ -64,6 +68,6 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
-        )
+        ) + if (Build.VERSION.SDK_INT >= 31) setOf(AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED) else emptySet()
     }
 }

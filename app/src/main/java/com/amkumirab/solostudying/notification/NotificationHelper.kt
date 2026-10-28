@@ -73,10 +73,9 @@ object NotificationHelper {
 
     fun scheduleBreakAlarm(context: Context, endTimeMillis: Long) {
         if (endTimeMillis <= System.currentTimeMillis()) return
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         try {
-            alarmManager.setAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
+            scheduleTimerCompletion(
+                context,
                 endTimeMillis,
                 breakPendingIntent(context),
             )

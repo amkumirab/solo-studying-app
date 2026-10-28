@@ -129,9 +129,8 @@ object FocusSessionNotifier {
             cancelCompletionAlarm(context)
             return
         }
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.setAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
+        scheduleTimerCompletion(
+            context,
             System.currentTimeMillis() + snapshot.timeLeftSeconds * 1_000L,
             completionAlarmIntent(context),
         )

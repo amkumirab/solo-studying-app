@@ -51,6 +51,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Live focus notifications with countdown, pause, resume, and finish controls
 - Post-session summaries for time, rewards, levels, streaks, and progress
 - Optional post-session break timers with persistent countdowns and completion alerts
+- Optional alarm-style timer completion screen, bounded vibration, silent-mode support and a test preview
 - Weekly, monthly, and lifetime study insights with goal and period comparisons
 - Independent skill progression based on focused time
 - Custom real-life rewards purchased with earned gold
@@ -59,6 +60,17 @@ page organization have since changed; these are not screenshots of the latest bu
 - Low-latency sci-fi interface sounds for study and progression feedback
 - Persistent sound enable and volume controls
 - Local persistence with Room
+
+## Timer completion alarms
+
+Open **Settings > Timer completion alarm** and enable the optional switch.
+Use **Allow lock-screen alerts** on Android 14+ and **Allow precise timers** on
+Android 12+ when offered. Notification permission and the timer channel must also
+remain enabled. **Test alert now** previews the screen without recording study
+or changing the active timer. In silent/vibrate mode no chime plays. Dismiss stops
+the feedback; it also stops automatically within 30 seconds. Android controls
+whether a lock-screen activity or a notification is shown. See
+[timer alarm behavior and phone tests](docs/TIMER_ALARM_SCREEN.md).
 
 ## Find your way around
 

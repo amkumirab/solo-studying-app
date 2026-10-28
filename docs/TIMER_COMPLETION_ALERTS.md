@@ -1,5 +1,10 @@
 # Timer completion alerts
 
+This page describes the default short cue. The optional
+[alarm-style completion screen](TIMER_ALARM_SCREEN.md) adds a bounded longer
+vibration, visual alert, user-controlled screen access and precise timer delivery.
+It is disabled by default and shares the same duplicate and silent-mode guards.
+
 Focus and break timers share a bounded, non-repeating completion cue: two short
 vibration pulses followed by a longer pulse. Normal ringer mode also plays the
 existing `session_complete` asset using notification audio usage, the phone's
@@ -9,7 +14,8 @@ never play this chime. Vibration is independent of the app's sound toggle.
 Do not change ringer mode, volume, notification policy or DND access. When DND
 is not ALL, suppress both cues. Restore only the app-owned Focus Shield policy
 through the existing completion path before attempting feedback. No DND bypass
-flags, repeating alarm, exact-alarm permission or foreground service is added.
+flags, repeating alarm or foreground service is used by this short-cue mode.
+The optional alarm-style mode uses separate user-granted exact-alarm access.
 
 Persist only the most recent completion timestamp for each timer kind. Foreground
 and alarm-receiver paths claim the same event before feedback, so reopening or
@@ -18,7 +24,7 @@ break broadcast do not claim completion. Notification cards are silent to avoid
 an additional generic notification sound. Timer feedback does not depend on the
 optional notification permission; the card itself still requires permission.
 
-Add only the normal VIBRATE manifest permission. Use alarm vibration attributes
+The short cue needs only the normal VIBRATE permission. Use alarm vibration attributes
 for user-started timers, including background delivery; select the supported API
 on Android 7, Android 8–12, and Android 13+. A missing motor or playback failure
 must not interrupt timer/reward completion. Release the short player on finish,

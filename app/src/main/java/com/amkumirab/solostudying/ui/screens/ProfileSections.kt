@@ -327,6 +327,7 @@ internal fun LazyListScope.profileSettings(
     }
 
     // Replay Tutorial / System Controls Section
+    item { TimerAlarmSettingsCard() }
     item {
         SystemControlsCard(
             soundSettings = soundSettings,

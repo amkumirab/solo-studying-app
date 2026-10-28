@@ -266,3 +266,31 @@
     migrations or timer/reward changes. No test assertions or checks weakened.
   - No phone or emulator attached. Physical installation, rotation, keyboard and
     TalkBack remain manual checks; a phone smoke test is included in the docs.
+
+## Alarm-style timer completion
+
+- [x] Opt-in visual alert and generic, non-private lock-screen content.
+- [x] Finite vibration, explicit dismissal and independent 30-second timeout.
+- [x] Silent/vibrate and DND guards; default short cue remains unchanged.
+- [x] Persist alert identity/expiry; stale dismissals cannot cancel a new alert.
+- [x] Non-exported activity/receiver and immutable, event-specific pending intents.
+- [x] Settings switch, permission/status guidance and clearly labelled preview.
+- [x] Optional exact timer scheduling with denied/revoked-access fallback.
+- [x] Focus and break integration without duplicate completion notifications.
+  - New APIs first failed compilation. Integration tests reproduced the duplicate
+    old/new notification cards before the completion paths were adjusted.
+  - 43 focused tests passed, including existing completion/reminder controls,
+    native narrow/large-font screens, activity restoration and settings previews.
+- [x] Full regression, lint and Debug/Release builds.
+  - Final verification on 2026-10-27: 492 tests, zero failures/errors/skips.
+    Both builds succeeded. lintDebug: zero errors and 38 warnings (36 existing,
+    two visible UseKtx suggestions where native commit Boolean results are needed).
+  - Fixed older-Android settings/broadcast guards; legacy screen-on paths also
+    passed on API 24 and 26. No checks, assertions or quality thresholds weakened.
+- [x] Deliver a uniquely named Debug APK and phone smoke-test instructions.
+  - APK signature scheme v2 verified; application ID, min SDK and target SDK
+    checked with packaged metadata. A SHA-256 sidecar accompanies the test APK.
+  - No phone/emulator attached; actual lock-screen wake, motor strength, battery
+    behavior, rotation and upgrade retention cannot be certified locally.
+  - Source changes are split into focused repository commits. The Debug APK
+    remains a local test package; no store publication is part of this update.

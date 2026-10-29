@@ -45,6 +45,7 @@ internal fun TimedStudyMoveDialog(
                 val name = subjects.firstOrNull { it.bossId == block.bossId }?.name ?: bosses.firstOrNull { it.id == block.bossId }?.name ?: "Removed course"
                 Text("$name · ${block.minutes} min")
                 Text("Choose a local start time inside this plan's saved windows. Duration and recorded study credit stay unchanged.")
+                if (plan.config.breakMinutes > 0) Text("Keep at least ${plan.config.breakMinutes} min before and after neighboring sessions.", style = MaterialTheme.typography.bodySmall)
                 OutlinedButton(onClick = {
                     picker.value?.dismiss()
                     picker.value = pickPlannerDate(context, (date ?: today).coerceIn(today, course.finishBy), today, course.finishBy) { dateText = it.toString() }

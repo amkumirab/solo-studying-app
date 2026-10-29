@@ -47,6 +47,8 @@ fun StudyPlannerWizard(
         })
     }
     var sessionMinutes by rememberSaveable { mutableIntStateOf(initialPlan?.config?.sessionMinutes ?: 25) }
+    var breakText by rememberSaveable { mutableStateOf((initialPlan?.config?.breakMinutes ?: 0).toString()) }
+    val breakMinutes = if (windows == null) 0 else plannerBreakMinutes(breakText)
     var dailyAdjustment by rememberSaveable { mutableIntStateOf(0) }
     var usingRequiredBudget by rememberSaveable { mutableStateOf(false) }
     val originalWeeklyGoal = remember { initialPlan?.config?.weeklyGoalMinutes }
@@ -84,7 +86,8 @@ fun StudyPlannerWizard(
         PlannerConfig(today, selected.map { boss -> PlannerCourse(boss.id, minutes(boss)!!, finishBy(boss)!!,
             priority(boss),
             boss.timeSpentSeconds.coerceAtLeast(0)) }, capacities.map { it!! }, sessionMinutes,
-            if (weeklyHours.isBlank()) null else parsedWeeklyGoal.also { require(it != null) }, studyWindows = windows).withWeeklyScheduling(subjects)
+            if (weeklyHours.isBlank()) null else parsedWeeklyGoal.also { require(it != null) }, studyWindows = windows,
+            breakMinutes = checkNotNull(breakMinutes)).withWeeklyScheduling(subjects)
     }.getOrNull() else null
     val scenarioConfig = config?.let { original ->
         val base = if (usingRequiredBudget) requiredPlannerDailyTime(original) else original
@@ -100,6 +103,7 @@ fun StudyPlannerWizard(
         0 -> selected.isNotEmpty() && selected.size == selectedIds.size
         1 -> validCourse
         2 -> validCapacity
+        3 -> breakMinutes != null
         else -> true
     }
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -175,7 +179,10 @@ fun StudyPlannerWizard(
                     FilterChip(selected = sessionMinutes == length, onClick = { sessionMinutes = length },
                         label = { Text("$length min") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp))
                 }
-                Text("Shorter final blocks fit your remaining time and daily capacity. Breaks use the existing break timer.")
+                Text("Shorter final blocks fit your remaining time and daily capacity.")
+                if (windows != null) PlannerBreakEditor(breakText, { breakText = it }, !busy)
+                else Text("Save Availability windows to plan breaks between sessions. Date-only plans keep the existing break timer without reserving clock gaps.",
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("planner_break_windows_required"))
             }
             4 -> {
                 if (config == null || scenarioConfig == null) {
@@ -216,7 +223,9 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
         Text("Your study plan", style = MaterialTheme.typography.headlineSmall)
         Text("${plan.config.courses.size} courses · ${plan.blocks.sumOf { it.minutes }} scheduled minutes\n${plan.config.start} to ${plan.config.courses.maxOf { it.finishBy }}")
         WeeklyAllocationCard(plan, bosses, subjects)
-        if (plan.config.studyWindows != null) Text("Local clock times · no automatic breaks. A session may be split between windows without losing study time.")
+        if (plan.config.studyWindows != null) Text(if (plan.config.breakMinutes == 0)
+            "Local clock times · no planned breaks. A session may be split between windows without losing study time."
+            else "Local clock times · ${plan.config.breakMinutes}-minute minimum breaks between sessions. Breaks are excluded from study totals. Course boundaries and windows may reduce capacity; check the actual sessions below.")
         if (plan.blocks.any { it.locked }) Text("${plan.blocks.count { it.locked }} locked sessions keep their exact slots.")
         if (plan.shortfalls.isEmpty()) Text("Your preparation fits the available study time.")
         else {
@@ -231,11 +240,13 @@ fun StudyPlannerPreview(plan: StudyPlan, bosses: List<BossEntity>, busy: Boolean
         repeat(7) { index ->
             val date = plan.config.start.plusDays(index.toLong())
             val blocks = plan.blocks.filter { it.date == date }
+            val breaks = remember(plan, date) { plannedStudyBreaks(plan, date).associateBy { it.afterBlockId } }
             Text("${date.dayOfWeek} · $date: ${blocks.sumOf { it.minutes }} min")
             if (plan.config.studyWindows != null) blocks.sortedBy { it.startMinute }.forEach { block ->
                 val subject = subjects.firstOrNull { it.bossId == block.bossId }
                 PlannerSubjectTitle(subject?.name ?: bosses.firstOrNull { it.id == block.bossId }?.name ?: "Removed course", subject?.color)
                 PlannerSessionTime(block, plan.config.courses.first { it.bossId == block.bossId }.priority, Modifier.testTag("preview_clock_${block.id}"))
+                breaks[block.id]?.let { PlannerBreakInterval(it, Modifier.testTag("preview_break_${block.id}")) }
             } else blocks.groupBy { it.bossId }.forEach { (id, values) ->
                 val subject = subjects.firstOrNull { it.bossId == id }
                 PlannerSubjectTitle("${subject?.name ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course"} — ${values.sumOf { it.minutes }} min", subject?.color)

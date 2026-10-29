@@ -40,7 +40,7 @@ internal fun CustomStudySessionDialog(
         (initial?.let { shortfalls[it.bossId] } ?: plan.config.sessionMinutes)).toString()) }
     var clockText by rememberSaveable(plan) { mutableStateOf(LocalDate.parse(dateText).let { date ->
         val day = windows.days[date.dayOfWeek.value - 1]
-        plannerClockLabel(firstStudySlot(day.windows, plan.blocks.filter { it.date == date }, minutesText.toInt())
+        plannerClockLabel(firstStudySlot(day.windows, plan.blocks.filter { it.date == date }, minutesText.toInt(), plan.config.breakMinutes)
             ?: day.windows.firstOrNull()?.startMinute ?: 1020)
     }) }
     var choosingCourse by remember { mutableStateOf(false) }
@@ -66,6 +66,7 @@ internal fun CustomStudySessionDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Use unscheduled work from an existing course. Other sessions and recorded study time stay unchanged. Lock the new session if it should survive rebuilding.")
+                if (plan.config.breakMinutes > 0) Text("Leave at least ${plan.config.breakMinutes} min between this slot and other sessions. No study time is used for the gap.", style = MaterialTheme.typography.bodySmall)
                 Box {
                     OutlinedButton(onClick = { choosingCourse = true }, enabled = !unavailable && available.isNotEmpty(),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("custom_course")) { Text("Course: ${name(courseId)}") }

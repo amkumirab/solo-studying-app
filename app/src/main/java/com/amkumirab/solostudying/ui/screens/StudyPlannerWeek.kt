@@ -46,6 +46,7 @@ fun StudyPlannerWeek(
             Text("$weekStart — ${weekStart.plusDays(6)}")
             WeeklyGoalSummary(plan, weekStart)
             if (plan.config.studyWindows != null) Text("Local clock times · saved study windows apply. Study can start early. Lock a session to keep its slot when rebuilding.", style = MaterialTheme.typography.bodySmall)
+            if (plan.config.breakMinutes > 0) Text("${plan.config.breakMinutes}-minute minimum breaks also apply when moving, adding or resizing sessions. Breaks are not study time.", style = MaterialTheme.typography.bodySmall)
             if (plan.config.studyWindows != null) {
                 OutlinedButton(onClick = { addingSession = true }, enabled = !isSessionActive && plan.config.courses.any { course ->
                     course.finishBy >= today && bosses.any { it.id == course.bossId && !it.isCompleted }
@@ -74,9 +75,12 @@ fun StudyPlannerWeek(
         repeat(7) { offset ->
             val date = weekStart.plusDays(offset.toLong())
             val dayBlocks = progress.filter { it.block.date == date }.let { if (plan.config.studyWindows == null) it else it.sortedBy { entry -> entry.block.startMinute } }
+            val breaks = plannedStudyBreaks(plan, date).associateBy { it.afterBlockId }
             item(key = "day_$date") {
                 Text("${date.dayOfWeek} · $date", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
                 Text("${dayBlocks.sumOf { it.block.minutes }} / ${plan.config.capacity(date)} planned focus minutes", style = MaterialTheme.typography.bodySmall)
+                if (breaks.isNotEmpty()) Text("Planned breaks: ${breaks.values.sumOf { it.minutes }} min · not study time",
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("break_day_$date"))
                 if (dayBlocks.isEmpty()) Text(if (plan.config.capacity(date) == 0) "Rest day" else "No sessions planned")
             }
             items(dayBlocks, key = { "block_${it.block.id}" }) { entry ->
@@ -144,6 +148,7 @@ fun StudyPlannerWeek(
                         }
                     }
                 }
+                breaks[block.id]?.let { PlannerBreakInterval(it, Modifier.padding(horizontal = 12.dp, vertical = 8.dp).testTag("week_break_${block.id}")) }
             }
         }
     }

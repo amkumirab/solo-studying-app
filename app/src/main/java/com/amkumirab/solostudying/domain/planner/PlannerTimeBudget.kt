@@ -28,7 +28,7 @@ fun analyzePlannerTimeBudget(config: PlannerConfig): PlannerTimeBudget {
     val capacity = IntArray(days + 1)
     val studyDays = IntArray(days + 1)
     repeat(days) { index ->
-        val minutes = config.capacity(config.start.plusDays(index.toLong()))
+        val minutes = config.plannableStudyCapacity(config.start.plusDays(index.toLong()))
         capacity[index + 1] = capacity[index] + minutes
         studyDays[index + 1] = studyDays[index] + if (minutes > 0) 1 else 0
     }

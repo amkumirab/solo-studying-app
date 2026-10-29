@@ -26,12 +26,14 @@ data class PlannerConfig(
     val weeklyGoalMinutes: Int? = null,
     val weeklyScheduling: WeeklySchedulingPolicy? = null,
     val studyWindows: WeeklyAvailability? = null,
+    val breakMinutes: Int = 0,
 ) {
     init {
         require(courses.size in 1..20 && courses.distinctBy { it.bossId }.size == courses.size)
         require(courses.all { ChronoUnit.DAYS.between(start, it.finishBy) in 0..365 })
         require(weekdayMinutes.size == 7 && weekdayMinutes.all { it in 0..480 } && weekdayMinutes.any { it > 0 })
         require(sessionMinutes in 15..120)
+        require(breakMinutes in 0..30 && (breakMinutes == 0 || studyWindows != null))
         require(weeklyGoalMinutes == null || weeklyGoalMinutes in 0..3360)
         require(weeklyScheduling == null || weeklyGoalMinutes != null &&
             weeklyScheduling.courseMinuteLimits.keys.all { id -> courses.any { it.bossId == id } })
@@ -72,6 +74,7 @@ data class StudyPlan(val config: PlannerConfig, val blocks: List<StudyBlock>) {
 
 /** Evenly use capacity while reserving enough work today for every deadline prefix. */
 fun buildStudyPlan(config: PlannerConfig): StudyPlan {
+    if (config.breakMinutes > 0) return buildAroundStudyLocks(config, emptyList())
     if (config.studyWindows != null) return assignStudyTimes(buildStudyPlan(config.copy(studyWindows = null)), config)
     if (config.weeklyScheduling != null) return buildWeightedWeeklyPlan(config)
     val days = ChronoUnit.DAYS.between(config.start, config.courses.maxOf { it.finishBy }).toInt() + 1

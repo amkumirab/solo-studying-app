@@ -1,5 +1,21 @@
 # App organization
 
+## Planner breaks
+
+- [x] Domain and persistence red tests; implement spacing and mutation guards.
+  - Missing APIs first failed compilation; five spacing/generation cases then
+    failed before break-aware packing. Capacity reporting also failed before its
+    calculation excluded break overhead. No assertions or checks were disabled.
+  - Generated feasible cases use course ceilings above their deadline workload;
+    a separate negative case verifies that insufficient weekly limits stay real
+    shortfalls even with spare clock time.
+- [x] Focused regression, lint and Debug build; foundation commit.
+  - 141 domain/storage tests passed on 2026-10-29. lintDebug: zero errors and the
+    same 38 existing warnings. assembleDebug succeeded. Zero-gap behavior,
+    strict legacy reads, credit ordering and guarded mutations remain covered.
+- [ ] Wizard control, preview/week gap labels and interaction tests.
+- [ ] Full tests, lint, APKs, review and interface commit; report phone QA limits.
+
 - [x] Four destinations and contextual session return.
   - Verify labels, selection, callbacks and paused state in Compose tests.
 - [x] Today separated from Goals, Focus and Plan.

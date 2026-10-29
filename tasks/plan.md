@@ -1,5 +1,17 @@
 # App organization
 
+## Planner breaks
+
+Approved next university-planner slice: `docs/PLANNER_BREAKS.md`.
+Preserve old plans, credit, locked slots and the existing break timer.
+
+1. Write failing spacing/generation/mutation and strict v10 persistence tests.
+2. Implement optional gaps using existing weekly allocation and reserved slots;
+   verify domain/storage regression, lint and Debug build; commit foundation.
+3. Add a session-step control and truthful preview/week labels. Test saved drafts,
+   incomplete-plan confirmation and real saves. Run full tests, lint, both APKs
+   and scoped review; commit the interface. Keep commits local until requested.
+
 ## Custom study sessions
 
 Approved next slice: `docs/PLANNER_CUSTOM_SESSIONS.md`.

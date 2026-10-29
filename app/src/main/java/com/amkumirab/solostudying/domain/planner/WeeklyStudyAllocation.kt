@@ -25,12 +25,12 @@ internal fun allocateWeeklyHours(config: PlannerConfig, subjects: List<PlannerSu
     require(weekStart.dayOfWeek.value == 1)
     val available = (0L..6L).sumOf { offset ->
         val day = weekStart.plusDays(offset)
-        if (day < config.start) 0 else config.capacity(day)
+        if (day < config.start) 0 else config.plannableStudyCapacity(day)
     }
     val goal = config.weeklyGoalMinutes ?: available
     val deadlineCapacity = List(7) { index -> (0..index).sumOf { offset ->
         val day = weekStart.plusDays(offset.toLong())
-        if (day < config.start) 0 else config.capacity(day)
+        if (day < config.start) 0 else config.plannableStudyCapacity(day)
     } }
     data class Candidate(val id: Int, val cap: Int, val weight: Int, val deadlineIndex: Int, val finishBy: LocalDate)
     val candidates = config.courses.sortedBy { it.bossId }.mapNotNull { course ->
@@ -38,7 +38,7 @@ internal fun allocateWeeklyHours(config: PlannerConfig, subjects: List<PlannerSu
         val subject = subjects.firstOrNull { it.bossId == course.bossId }
         val untilDeadline = (0L..6L).sumOf { offset ->
             val day = weekStart.plusDays(offset)
-            if (day >= config.start && day <= course.finishBy) config.capacity(day) else 0
+            if (day >= config.start && day <= course.finishBy) config.plannableStudyCapacity(day) else 0
         }
         val limit = if (config.weeklyScheduling != null) config.weeklyScheduling.courseMinuteLimits[course.bossId]
             else subject?.preferredWeeklyMinutes

@@ -30,10 +30,14 @@ fun rebuildWithStudyLocks(config: PlannerConfig, previous: StudyPlan?, bosses: L
 }
 
 /** Reuse weighted quotas and the daily builder, with locks removed from every capacity. */
-private fun buildAroundStudyLocks(config: PlannerConfig, locks: List<StudyBlock>): StudyPlan {
+internal fun buildAroundStudyLocks(config: PlannerConfig, locks: List<StudyBlock>): StudyPlan {
     val byDay = locks.groupBy { it.date }
     val byWeek = locks.groupBy { plannerWeekStart(it.date) }
-    fun freeDay(date: LocalDate) = config.capacity(date) - byDay[date].orEmpty().sumOf { it.minutes }
+    val freeDays = mutableMapOf<LocalDate, Int>()
+    fun freeDay(date: LocalDate): Int = freeDays.getOrPut(date) {
+        val budget = config.capacity(date) - byDay[date].orEmpty().sumOf { it.minutes }
+        if (config.breakMinutes == 0) budget else minOf(budget, breakAwareStudyCapacity(config, date, byDay[date].orEmpty()))
+    }
     fun freeGoal(week: LocalDate): Int? = config.weeklyGoalMinutes?.minus(byWeek[week].orEmpty().sumOf { it.minutes })
     fun freeLimit(id: Int, week: LocalDate): Int = config.weeklyScheduling?.courseMinuteLimits?.get(id)?.let { limit ->
         limit - byWeek[week].orEmpty().filter { it.bossId == id }.sumOf { it.minutes }
@@ -72,7 +76,7 @@ private fun buildAroundStudyLocks(config: PlannerConfig, locks: List<StudyBlock>
             .map { it.copy(remainingMinutes = remaining.getValue(it.bossId)) }
         if (active.isNotEmpty() && capacity.any { it > 0 } && freeGoal(week) != 0) {
             val limits = active.mapNotNull { course -> freeLimit(course.bossId, week).takeIf { it != Int.MAX_VALUE }?.let { course.bossId to it } }.toMap()
-            val input = config.copy(start = start, courses = active, weekdayMinutes = capacity, studyWindows = null,
+            val input = config.copy(start = start, courses = active, weekdayMinutes = capacity, studyWindows = null, breakMinutes = 0,
                 weeklyGoalMinutes = freeGoal(week), weeklyScheduling = if (config.weeklyScheduling == null) null else WeeklySchedulingPolicy(limits))
             val needs = WeeklyAllocationNeeds(
                 active.associate { it.bossId to (it.remainingMinutes - futureCapacity(end.plusDays(1), it.finishBy, it.bossId)).coerceAtLeast(0) },
@@ -87,20 +91,27 @@ private fun buildAroundStudyLocks(config: PlannerConfig, locks: List<StudyBlock>
             if (courses.isNotEmpty()) {
                 val dated = buildStudyPlan(input.copy(courses = courses, weeklyGoalMinutes = null, weeklyScheduling = null))
                 check(dated.shortfalls.isEmpty())
-                dated.blocks.groupBy { it.date }.forEach { (date, dayBlocks) ->
-                    val gaps = studyGaps(checkNotNull(config.studyWindows).days[date.dayOfWeek.value - 1].windows, byDay[date].orEmpty())
-                    var index = 0
-                    var cursor = gaps.first().first
-                    dayBlocks.forEach { block ->
-                        var minutes = block.minutes
-                        while (minutes > 0) {
-                            if (cursor == gaps[index].second) { index++; cursor = gaps[index].first }
-                            val part = minOf(minutes, gaps[index].second - cursor)
-                            append(block.copy(minutes = part, startMinute = cursor))
-                            cursor += part
-                            minutes -= part
-                        }
+                if (config.breakMinutes > 0) {
+                    packStudyWeekWithBreaks(config, dated, locks).forEach { block ->
+                        append(block)
                         remaining[block.bossId] = remaining.getValue(block.bossId) - block.minutes
+                    }
+                } else {
+                    dated.blocks.groupBy { it.date }.forEach { (date, dayBlocks) ->
+                        val gaps = studyFreeGaps(checkNotNull(config.studyWindows).days[date.dayOfWeek.value - 1].windows, byDay[date].orEmpty(), 0)
+                        var index = 0
+                        var cursor = gaps.first().first
+                        dayBlocks.forEach { block ->
+                            var minutes = block.minutes
+                            while (minutes > 0) {
+                                if (cursor == gaps[index].second) { index++; cursor = gaps[index].first }
+                                val part = minOf(minutes, gaps[index].second - cursor)
+                                append(block.copy(minutes = part, startMinute = cursor))
+                                cursor += part
+                                minutes -= part
+                            }
+                            remaining[block.bossId] = remaining.getValue(block.bossId) - block.minutes
+                        }
                     }
                 }
             }
@@ -108,15 +119,4 @@ private fun buildAroundStudyLocks(config: PlannerConfig, locks: List<StudyBlock>
         week = week.plusWeeks(1)
     }
     return StudyPlan(config, blocks)
-}
-
-private fun studyGaps(windows: List<StudyTimeWindow>, locks: List<StudyBlock>): List<Pair<Int, Int>> = buildList {
-    windows.forEach { window ->
-        var cursor = window.startMinute
-        locks.filter { it.startMinute!! >= window.startMinute && it.startMinute < window.endMinute }.sortedBy { it.startMinute }.forEach { block ->
-            if (cursor < block.startMinute!!) add(cursor to block.startMinute)
-            cursor = block.startMinute + block.minutes
-        }
-        if (cursor < window.endMinute) add(cursor to window.endMinute)
-    }
 }

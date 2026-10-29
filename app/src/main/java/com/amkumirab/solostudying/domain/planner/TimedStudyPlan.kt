@@ -26,7 +26,7 @@ internal fun validateStudyTimes(config: PlannerConfig, blocks: List<StudyBlock>)
             day.windows.any { start >= it.startMinute && start + block.minutes <= it.endMinute }
     })
     require(blocks.groupBy { it.date }.values.all { day ->
-        day.sortedBy { it.startMinute }.zipWithNext().all { (a, b) -> a.startMinute!! + a.minutes <= b.startMinute!! }
+        day.sortedBy { it.startMinute }.zipWithNext().all { (a, b) -> a.startMinute!! + a.minutes + config.breakMinutes <= b.startMinute!! }
     })
 }
 
@@ -53,18 +53,8 @@ internal fun assignStudyTimes(datePlan: StudyPlan, config: PlannerConfig): Study
 }
 
 /** Earliest complete gap; accepted blocks cannot be split because their IDs carry credit. */
-internal fun firstStudySlot(windows: List<StudyTimeWindow>, occupied: List<StudyBlock>, minutes: Int): Int? {
-    val ordered = occupied.sortedBy { it.startMinute }
-    windows.forEach { window ->
-        var cursor = window.startMinute
-        ordered.filter { it.startMinute!! < window.endMinute && it.startMinute + it.minutes > window.startMinute }.forEach { block ->
-            if (cursor + minutes <= block.startMinute!!) return cursor
-            cursor = maxOf(cursor, block.startMinute + block.minutes)
-        }
-        if (cursor + minutes <= window.endMinute) return cursor
-    }
-    return null
-}
+internal fun firstStudySlot(windows: List<StudyTimeWindow>, occupied: List<StudyBlock>, minutes: Int, breakMinutes: Int = 0): Int? =
+    studyFreeGaps(windows, occupied, breakMinutes).firstOrNull { it.second - it.first >= minutes }?.first
 
 /** Move one unstudied slot, preserving list order, ID, duration and credit baselines. */
 fun moveTimedStudyBlock(plan: StudyPlan, blockId: Int, date: LocalDate, startMinute: Int, today: LocalDate, creditedSeconds: Long): StudyPlan? {

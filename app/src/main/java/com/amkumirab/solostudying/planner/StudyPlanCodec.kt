@@ -20,9 +20,11 @@ fun encodeStudyPlan(plan: StudyPlan): String {
     val hasLocks = plan.blocks.any { it.locked }
     val hasDurationEdits = plan.blocks.any { it.durationEdited }
     val hasManualSessions = plan.blocks.any { it.manual }
+    val hasBreaks = plan.config.breakMinutes > 0
     val body = JSONObject().apply {
         put("start", plan.config.start.toString())
         put("sessionMinutes", plan.config.sessionMinutes)
+        if (hasBreaks) put("breakMinutes", plan.config.breakMinutes)
         plan.config.weeklyGoalMinutes?.let { put("weeklyGoalMinutes", it) }
         plan.config.weeklyScheduling?.let { policy ->
             put("weeklyCourseLimits", JSONArray().apply {
@@ -56,15 +58,16 @@ fun encodeStudyPlan(plan: StudyPlan): String {
                     put("date", block.date.toString())
                     put("minutes", block.minutes)
                     block.startMinute?.let { put("startMinute", it) }
-                    if (hasLocks || hasDurationEdits || hasManualSessions) put("locked", block.locked)
-                    if (hasDurationEdits || hasManualSessions) put("durationEdited", block.durationEdited)
-                    if (hasManualSessions) put("manual", block.manual)
+                    if (hasBreaks || hasLocks || hasDurationEdits || hasManualSessions) put("locked", block.locked)
+                    if (hasBreaks || hasDurationEdits || hasManualSessions) put("durationEdited", block.durationEdited)
+                    if (hasBreaks || hasManualSessions) put("manual", block.manual)
                 })
             }
         })
     }
     return JSONObject().apply {
         put("version", when {
+            hasBreaks -> 10
             hasManualSessions -> 9
             hasDurationEdits -> 8
             hasLocks -> 7
@@ -78,7 +81,7 @@ fun encodeStudyPlan(plan: StudyPlan): String {
     }.toString().also { require(it.length <= MAX_RECORD_CHARACTERS) }
 }
 
-/** Reads versions 1–9 without writing storage; legacy priority bounds remain enforced. */
+/** Reads versions 1–10 without writing storage; legacy priority bounds remain enforced. */
 fun decodeStudyPlan(text: String): StudyPlan {
     require(text.length <= MAX_RECORD_CHARACTERS)
     val tokens = JSONTokener(text)
@@ -87,10 +90,11 @@ fun decodeStudyPlan(text: String): StudyPlan {
     val version = json.strictLong("version")
     val body = when (version) {
         1L -> json.also { it.requireFields(planFields + "version") }
-        2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L -> {
+        2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L -> {
             json.requireFields(setOf("version", "kind", "plan"))
             require(json.get("kind") == if (version >= 6L) "timed" else "date_only")
             val fields = when (version) {
+                10L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits", "studyWindows", "breakMinutes")
                 6L, 7L, 8L, 9L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits", "studyWindows")
                 5L -> planFields + setOf("weeklyGoalMinutes", "weeklyCourseLimits")
                 4L -> planFields + "weeklyGoalMinutes"
@@ -124,10 +128,11 @@ private fun decodePlanBody(json: JSONObject, maxPriority: Int, version: Long): S
         weeklyGoalMinutes = if (version < 4L || version >= 6L && json.isNull("weeklyGoalMinutes")) null else json.strictInt("weeklyGoalMinutes"),
         weeklyScheduling = if (version == 5L || version >= 6L && !json.isNull("weeklyCourseLimits")) decodeWeeklyPolicy(json.getJSONArray("weeklyCourseLimits")) else null,
         studyWindows = if (version >= 6L) decodeWeeklyAvailability(json.getJSONObject("studyWindows").toString()) else null,
+        breakMinutes = if (version >= 10L) json.strictInt("breakMinutes").also { require(it in 1..30) } else 0,
     )
     return StudyPlan(config, List(blocks.length()) { index ->
         val block = blocks.getJSONObject(index)
-        block.requireFields(when { version == 9L -> blockFields + setOf("startMinute", "locked", "durationEdited", "manual")
+        block.requireFields(when { version >= 9L -> blockFields + setOf("startMinute", "locked", "durationEdited", "manual")
             version == 8L -> blockFields + setOf("startMinute", "locked", "durationEdited")
             version == 7L -> blockFields + setOf("startMinute", "locked")
             version == 6L -> blockFields + "startMinute"
@@ -136,7 +141,7 @@ private fun decodePlanBody(json: JSONObject, maxPriority: Int, version: Long): S
             if (version >= 6L) block.strictInt("startMinute") else null,
             if (version >= 7L) block.strictBoolean("locked") else false,
             if (version >= 8L) block.strictBoolean("durationEdited") else false,
-            if (version == 9L) block.strictBoolean("manual") else false)
+            if (version >= 9L) block.strictBoolean("manual") else false)
     })
 }
 

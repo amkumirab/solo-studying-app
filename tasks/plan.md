@@ -10,7 +10,9 @@ Preserve old plans, credit, locked slots and the existing break timer.
    verify domain/storage regression, lint and Debug build; commit foundation.
 3. Add a session-step control and truthful preview/week labels. Test saved drafts,
    incomplete-plan confirmation and real saves. Run full tests, lint, both APKs
-   and scoped review; commit the interface. Keep commits local until requested.
+   and scoped review. Deliver three focused commits for scheduling/storage,
+   interface/interactions, and native layout QA/docs. Publish after verification
+   when requested; no store release or tracked APK is included.
 
 ## Custom study sessions
 

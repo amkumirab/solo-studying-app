@@ -13,8 +13,27 @@
   - 141 domain/storage tests passed on 2026-10-29. lintDebug: zero errors and the
     same 38 existing warnings. assembleDebug succeeded. Zero-gap behavior,
     strict legacy reads, credit ordering and guarded mutations remain covered.
-- [ ] Wizard control, preview/week gap labels and interaction tests.
-- [ ] Full tests, lint, APKs, review and interface commit; report phone QA limits.
+- [x] Wizard control, preview/week gap labels and interaction tests.
+  - Four UI cases failed before the controls and interval labels were added.
+    Draft restoration, invalid/busy input, explicit incomplete-plan acceptance,
+    real persistence, locked conflicts, cancellation and retained rebuild gaps
+    are covered. Custom-session suggestions honor the accepted spacing.
+  - 73 focused tests passed. Native 320 dp / 1.5-font-scale text and 48 dp action
+    checks passed. Rendered editor and weekly gap PNGs were visually reviewed.
+- [x] Full tests, lint, APKs, review and three focused commits; report phone QA limits.
+  - Final verification on 2026-10-29: 514 tests, zero failures/errors/skips.
+    lintDebug: zero errors and the same 38 existing warnings, none added here.
+    Debug and unsigned Release built. No dependencies, permissions, Room schema,
+    CI configuration, timer behavior or reward calculations were changed.
+  - Reviewed strict storage, exact accounting, bounded packing, manual edit guards,
+    stale-preview saves, restored drafts and accessibility. No checks or test
+    assertions were weakened. Delivery is split into three focused commits:
+    scheduling/storage, settings/timetable interactions, and layout QA/docs.
+    Repository publication does not include a store release or APK upload.
+  - Debug package signature v2 and package metadata verified. A uniquely named APK
+    and SHA-256 sidecar are ignored build outputs, not repository content.
+    No device/emulator attached: physical upgrade, rotation and TalkBack remain
+    manual checks. This does not complete the entire university-planner roadmap.
 
 - [x] Four destinations and contextual session return.
   - Verify labels, selection, callbacks and paused state in Compose tests.

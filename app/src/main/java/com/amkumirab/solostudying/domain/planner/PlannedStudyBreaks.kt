@@ -2,6 +2,15 @@ package com.amkumirab.solostudying.domain.planner
 
 import java.time.LocalDate
 
+internal data class PlannedStudyBreak(val afterBlockId: Int, val startMinute: Int, val minutes: Int)
+
+/** Derived display data, never stored as study work or credited to a course. */
+internal fun plannedStudyBreaks(plan: StudyPlan, date: LocalDate): List<PlannedStudyBreak> =
+    if (plan.config.breakMinutes == 0) emptyList() else plan.blocks.filter { it.date == date }
+        .sortedBy { it.startMinute }.zipWithNext().map { (first, _) ->
+            PlannedStudyBreak(first.id, checkNotNull(first.startMinute) + first.minutes, plan.config.breakMinutes)
+        }
+
 internal fun PlannerConfig.plannableStudyCapacity(date: LocalDate): Int =
     if (breakMinutes == 0) capacity(date) else minOf(capacity(date), breakAwareStudyCapacity(this, date))
 

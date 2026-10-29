@@ -115,6 +115,21 @@ time. The editor previews the end time and rejects overlaps, dates outside the
 course horizon and accepted capacity limits. Cancel never saves the draft.
 See [timed sessions](docs/PLANNER_TIMED_SESSIONS.md).
 
+In **Edit answers**, the session-length step also offers **Break length
+(minutes)** for timed plans. Choose 0–30 whole minutes; 0 keeps the previous
+no-gap schedule. Preview and save explicitly to apply it. Natural gaps between
+windows count toward the minimum, with no required break before the first or
+after the last session of a day. Break intervals appear separately in the preview
+and weekly timetable; they never count as study, credit, weekly goals or rewards,
+and do not start the break timer automatically.
+
+Generation and manual add/move/resize actions honor the same gap. Locked slots
+stay fixed; incompatible locks block saving. Capacity estimates allow for breaks,
+but course boundaries and locked slots can reduce usable study time further.
+Review the actual sessions and unscheduled work before accepting a plan. Old
+plans are unchanged until explicitly edited and saved. See
+[planned breaks](docs/PLANNER_BREAKS.md).
+
 Choose **Lock session** to keep an unstudied timed slot fixed during rebuilding
 and answer edits. Locked slots reserve their full duration against daily, weekly
 and course limits. Conflicts are explained without replacing the accepted plan.

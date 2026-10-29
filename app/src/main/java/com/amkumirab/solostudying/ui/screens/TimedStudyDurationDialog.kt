@@ -48,6 +48,7 @@ internal fun TimedStudyDurationDialog(
                 Text(name, style = MaterialTheme.typography.titleMedium)
                 Text("${block.date} · ${block.clockRange()} · ${block.minutes} min")
                 Text("Date and start time stay fixed. Extra time uses unscheduled work, then later-day unlocked sessions for this course. Review every change before applying.")
+                if (plan.config.breakMinutes > 0) Text("The ${plan.config.breakMinutes}-minute minimum break must still fit before the next session.", style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(durationText, { durationText = it.take(3) }, enabled = !unavailable,
                     label = { Text("Duration (minutes)") }, supportingText = { Text("1 to 120 whole minutes; preferred length stays ${plan.config.sessionMinutes} min") },
                     isError = minutes == null, singleLine = true,

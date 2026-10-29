@@ -97,7 +97,8 @@ private fun ScheduledWeeklyAllocationCard(plan: StudyPlan, bosses: List<BossEnti
                 }
             }
             Text("Unused goal: ${plannerTimeLabel(goal - total)} · Free capacity: ${plannerTimeLabel(available - total)}")
-            Text("Only remaining course work is scheduled. Unused goal time is not extra work or completed study. Saving keeps these date-only sessions.", style = MaterialTheme.typography.bodySmall)
+            if (plan.config.breakMinutes > 0) Text("Available and free totals are budget ceilings, including room for breaks. They are not a promise that another study session fits.", style = MaterialTheme.typography.bodySmall)
+            Text("Only remaining course work is scheduled. Unused goal time is not extra work or completed study. Saving keeps these displayed sessions.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -117,6 +118,7 @@ internal fun WeeklyGoalSummary(plan: StudyPlan, weekStart: LocalDate, modifier: 
             Text("Goal: ${plannerTimeLabel(goal)} · Scheduled: ${plannerTimeLabel(scheduled)}", modifier = Modifier.testTag("weekly_actual_total"))
             LinearProgressIndicator(progress = { if (goal == 0) 0f else (scheduled.toFloat() / goal).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
             Text("Available: ${plannerTimeLabel(available)} · Free: ${plannerTimeLabel((available - scheduled).coerceAtLeast(0))}")
+            if (plan.config.breakMinutes > 0) Text("Budget ceilings include room for breaks. Check the actual timetable before adding more study time.", style = MaterialTheme.typography.bodySmall)
             Text(if (scheduled > goal) "Scheduled above your goal: ${plannerTimeLabel(scheduled - goal)}"
                 else "Still to schedule: ${plannerTimeLabel(goal - scheduled)}")
             Text(if (plan.config.weeklyScheduling != null) "Scheduled time is planned work, not completed study. Weekly and saved course limits apply to moves too. Edit answers to preview a different split."

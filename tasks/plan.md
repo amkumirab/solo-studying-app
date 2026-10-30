@@ -1,5 +1,19 @@
 # App organization
 
+## Weekly planner report
+
+Approved university-planner analytics slice: `docs/PLANNER_WEEKLY_REPORT.md`.
+Keep aggregation pure and planning data distinct from credited work. Do not add
+activity-date claims, new storage, dependencies or a replacement dashboard.
+
+1. Test and implement exact day/course/priority totals and existing credit-ledger
+   attribution; verify planner regressions and Debug build; commit foundation.
+2. Build report views from current theme controls with read-only selection,
+   empty states and accessible chart labels; test interactions; commit charts.
+3. Add a dedicated weekly report route/dialog with previous/next week and return.
+   Test restoration, reactive changes and byte-identical saved records. Review,
+   run full tests, lint and both APK builds; commit integration and docs locally.
+
 ## Planner breaks
 
 Approved next university-planner slice: `docs/PLANNER_BREAKS.md`.

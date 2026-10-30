@@ -1,5 +1,17 @@
 # App organization
 
+## Weekly planner report
+
+- [x] Report aggregation red tests; exact totals and credit boundaries.
+  - Six new cases cover complete-ledger credit, exact seconds, breaks, empty
+    weeks, removed goals, accepted priorities and generated progress bounds.
+- [x] Planner regression and Debug build; foundation commit.
+  - 111 planner tests passed; Debug build and lintDebug succeeded on 2026-10-30.
+- [ ] Read-only charts, selection, labels and interaction tests; charts commit.
+- [ ] Dedicated report entry, week navigation, restoration and persistence checks.
+- [ ] Full tests, lint, APKs, native render review and integration commit.
+
+
 ## Planner breaks
 
 - [x] Domain and persistence red tests; implement spacing and mutation guards.

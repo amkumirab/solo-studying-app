@@ -7,7 +7,9 @@
     weeks, removed goals, accepted priorities and generated progress bounds.
 - [x] Planner regression and Debug build; foundation commit.
   - 111 planner tests passed; Debug build and lintDebug succeeded on 2026-10-30.
-- [ ] Read-only charts, selection, labels and interaction tests; charts commit.
+- [x] Read-only charts, selection, labels and interaction tests; charts commit.
+  - Five Compose tests passed: exact values, accepted priorities, empty weeks,
+    missing goals, live updates, selection restoration and week bounds.
 - [ ] Dedicated report entry, week navigation, restoration and persistence checks.
 - [ ] Full tests, lint, APKs, native render review and integration commit.
 

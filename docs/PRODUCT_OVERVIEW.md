@@ -81,6 +81,14 @@ moving unfinished sessions to later available days, preserving future blocks
 and earned credit. A shortage prevents any partial save; confirmation is required.
 See [the Today integration contract](TODAY_PLANNER.md).
 
+The accepted weekly plan also opens a separate, read-only report. Daily bars
+compare planned focus against the busiest day's scale; subject and priority bars
+show shares of that week's planned focus. Tapping a row exposes exact durations,
+session clocks or accepted priorities. Reserved breaks remain separate from
+focus time. Session credit follows the full existing ledger and is explicitly
+not actual activity during the displayed week. Report navigation and restored
+selections never save or rebuild a plan. See [weekly reports](PLANNER_WEEKLY_REPORT.md).
+
 ### Persistence
 
 Room stores the profile, dungeons, bosses, skills, rewards, reward balances, and

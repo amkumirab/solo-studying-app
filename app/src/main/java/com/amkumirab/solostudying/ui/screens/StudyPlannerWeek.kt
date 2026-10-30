@@ -22,6 +22,7 @@ import java.time.LocalDate
 fun StudyPlannerWeek(
     plan: StudyPlan, bosses: List<BossEntity>, today: LocalDate, isSessionActive: Boolean,
     onStart: (BossEntity, Int) -> Unit, onMove: (StudyPlan) -> Unit, modifier: Modifier = Modifier, subjects: List<PlannerSubject> = emptyList(),
+    onOpenReport: ((LocalDate) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val datePicker = remember { mutableStateOf<DatePickerDialog?>(null) }
@@ -44,6 +45,8 @@ fun StudyPlannerWeek(
         item {
             Text("Weekly study plan", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
             Text("$weekStart — ${weekStart.plusDays(6)}")
+            if (onOpenReport != null) OutlinedButton(onClick = { onOpenReport(weekStart) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_weekly_report")) { Text("Weekly report") }
             WeeklyGoalSummary(plan, weekStart)
             if (plan.config.studyWindows != null) Text("Local clock times · saved study windows apply. Study can start early. Lock a session to keep its slot when rebuilding.", style = MaterialTheme.typography.bodySmall)
             if (plan.config.breakMinutes > 0) Text("${plan.config.breakMinutes}-minute minimum breaks also apply when moving, adding or resizing sessions. Breaks are not study time.", style = MaterialTheme.typography.bodySmall)

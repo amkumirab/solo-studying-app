@@ -10,8 +10,24 @@
 - [x] Read-only charts, selection, labels and interaction tests; charts commit.
   - Five Compose tests passed: exact values, accepted priorities, empty weeks,
     missing goals, live updates, selection restoration and week bounds.
-- [ ] Dedicated report entry, week navigation, restoration and persistence checks.
-- [ ] Full tests, lint, APKs, native render review and integration commit.
+- [x] Dedicated report entry, week navigation, restoration and persistence checks.
+  - The real entry restores report state and the original calendar week without
+    changing saved plan, subject or availability bytes. No study starts or saves
+    are available from the report. Editing controls stay outside it.
+- [x] Full tests, lint, APKs, native render review and integration commit.
+  - Final local run on 2026-10-30: 529 tests, zero failures/errors/skips, including
+    tied busiest days. lintDebug: zero errors and 38 existing warnings; none in
+    changed files. Debug and unsigned Release builds succeeded.
+  - Native 320 dp / 1.5-font-scale and 800 dp renders passed full-label and 48 dp
+    target checks. Visual review caught split tab words; wrapping chips and a
+    collapsible credit explanation keep the report readable. Zero bars have no
+    colored fill. No test checks were weakened.
+  - Named Debug APK and checksum are recorded in docs/PLANNER_WEEKLY_REPORT.md.
+    Its signature matches the prior test APK. Phone upgrade, rotation, system
+    Back, TalkBack and keyboard smoke checks remain pending: no device connected.
+  - Three focused commits stay local on feature/planner-weekly-report. The
+    consolidated planner dashboard and final roadmap acceptance are still later
+    work. No push or store publication is included in this implementation turn.
 
 
 ## Planner breaks

@@ -66,7 +66,7 @@ internal fun PlannerReportCharts(
                         val sessions = plan.blocks.filter { it.date == day.date }
                             .sortedWith(compareBy<StudyBlock> { it.startMinute ?: 0 }.thenBy { it.id })
                         Detail(buildString {
-                            append("${day.sessionCount} sessions · ${plannerTimeLabel(day.breakMinutes)} reserved breaks\n")
+                            append("${day.sessionCount} ${if (day.sessionCount == 1) "session" else "sessions"} · ${plannerTimeLabel(day.breakMinutes)} reserved breaks\n")
                             append(sessions.joinToString("\n") { block ->
                                 val clock = block.clockRange()?.let { "$it · " }.orEmpty()
                                 "$clock${courseName(block.bossId)} · ${plannerTimeLabel(block.minutes)} planned"

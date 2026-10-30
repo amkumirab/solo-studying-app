@@ -38,6 +38,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Weekly availability with multiple local-time windows per day, half-hour editing, rest days, and daily capacity ceilings
 - Local start/end times inside accepted study windows, with exact-minute sessions and overlap-safe rescheduling
 - Optional weekly study goals with priority-weighted sessions, saved course limits, and honest unscheduled-work warnings
+- Read-only weekly planning reports with daily, subject and priority charts, exact time values and separate session credit
 - Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
 - One-tap focus presets that remember the last duration and skill
@@ -166,6 +167,16 @@ priority, finish dates, remaining effort and course weekly limits. Review any
 unscheduled work before saving. Old plans stay unchanged until you edit and save
 or confirm a rebuild. Moves and postponements respect accepted weekly limits;
 see [weekly sessions](docs/PLANNER_WEEKLY_SESSIONS.md).
+
+Choose **Weekly report** in an accepted weekly plan to inspect that week without
+editing it. Switch between **Days**, **Subjects** and **Priority**, then tap a row
+for its sessions or allocation details. Previous/next week changes only the
+report; **Back to schedule** returns to the calendar where you left it.
+Planned focus excludes reserved breaks. **Credit assigned to these sessions**
+uses the existing session-order ledger, not the dates when you studied, and can
+include sessions credited by a completed goal. See **Profile → History** for
+actual study records. No new permission, dependency or storage format is needed.
+See [weekly reports](docs/PLANNER_WEEKLY_REPORT.md).
 
 ## Tech stack
 

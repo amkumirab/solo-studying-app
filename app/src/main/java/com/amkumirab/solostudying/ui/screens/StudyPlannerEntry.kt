@@ -35,6 +35,7 @@ fun StudyPlannerEntry(
 ) {
     val state by plannerViewModel.state.collectAsStateWithLifecycle()
     var open by rememberSaveable { mutableStateOf(false) }
+    var reportWeek by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedSection by rememberSaveable { mutableStateOf("Schedule") }
     var editing by rememberSaveable { mutableStateOf(false) }
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
@@ -64,11 +65,11 @@ fun StudyPlannerEntry(
                     onSave = { updated, saved -> plannerViewModel.save(updated, state.snapshot, saved) }, subjects = state.subjects)
             }
         }
-        if (open) Dialog(onDismissRequest = { if (!busy) open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        if (open) Dialog(onDismissRequest = { if (!busy) { if (reportWeek != null) reportWeek = null else open = false } }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Surface(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
                     TextButton(onClick = { open = false }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close planner") }
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (reportWeek == null || state.plan == null) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("Schedule", "Subjects", "Availability").forEach { section ->
                             FilterChip(selected = selectedSection == section, onClick = { selectedSection = section }, enabled = !busy,
                                 label = { Text(section) }, modifier = Modifier.heightIn(min = 48.dp))
@@ -86,7 +87,11 @@ fun StudyPlannerEntry(
                     if (!state.loaded) {
                         Text("Loading planner settings…", modifier = Modifier.padding(16.dp))
                     } else restoredEditor.SaveableStateProvider("planner-editor") {
-                    if (selectedSection == "Availability") {
+                    if (reportWeek != null && plan != null) {
+                        WeeklyPlannerReportScreen(plan, bosses, today, LocalDate.parse(reportWeek),
+                            onWeekChange = { reportWeek = it.toString() }, onBack = { reportWeek = null },
+                            modifier = Modifier.weight(1f), subjects = state.subjects)
+                    } else if (selectedSection == "Availability") {
                         PlannerAvailabilityScreen(state.snapshot, plan?.config?.weekdayMinutes ?: weekdayDefaults, busy, state.availabilityError, state.unreadableAvailability,
                             onSave = { value, expected, saved -> plannerViewModel.saveAvailability(value, expected, saved) },
                             onReset = { plannerViewModel.clearAvailability(it) }, modifier = Modifier.weight(1f))
@@ -114,10 +119,13 @@ fun StudyPlannerEntry(
                         }
                         TextButton(onClick = { confirmation = "clear" }, enabled = !busy, modifier = Modifier.padding(horizontal = 16.dp).heightIn(min = 48.dp)) { Text("Remove plan") }
                         actionError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
+                        restoredEditor.SaveableStateProvider("planner-week") {
                         StudyPlannerWeek(plan, bosses, today, isSessionActive || busy,
                             onStart = { boss, minutes ->
                                 if (!isSessionActive && !busy) { onStart(boss, minutes); open = false }
-                            }, onMove = { plannerViewModel.save(it, state.snapshot) }, modifier = Modifier.weight(1f), subjects = state.subjects)
+                            }, onMove = { plannerViewModel.save(it, state.snapshot) }, modifier = Modifier.weight(1f), subjects = state.subjects,
+                            onOpenReport = { reportWeek = it.toString() })
+                        }
                     }
                     }
                 }

@@ -105,4 +105,16 @@ class WeeklyPlannerReportScreenTest {
         rule.onNodeWithTag("report_back").assertIsDisplayed().performClick()
         rule.runOnIdle { assertEquals(monday, displayedWeek.value); assertEquals(1, backs) }
     }
+
+    @Test fun `credit explanation expands on request without obscuring the planned label`() {
+        rule.setContent { SoloStudyingTheme { Surface {
+            WeeklyPlannerReportScreen(plan, bosses, monday, monday, {}, {})
+        } } }
+        rule.onNodeWithText("Not study performed during this week.").assertExists()
+        rule.onAllNodesWithText("Credit follows session order", substring = true).assertCountEquals(0)
+        rule.onNodeWithTag("report_credit_help").performScrollTo().performClick()
+        rule.onNodeWithText("Credit follows session order", substring = true).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("report_credit_help").performScrollTo().performClick()
+        rule.onAllNodesWithText("Credit follows session order", substring = true).assertCountEquals(0)
+    }
 }

@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun WeeklyPlannerReportScreen(
     plan: StudyPlan, bosses: List<BossEntity>, today: LocalDate, weekStart: LocalDate,
     onWeekChange: (LocalDate) -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier,
@@ -26,6 +27,7 @@ internal fun WeeklyPlannerReportScreen(
 ) {
     val report = remember(plan, bosses, weekStart) { weeklyPlannerReport(plan, bosses, weekStart) }
     var section by rememberSaveable { mutableStateOf("Days") }
+    var creditHelp by rememberSaveable { mutableStateOf(false) }
     val firstMonday = plan.config.start.minusDays(plan.config.start.dayOfWeek.value - 1L)
     val finish = plan.config.courses.maxOf { it.finishBy }
     val currentMonday = today.minusDays(today.dayOfWeek.value - 1L)
@@ -52,14 +54,18 @@ internal fun WeeklyPlannerReportScreen(
                     if (plan.config.breakMinutes > 0) Text("Reserved breaks: ${plannerTimeLabel(report.breakMinutes)} · not study time")
                     Text("Credit assigned to these sessions: ${plannerCreditLabel(report.creditedSeconds)}",
                         modifier = Modifier.testTag("report_credit"))
-                    Text("Credit follows session order, not the date you studied. Completed goals can fully credit their sessions. For actual study dates, see Profile → History.",
+                    Text("Not study performed during this week.", style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { creditHelp = !creditHelp }, modifier = Modifier.heightIn(min = 48.dp).testTag("report_credit_help")) {
+                        Text(if (creditHelp) "Hide credit explanation" else "About session credit")
+                    }
+                    if (creditHelp) Text("Credit follows session order, not the date you studied. Completed goals can fully credit their sessions. For actual study dates, see Profile → History.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Days", "Subjects", "Priority").forEach { tab ->
                     FilterChip(selected = section == tab, onClick = { section = tab }, label = { Text(tab) },
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("report_section_$tab"))
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("report_section_$tab"))
                 }
             }
             if (report.plannedMinutes == 0) Text("No focus time is planned for this week.", style = MaterialTheme.typography.bodyMedium)

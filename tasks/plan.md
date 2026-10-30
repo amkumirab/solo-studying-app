@@ -14,6 +14,10 @@ activity-date claims, new storage, dependencies or a replacement dashboard.
    Test restoration, reactive changes and byte-identical saved records. Review,
    run full tests, lint and both APK builds; commit integration and docs locally.
 
+Completed locally on 2026-10-30. See the report contract for verification and
+remaining physical checks. This closes the analytics slice, not the consolidated
+planner dashboard or final roadmap acceptance. Await a separate push request.
+
 ## Planner breaks
 
 Approved next university-planner slice: `docs/PLANNER_BREAKS.md`.

@@ -26,6 +26,8 @@ class WeeklyPlannerReportTest {
         assertEquals(0L, report.creditedSeconds)
         assertEquals(source, plan())
         assertEquals(report, weeklyPlannerReport(source.copy(blocks = source.blocks.reversed()), bosses, monday))
+        val tied = source.copy(blocks = source.blocks.map { if (it.date <= monday.plusDays(6)) it.copy(minutes = 10) else it })
+        assertEquals((0L..4L).map(monday::plusDays), weeklyPlannerReport(tied, bosses, monday).busiestDays)
     }
 
     @Test fun `credit is assigned across the full ID ledger before filtering the week`() {

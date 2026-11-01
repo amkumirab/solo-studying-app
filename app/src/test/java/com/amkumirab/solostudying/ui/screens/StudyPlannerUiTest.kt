@@ -82,6 +82,7 @@ class StudyPlannerUiTest {
         rule.setContent { SoloStudyingTheme {
             StudyPlannerWeek(plan, listOf(boss), today, false, { goal, minutes -> started = goal.id to minutes }, {})
         } }
+        rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("planner_start_1"))
         rule.onNodeWithTag("planner_start_1").performScrollTo().performClick()
         rule.runOnIdle { assertEquals(1 to 25, started) }
         rule.onNodeWithText("25 min left").assertExists()
@@ -90,6 +91,7 @@ class StudyPlannerUiTest {
     @Test fun `another active timer disables launch`() {
         val plan = buildStudyPlan(PlannerConfig(today, listOf(PlannerCourse(1, 25, today, 2, 0)), List(7) { 60 }, 25))
         rule.setContent { SoloStudyingTheme { StudyPlannerWeek(plan, listOf(boss), today, true, { _, _ -> fail() }, {}) } }
+        rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("planner_start_1"))
         rule.onNodeWithTag("planner_start_1").performScrollTo().assertIsNotEnabled()
     }
 
@@ -167,6 +169,7 @@ class StudyPlannerUiTest {
         val plan = buildStudyPlan(PlannerConfig(today, listOf(PlannerCourse(1, 25, today.plusDays(2), 2, 0)), listOf(60, 0, 60, 0, 0, 0, 0), 25))
         var moved: StudyPlan? = null
         rule.setContent { SoloStudyingTheme { StudyPlannerWeek(plan, listOf(boss), today, false, { _, _ -> }, { moved = it }) } }
+        rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("planner_move_1"))
         rule.onNodeWithTag("planner_move_1").performScrollTo().performClick()
         rule.runOnIdle {
             val date = today.plusDays(1)
@@ -174,6 +177,7 @@ class StudyPlannerUiTest {
             picker.datePicker.updateDate(date.year, date.monthValue - 1, date.dayOfMonth)
             picker.getButton(DialogInterface.BUTTON_POSITIVE).performClick()
         }
+        rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("That day is unavailable, full, or this block has already been studied."))
         rule.onNodeWithText("That day is unavailable, full, or this block has already been studied.").performScrollTo().assertExists()
         rule.runOnIdle { assertNull(moved) }
     }

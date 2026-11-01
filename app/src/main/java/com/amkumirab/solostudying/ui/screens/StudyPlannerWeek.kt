@@ -44,10 +44,14 @@ fun StudyPlannerWeek(
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text("Weekly study plan", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-            Text("$weekStart — ${weekStart.plusDays(6)}")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { weekOffset-- }, enabled = weekStart > firstMonday, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Previous week") }
+                OutlinedButton(onClick = { weekOffset++ }, enabled = weekStart.plusDays(6) < finish, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Next week") }
+            }
+            if (weekOffset != 0) TextButton(onClick = { weekOffset = 0 }, modifier = Modifier.heightIn(min = 48.dp)) { Text("This week") }
             if (onOpenReport != null) OutlinedButton(onClick = { onOpenReport(weekStart) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_weekly_report")) { Text("Weekly report") }
-            WeeklyGoalSummary(plan, weekStart)
+            OutlinedCard(Modifier.fillMaxWidth()) { PlannerWeekOverviewContent(plan, weekStart, Modifier.padding(12.dp)) }
             if (plan.config.studyWindows != null) Text("Local clock times · saved study windows apply. Study can start early. Lock a session to keep its slot when rebuilding.", style = MaterialTheme.typography.bodySmall)
             if (plan.config.breakMinutes > 0) Text("${plan.config.breakMinutes}-minute minimum breaks also apply when moving, adding or resizing sessions. Breaks are not study time.", style = MaterialTheme.typography.bodySmall)
             if (plan.config.studyWindows != null) {
@@ -55,11 +59,6 @@ fun StudyPlannerWeek(
                     course.finishBy >= today && bosses.any { it.id == course.bossId && !it.isCompleted }
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("planner_add_session")) { Text("Add session") }
             } else Text("To add or remove individual sessions, save Availability windows and accept a timed plan.", style = MaterialTheme.typography.bodySmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { weekOffset-- }, enabled = weekStart > firstMonday, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Previous week") }
-                OutlinedButton(onClick = { weekOffset++ }, enabled = weekStart.plusDays(6) < finish, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Next week") }
-            }
-            if (weekOffset != 0) TextButton(onClick = { weekOffset = 0 }, modifier = Modifier.heightIn(min = 48.dp)) { Text("This week") }
             if (isSessionActive) Text("Finish the active study session before starting another.")
             if (plan.shortfalls.isNotEmpty()) {
                 Text("Incomplete plan", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium)
@@ -77,14 +76,21 @@ fun StudyPlannerWeek(
         }
         repeat(7) { offset ->
             val date = weekStart.plusDays(offset.toLong())
+            val withinPlan = date in plan.config.start..finish
+            val dayBudget = if (withinPlan) plan.config.capacity(date) else 0
             val dayBlocks = progress.filter { it.block.date == date }.let { if (plan.config.studyWindows == null) it else it.sortedBy { entry -> entry.block.startMinute } }
             val breaks = plannedStudyBreaks(plan, date).associateBy { it.afterBlockId }
             item(key = "day_$date") {
                 Text("${date.dayOfWeek} · $date", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-                Text("${dayBlocks.sumOf { it.block.minutes }} / ${plan.config.capacity(date)} planned focus minutes", style = MaterialTheme.typography.bodySmall)
+                Text("${dayBlocks.sumOf { it.block.minutes }} / $dayBudget planned focus minutes", style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag("planner_day_budget_$date"))
                 if (breaks.isNotEmpty()) Text("Planned breaks: ${breaks.values.sumOf { it.minutes }} min · not study time",
                     style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("break_day_$date"))
-                if (dayBlocks.isEmpty()) Text(if (plan.config.capacity(date) == 0) "Rest day" else "No sessions planned")
+                if (dayBlocks.isEmpty()) Text(when {
+                    !withinPlan -> "Outside plan dates"
+                    dayBudget == 0 -> "Rest day"
+                    else -> "No sessions planned"
+                })
             }
             items(dayBlocks, key = { "block_${it.block.id}" }) { entry ->
                 val block = entry.block

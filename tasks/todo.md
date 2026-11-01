@@ -7,7 +7,15 @@
     totals, generated invariants, partial/outside weeks, zero/absent/excess goals,
     reserved breaks and immutable manual/locked sessions.
   - 119 planner tests passed; assembleDebug and lintDebug succeeded on 2026-11-01.
-- [ ] Compact shared overview, actual entry/calendar wiring and interaction tests.
+- [x] Compact shared overview, actual entry/calendar wiring and interaction tests.
+  - Five direct Compose cases passed, including exact progress semantics and
+    keyboard activation. Two real entry cases cover saved updates, restored
+    disclosures, selected-week/report agreement and unchanged planner records.
+  - 26 focused UI/regression/layout cases passed. The integration host now
+    matches the real Study page's vertical scroll; the open action is explicitly
+    scrolled into view and asserted displayed before activation.
+  - Existing zero-goal and full-label tests were updated for the replacement
+    overview, retaining their behavioral and layout checks.
 - [ ] Native layout, restoration and byte-identical persistence checks.
 - [ ] Full tests/lint/APKs, scoped review and final local commit; no push.
 - [ ] Physical upgrade, rotation, TalkBack, keyboard and reduced-motion checks.

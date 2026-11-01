@@ -79,9 +79,11 @@ class WeeklyStudyGoalUiTest {
     @Test fun `zero target reports actual scheduled time without marking it as completed`() {
         val plan = buildStudyPlan(config.copy(weeklyGoalMinutes = 0))
         val scheduled = plan.blocks.filter { it.date <= monday.plusDays(6) }.sumOf { it.minutes }
-        rule.setContent { SoloStudyingTheme { WeeklyGoalSummary(plan, monday) } }
-        rule.onNodeWithTag("weekly_actual_total").assertTextEquals("Goal: 0 min · Scheduled: ${plannerTimeLabel(scheduled)}")
-        rule.onNodeWithText("Scheduled above your goal: ${plannerTimeLabel(scheduled)}").assertExists()
-        rule.onNodeWithText("Scheduled time is planned work, not completed study. Edit answers to review your recommended split.").assertExists()
+        rule.setContent { SoloStudyingTheme { PlannerWeekOverviewContent(plan, monday) } }
+        rule.onNodeWithTag("overview_goal").assertTextEquals("Weekly goal", "0 min")
+        rule.onNodeWithTag("overview_planned").assertTextEquals("Planned focus", plannerTimeLabel(scheduled))
+        rule.onNodeWithTag("overview_feedback").assertTextEquals("Above goal by ${plannerTimeLabel(scheduled)}")
+        rule.onNodeWithTag("overview_progress").assertDoesNotExist()
+        rule.onNodeWithText("Planned time, not completed study.").assertExists()
     }
 }

@@ -49,15 +49,17 @@ fun StudyPlannerEntry(
         content(state.plan) {
             if (!showDailySessions) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Weekly study plan", style = MaterialTheme.typography.titleMedium)
-                    Text(state.plan?.let { "${it.config.courses.size} courses · guided weekly scheduling" }
-                        ?: "Choose courses, deadlines and available time. Your plan stays on this device.",
-                        style = MaterialTheme.typography.bodyMedium)
+                    val accepted = state.plan
+                    if (accepted == null) {
+                        Text("Weekly study plan", style = MaterialTheme.typography.titleMedium)
+                        Text("Choose courses, deadlines and available time. Your plan stays on this device.", style = MaterialTheme.typography.bodyMedium)
+                    }
                     state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     Button(
                         onClick = { open = true }, enabled = state.loaded && !isSessionActive && !busy,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_study_planner"),
                     ) { Text(if (!state.loaded) "Loading…" else if (state.plan == null) "Create weekly plan" else "Open weekly plan") }
+                    if (accepted != null) PlannerWeekOverviewContent(accepted, today.minusDays(today.dayOfWeek.value - 1L))
                 }
             } else {
                 StudyPlannerToday(state.plan, bosses, today, state.loaded, isSessionActive || busy, state.error,

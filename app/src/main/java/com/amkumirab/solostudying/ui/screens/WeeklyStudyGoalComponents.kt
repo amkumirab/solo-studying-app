@@ -102,27 +102,3 @@ private fun ScheduledWeeklyAllocationCard(plan: StudyPlan, bosses: List<BossEnti
         }
     }
 }
-
-@Composable
-internal fun WeeklyGoalSummary(plan: StudyPlan, weekStart: LocalDate, modifier: Modifier = Modifier) {
-    val goal = plan.config.weeklyGoalMinutes ?: return
-    val weekEnd = weekStart.plusDays(6)
-    val scheduled = plan.blocks.filter { it.date in weekStart..weekEnd }.sumOf { it.minutes }
-    val available = (0L..6L).sumOf { offset ->
-        val day = weekStart.plusDays(offset)
-        if (day < plan.config.start) 0 else plan.config.capacity(day)
-    }
-    OutlinedCard(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Weekly study goal", style = MaterialTheme.typography.titleMedium)
-            Text("Goal: ${plannerTimeLabel(goal)} · Scheduled: ${plannerTimeLabel(scheduled)}", modifier = Modifier.testTag("weekly_actual_total"))
-            LinearProgressIndicator(progress = { if (goal == 0) 0f else (scheduled.toFloat() / goal).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
-            Text("Available: ${plannerTimeLabel(available)} · Free: ${plannerTimeLabel((available - scheduled).coerceAtLeast(0))}")
-            if (plan.config.breakMinutes > 0) Text("Budget ceilings include room for breaks. Check the actual timetable before adding more study time.", style = MaterialTheme.typography.bodySmall)
-            Text(if (scheduled > goal) "Scheduled above your goal: ${plannerTimeLabel(scheduled - goal)}"
-                else "Still to schedule: ${plannerTimeLabel(goal - scheduled)}")
-            Text(if (plan.config.weeklyScheduling != null) "Scheduled time is planned work, not completed study. Weekly and saved course limits apply to moves too. Edit answers to preview a different split."
-                else "Scheduled time is planned work, not completed study. Edit answers to review your recommended split.", style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}

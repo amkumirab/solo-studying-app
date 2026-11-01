@@ -72,14 +72,14 @@ class WeeklyStudyGoalLayoutTest {
                     Column(Modifier.width(320.dp).verticalScroll(rememberScrollState()).padding(16.dp)) {
                         WeeklyStudyGoalEditor("4", {}, true)
                         WeeklyAllocationCard(plan, listOf(BossEntity(id = 1, name = "Operating Systems", difficulty = "Hard", requiredMinutes = 600)), emptyList())
-                        WeeklyGoalSummary(plan, start)
+                        PlannerWeekOverviewContent(plan, start)
                     }
                 }
             }
         }
         rule.onNodeWithTag("planner_weekly_goal").performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         listOf("Weekly goal (hours)", "Recommended weekly split", "Recommended: 4 h",
-            "4 h recommended · Priority 5", "Weekly study goal").forEach { text ->
+            "4 h recommended · Priority 5", "Weekly overview").forEach { text ->
             val layouts = mutableListOf<TextLayoutResult>()
             val node = rule.onNodeWithText(text, useUnmergedTree = true)
             // Scroll the outer text field, not its floating label through the field's

@@ -13,6 +13,11 @@ budgets, not guaranteed free slots; breaks and actual study stay distinct.
 3. Native large-font and tablet review, real persistence/reactivity checks,
    docs, full suite, lint and both APKs; third local commit. Do not push yet.
 
+Completed locally on 2026-11-01. Overview accounting and selected-week day labels
+agree; the open action remains visible above the summary. See the contract for
+verification and pending physical acceptance. Full original-spec audit is still
+later work. Publish only after a separate request.
+
 ## Weekly planner report
 
 Approved university-planner analytics slice: `docs/PLANNER_WEEKLY_REPORT.md`.

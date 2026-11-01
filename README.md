@@ -39,6 +39,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Local start/end times inside accepted study windows, with exact-minute sessions and overlap-safe rescheduling
 - Optional weekly study goals with priority-weighted sessions, saved course limits, and honest unscheduled-work warnings
 - Read-only weekly planning reports with daily, subject and priority charts, exact time values and separate session credit
+- Compact weekly planning overview with exact goal coverage, focus budgets, unallocated time and explicit target shortfalls
 - Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
 - One-tap focus presets that remember the last duration and skill
@@ -177,6 +178,17 @@ uses the existing session-order ledger, not the dates when you studied, and can
 include sessions credited by a completed goal. See **Profile → History** for
 actual study records. No new permission, dependency or storage format is needed.
 See [weekly reports](docs/PLANNER_WEEKLY_REPORT.md).
+
+**Study → Plan** now shows a compact overview of the current week. The calendar
+uses the same overview for its selected week: weekly goal, planned focus, study
+budget, unallocated budget and the percentage of the goal that is planned.
+**Planning details** explains the accounting. Budget values are accepted daily
+focus ceilings, not a promise that another session fits; breaks, deadlines and
+course limits still matter. Partial weeks use only dates within the plan, without
+silently reducing the weekly goal. Missing/zero targets and outside-plan weeks
+stay explicit. These figures are planned time, not completed study. The existing
+open action remains above the summary, and no plan is saved by inspection.
+See [overview accounting and phone checks](docs/PLANNER_OVERVIEW.md).
 
 ## Tech stack
 

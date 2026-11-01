@@ -62,6 +62,15 @@ of false so sessions saved by earlier versions retain their original behavior.
 
 ### Offline exam planner
 
+Study > Plan provides a current-week overview and the existing action to open
+the full planner. The calendar shows the same metrics for its selected week.
+Goal, planned focus, accepted study budget, unallocated budget and percentage
+planned update from accepted records. Primary navigation stays above the summary.
+No-target, zero-target, partial, outside-plan and over-goal cases have explicit
+feedback. Daily calendar budgets agree with the overview's plan-date bounds.
+Reserved breaks remain separate, and unused budget is not a guarantee that a
+new session fits. See [overview accounting](PLANNER_OVERVIEW.md).
+
 Study Hub > Today provides a guided planner for up to 20 existing course goals.
 It asks for remaining focus hours, finish-by dates, priorities, daily capacity,
 and preferred block length. The weekly plan protects earlier deadlines, prefers

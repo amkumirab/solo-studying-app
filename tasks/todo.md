@@ -16,9 +16,28 @@
     scrolled into view and asserted displayed before activation.
   - Existing zero-goal and full-label tests were updated for the replacement
     overview, retaining their behavioral and layout checks.
-- [ ] Native layout, restoration and byte-identical persistence checks.
-- [ ] Full tests/lint/APKs, scoped review and final local commit; no push.
+- [x] Native layout, restoration and byte-identical persistence checks.
+  - Four native cases cover 320 dp / 1.5-font-scale, 800 dp tablet, a no-target
+    calendar and a short large-font viewport. The primary action stays above
+    the overview. Seven day-budget labels match partial-week overview bounds.
+  - Real entry restoration and report navigation preserve plan, subject and
+    availability records. Saved plan updates refresh metrics; recorded credit
+    does not change planned focus. Keyboard disclosure activation passed.
+- [x] Full tests/lint/APKs, scoped review and delivery documentation.
+  - Final verification on 2026-11-01: 549 tests, zero failures/errors/skips.
+    lintDebug: zero errors and 38 pre-existing warnings, none in changed files.
+    Debug and unsigned Release builds succeeded; no assertions were disabled.
+  - Full regression exposed five layout-dependent paths. The open action was
+    moved above the overview, and virtualized session targets are scrolled into
+    composition before their original start/busy/invalid-move checks. Two new
+    red cases guard the short-viewport action and partial-week day budgets.
+  - Named Debug APK, signature verification and checksum are documented in
+    docs/PLANNER_OVERVIEW.md. Delivery is organized into four focused commits
+    for accounting, integration, native layout tests and documentation. The
+    explicit push request covers GitHub publication, not a store release.
 - [ ] Physical upgrade, rotation, TalkBack, keyboard and reduced-motion checks.
+  - No phone or emulator connected. The final requirements audit of the original
+    university planner prompt is still separate work, not claimed complete here.
 
 ## Weekly planner report
 

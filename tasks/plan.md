@@ -10,8 +10,15 @@ budgets, not guaranteed free slots; breaks and actual study stay distinct.
    regression and Debug verification; foundation commit.
 2. Shared overview content in Study > Plan and the selected calendar week;
    replace the goal-only summary, retain editor/report flows; interaction tests.
-3. Native large-font and tablet review, real persistence/reactivity checks,
-   docs, full suite, lint and both APKs; third local commit. Do not push yet.
+3. Native large-font, tablet and short-viewport checks; separate test commit.
+4. Documentation and final verification records. Run the full suite, lint and
+   both APK builds before publishing all four commits under the push request.
+
+Completed locally on 2026-11-01. Overview accounting and selected-week day labels
+agree; the open action remains visible above the summary. See the contract for
+verification and pending physical acceptance. Full original-spec audit is still
+later work. The approved publication contains four focused commits; remote CI
+results and branch synchronization are verified separately after pushing.
 
 ## Weekly planner report
 

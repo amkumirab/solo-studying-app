@@ -1,5 +1,18 @@
 # App organization
 
+## Weekly planner overview
+
+Approved next roadmap slice: docs/PLANNER_OVERVIEW.md. Consolidate accepted
+weekly metrics without new navigation or writes. Daily ceilings are study
+budgets, not guaranteed free slots; breaks and actual study stay distinct.
+
+1. Pure totals/status calculations and boundary/accounting tests; focused
+   regression and Debug verification; foundation commit.
+2. Shared overview content in Study > Plan and the selected calendar week;
+   replace the goal-only summary, retain editor/report flows; interaction tests.
+3. Native large-font and tablet review, real persistence/reactivity checks,
+   docs, full suite, lint and both APKs; third local commit. Do not push yet.
+
 ## Weekly planner report
 
 Approved university-planner analytics slice: `docs/PLANNER_WEEKLY_REPORT.md`.

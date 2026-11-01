@@ -1,5 +1,17 @@
 # App organization
 
+## Weekly planner overview
+
+- [x] Domain red tests, exact accounting and planner regression; foundation commit.
+  - Missing APIs first failed compilation. Eight new cases cover minute-exact
+    totals, generated invariants, partial/outside weeks, zero/absent/excess goals,
+    reserved breaks and immutable manual/locked sessions.
+  - 119 planner tests passed; assembleDebug and lintDebug succeeded on 2026-11-01.
+- [ ] Compact shared overview, actual entry/calendar wiring and interaction tests.
+- [ ] Native layout, restoration and byte-identical persistence checks.
+- [ ] Full tests/lint/APKs, scoped review and final local commit; no push.
+- [ ] Physical upgrade, rotation, TalkBack, keyboard and reduced-motion checks.
+
 ## Weekly planner report
 
 - [x] Report aggregation red tests; exact totals and credit boundaries.

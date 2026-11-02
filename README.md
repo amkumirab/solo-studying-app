@@ -286,6 +286,11 @@ Windows:
 The core test suite covers onboarding, persistence, boss progress, rewards,
 session summaries, streak behavior, and tutorial completion.
 
+Planner cross-feature tests cover configuration, accepted schedules, reports,
+lock conflicts, credit preservation and cold reloads. See the
+[planner acceptance audit](docs/PLANNER_ACCEPTANCE_AUDIT.md) for requirement
+coverage, intentional differences and remaining physical-device checks.
+
 ## Build and install a debug APK
 
 On Windows, build the app from the repository root:

@@ -1,5 +1,26 @@
 # App organization
 
+## Planner workflow verification
+
+Verify the university-planner prompt against the actual Android implementation.
+This slice adds cross-feature regression coverage and an evidence-based audit,
+not automatic migration, sample-data insertion or a scheduling-policy change.
+
+1. Exercise the real planner entry from an empty store: subject management,
+   availability, guided creation, weekly overview, report and cold model reload.
+2. Exercise locked sessions, recorded credit, settings changes and explicit
+   rebuilds together; reject conflicts without altering accepted-plan bytes.
+3. Check the original sixteen requirement groups against source and tests.
+   Record adaptations, missing requirements and device-only acceptance separately.
+4. Review the diff, run focused/full tests, lint and both APK builds. Publish
+   two focused commits, separating workflow tests from the acceptance audit and
+   documentation, under the explicit publication request.
+
+Acceptance: exact totals across all report axes and overview; no unintended
+study starts; accepted settings remain frozen until confirmed rebuild; locks,
+credit and unrelated settings survive reload. Never weaken existing assertions.
+Physical-device acceptance and any new product behavior remain separate work.
+
 ## Weekly planner overview
 
 Approved next roadmap slice: docs/PLANNER_OVERVIEW.md. Consolidate accepted

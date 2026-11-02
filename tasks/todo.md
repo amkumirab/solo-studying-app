@@ -1,5 +1,35 @@
 # App organization
 
+## Planner workflow verification
+
+- [x] Add real-entry creation, calendar/report and cold-load regression coverage.
+- [x] Verify settings changes, lock conflicts, recorded credit and explicit rebuild.
+  - Three real-entry workflows passed, including confirmed subject removal and
+    stale-save rejection. Report day/course/priority amounts and accepted totals
+    agree; reading reports leaves all planner preferences unchanged.
+  - Sensitivity check: temporarily adding one minute to overview totals made all
+    three tests fail on exact totals. The mutation was fully reverted; production
+    source has no diff from the previous accepted revision.
+  - The first new multi-subject path needed lazy-list scrolling before selecting
+    an offscreen edit action. No production behavior or assertion was weakened.
+- [x] Audit all sixteen original requirement groups with source/test evidence.
+  - See docs/PLANNER_ACCEPTANCE_AUDIT.md. Live accepted-plan regeneration,
+    strict half-hour sessions, sample initialization and contextual advice are
+    not claimed complete. Host dark-only Android behavior is explicit.
+- [x] Review, run full tests/lint/APKs and prepare two focused verification commits.
+  - Verified on 2026-11-02: 552 tests in 111 suites; zero failures, errors or
+    skipped tests. Debug and unsigned Release builds succeeded. lintDebug has
+    zero errors and the same 38 pre-existing warnings, none in the new test.
+  - The first full run was stopped after two AppNotIdleException failures in
+    unchanged AccessibilitySemanticsTest. Its 24 cases passed in isolation and
+    in the fresh full run. No test, timeout, assertion or suppression was changed;
+    this records an intermittent test-environment symptom, not a fixed defect.
+  - Reviewed correctness, test readability, storage boundaries, dependency risk
+    and bounded test work. Only tests/docs changed; no new runtime behavior,
+    schema, dependency, permission or pipeline. The approved publication separates
+    tests from the acceptance audit/docs; verify remote CI after pushing.
+- [ ] Physical upgrade, rotation, TalkBack, full-app keyboard and reduced motion.
+
 ## Weekly planner overview
 
 - [x] Domain red tests, exact accounting and planner regression; foundation commit.

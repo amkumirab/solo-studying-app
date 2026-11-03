@@ -7,7 +7,16 @@
     comparisons, duplicate/renumbered slots, metadata warnings, exact week/course
     totals, retained locks, recorded progress and invalid rebuild inputs.
   - Planner domain regression, lintDebug and assembleDebug succeeded on 2026-11-03.
-- [ ] Comparison UI, guarded entry/answer integration and interaction tests.
+- [x] Comparison UI, guarded entry/answer integration and interaction tests.
+  - Three entry tests initially failed on the missing review route. The shared
+    comparison now precedes confirmed rebuilds and appears in edited answers.
+  - 55 focused domain/UI/regression tests passed, with lintDebug and assembleDebug.
+    Tests cover real saves, unchanged bytes on cancel, snapshot conflicts, cold
+    restoration, changed recorded progress, locks, unreadable settings and active
+    study. Keyboard disclosure and 20-row pagination/restoration are verified.
+  - A red test caught a hidden duration-edit marker on manual slots; all flags
+    now display. Old rebuild tests await preview readiness and leave review
+    before changing sections; their data/credit assertions remain intact.
 - [ ] Stale/restored/busy/conflict guards and native layout/keyboard verification.
 - [ ] Scoped review, full tests/lint/APKs, local commits and named test package.
 - [ ] Physical upgrade, rotation and TalkBack acceptance on a real device.

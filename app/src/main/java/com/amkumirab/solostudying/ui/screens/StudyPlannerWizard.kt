@@ -24,7 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private data class PlannerBuildPreview(val config: PlannerConfig, val source: StudyPlan?, val goals: List<BossEntity>,
-    val today: LocalDate, val result: LockedStudyRebuild)
+    val today: LocalDate, val result: LockedStudyRebuild, val comparison: StudyPlanComparison?)
 
 @Composable
 fun StudyPlannerWizard(
@@ -96,7 +96,9 @@ fun StudyPlannerWizard(
     val preview by produceState<PlannerBuildPreview?>(null, scenarioConfig, initialPlan, bosses, today) {
         value = null
         if (scenarioConfig != null) value = withContext(Dispatchers.Default) {
-            PlannerBuildPreview(scenarioConfig, initialPlan, bosses, today, rebuildWithStudyLocks(scenarioConfig, initialPlan, bosses, today))
+            val result = rebuildWithStudyLocks(scenarioConfig, initialPlan, bosses, today)
+            PlannerBuildPreview(scenarioConfig, initialPlan, bosses, today, result,
+                initialPlan?.let { source -> result.plan?.let { compareStudyPlans(source, it) } })
         }
     }
     val canContinue = when (step) {
@@ -196,7 +198,10 @@ fun StudyPlannerWizard(
                     // A result from an older draft must never be saved while its replacement builds.
                     preview?.takeIf { it.config == scenarioConfig && it.source == initialPlan && it.goals == bosses && it.today == today }?.let {
                         val accepted = it.result.plan
-                        if (accepted != null) StudyPlannerPreview(accepted, bosses, busy, onAccept, subjects)
+                        if (accepted != null) {
+                            it.comparison?.let { comparison -> StudyPlanComparisonContent(comparison, bosses, subjects, today) }
+                            StudyPlannerPreview(accepted, bosses, busy, onAccept, subjects)
+                        }
                         else Text(it.result.error.orEmpty(), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("planner_lock_conflict"))
                     } ?: Text("Building your local plan…")
                 }

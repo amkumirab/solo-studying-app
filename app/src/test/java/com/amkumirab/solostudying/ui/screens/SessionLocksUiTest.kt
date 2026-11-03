@@ -76,6 +76,7 @@ class SessionLocksUiTest {
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(before, app.getSharedPreferences(StudyPlannerStore.PREFERENCES_NAME, 0).getString("plan", null))
         rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Confirm").performClick()
         rule.waitUntil(10000) { shadowOf(Looper.getMainLooper()).idle(); store.readData().plan!!.blocks.sumOf { it.minutes } == 60 }
         assertEquals(original.blocks.single(), store.readData().plan!!.blocks.single { it.locked })
@@ -91,10 +92,11 @@ class SessionLocksUiTest {
         rule.waitUntil(10000) { shadowOf(Looper.getMainLooper()).idle(); model.state.value.loaded }
         rule.onNodeWithTag("open_study_planner").performClick()
         rule.onNodeWithText("Rebuild remaining").performClick()
-        rule.onNodeWithText("Confirm").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("confirm_rebuild_comparison").assertIsNotEnabled()
         rule.waitUntil(10000) { rule.onAllNodesWithText("Locked sessions conflict", substring = true).fetchSemanticsNodes().isNotEmpty() }
         assertEquals(original, store.readData().plan)
-        rule.onNodeWithText("Edit answers").performClick()
+        rule.onNodeWithTag("rebuild_edit_answers").performScrollTo().performClick()
         repeat(4) { rule.onNodeWithTag("planner_next").performScrollTo().performClick() }
         rule.waitUntil(10000) { rule.onAllNodesWithTag("planner_lock_conflict").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("planner_lock_conflict").performScrollTo().assertTextContains("Locked sessions conflict", substring = true)

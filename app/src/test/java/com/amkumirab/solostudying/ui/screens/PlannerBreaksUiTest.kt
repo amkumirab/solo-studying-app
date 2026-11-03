@@ -126,6 +126,7 @@ class PlannerBreaksUiTest {
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(original, store.readData().plan)
         rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Confirm").performClick()
         rule.waitUntil(10000) { shadowOf(Looper.getMainLooper()).idle(); store.readData().plan?.config?.courses?.single()?.baselineSeconds == 60L }
         val rebuilt = store.readData().plan!!

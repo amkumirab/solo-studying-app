@@ -164,6 +164,7 @@ class PlannerSubjectsUiTest {
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(plan, store.readData().plan)
         rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Confirm").performClick()
         rule.waitUntil(10000) {
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()

@@ -45,6 +45,7 @@ class TimedStudyRebuildUiTest {
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(old, store.readData().plan)
         rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Confirm").performClick()
         rule.waitUntil(10000) { shadowOf(Looper.getMainLooper()).idle(); store.readData().plan?.config?.studyWindows == newWindows }
         val rebuilt = store.readData().plan!!

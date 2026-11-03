@@ -146,4 +146,16 @@ class StudyPlanComparisonEntryTest {
         rule.onNodeWithTag("rebuild_comparison_error").assertTextContains("subjects could not be read", substring = true)
         assertEquals(before, preferences.all)
     }
+
+    @Test fun `unreadable availability recovery link leaves review without replacing the plan`() {
+        assertTrue(store.write(old))
+        assertTrue(preferences.edit().putString("availability", "future-availability-schema").commit())
+        val before = preferences.all.toMap()
+        open()
+        ready()
+        rule.onNodeWithTag("confirm_rebuild_comparison").assertIsNotEnabled()
+        rule.onNodeWithText("Review unreadable availability settings").performClick()
+        rule.onNodeWithText("Reset saved availability").assertExists()
+        assertEquals(before, preferences.all)
+    }
 }

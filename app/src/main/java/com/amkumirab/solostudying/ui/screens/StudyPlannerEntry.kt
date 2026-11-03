@@ -77,7 +77,7 @@ fun StudyPlannerEntry(
                     }
                     val plan = state.plan
                     if (state.unreadableAvailability && selectedSection != "Availability") {
-                        TextButton(onClick = { selectedSection = "Availability" }, enabled = !busy,
+                        TextButton(onClick = { confirmation = null; selectedSection = "Availability" }, enabled = !busy,
                             modifier = Modifier.padding(horizontal = 16.dp).heightIn(min = 48.dp)) { Text("Review unreadable availability settings") }
                     }
                     if (!state.loaded) {

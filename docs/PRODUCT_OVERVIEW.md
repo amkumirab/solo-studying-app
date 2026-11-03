@@ -83,6 +83,14 @@ Rebuilding remaining work and removing a plan both require confirmation and
 leave study history, goal targets, and rewards unchanged. Accepted plans live in
 versioned local preferences. See [the planner contract](STUDY_PLANNER.md).
 
+Rebuild remaining first opens a read-only accepted/proposed comparison, also
+available in edited-answer previews. Compare weekly focus/budgets, subject deltas,
+unmet finish dates and paged slot replacements. Manual customization changes are
+explicit; generated IDs do not determine whether a slot is unchanged. Only a
+valid displayed proposal can be confirmed against its expected snapshot. Loading,
+active study, conflicts and incomplete rebuilds block applying; cancel never
+saves. See [planner comparisons](PLANNER_CHANGE_COMPARISON.md).
+
 The Today dashboard includes the accepted plan's course sessions, with remaining
 minutes and recorded progress. Matching course recommendations are hidden to
 avoid duplicates. Long session lists expand on demand. "No time today" previews

@@ -35,6 +35,7 @@ internal fun StudyRebuildReview(
     }
     val ready = preview?.takeIf { it.snapshot == snapshot && it.bosses == bosses && it.today == today && it.blocked == blockedMessage }
     val candidate = ready?.result?.plan
+    val applicable = candidate?.takeIf { !busy && !isSessionActive && it.shortfalls.isEmpty() }
     BackHandler { if (!busy) onCancel() }
     Column(modifier.fillMaxSize()) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -56,8 +57,7 @@ internal fun StudyRebuildReview(
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onCancel, enabled = !busy,
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("cancel_rebuild_comparison")) { Text("Cancel") }
-            Button(onClick = { if (candidate != null) onApply(candidate, ready.snapshot) },
-                enabled = !busy && !isSessionActive && candidate != null && candidate.shortfalls.isEmpty(),
+            Button(onClick = { applicable?.let { onApply(it, snapshot) } }, enabled = applicable != null,
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("confirm_rebuild_comparison")) { Text(if (busy) "Saving…" else "Confirm") }
         }
     }

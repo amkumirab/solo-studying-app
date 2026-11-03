@@ -23,6 +23,7 @@ internal fun StudyPlanComparisonContent(
     val week = LocalDate.parse(weekText).coerceIn(first, last)
     val totals = remember(comparison, week) { comparison.week(week) }
     val counts = remember(comparison) { comparison.changes.groupingBy { it.kind }.eachCount() }
+    val manualCount = remember(comparison) { comparison.manualSlotsReplaced }
     fun name(id: Int) = subjects.firstOrNull { it.bossId == id }?.name
         ?: bosses.firstOrNull { it.id == id }?.name ?: "Removed course #$id"
     Column(modifier.fillMaxWidth().testTag("study_plan_comparison"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -30,7 +31,7 @@ internal fun StudyPlanComparisonContent(
         Text("All plan dates · Kept: ${counts[StudyPlanChangeKind.Kept] ?: 0} · Replanned: ${counts[StudyPlanChangeKind.Replanned] ?: 0} · Added: ${counts[StudyPlanChangeKind.Added] ?: 0} · Removed: ${counts[StudyPlanChangeKind.Removed] ?: 0}",
             modifier = Modifier.testTag("comparison_counts"))
         Text("The proposal covers remaining work from today. Past or studied slots may disappear; goal progress and study history are kept.", style = MaterialTheme.typography.bodySmall)
-        if (comparison.manualSlotsReplaced > 0) Text("${comparison.manualSlotsReplaced} manual slots will be replaced. Review their timing before applying.",
+        if (manualCount > 0) Text("$manualCount manual ${if (manualCount == 1) "slot" else "slots"} will be replaced. Review their timing before applying.",
             color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("comparison_manual_warning"))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { weekText = week.minusWeeks(1).toString() }, enabled = week > first,
@@ -113,5 +114,5 @@ private fun comparisonSlotLabel(block: StudyBlock?): String = block?.let {
         if (it.manual) add("Manual")
         if (it.durationEdited) add("Edited duration")
     }.ifEmpty { listOf("Automatic") }
-    "${it.date} · ${it.clockRange() ?: "Date-only"} · ${plannerTimeLabel(it.minutes)} · ${flags.joinToString(" · ") }"
+    "${it.date} · ${it.clockRange() ?: "Date-only"} · ${plannerTimeLabel(it.minutes)} · ${flags.joinToString(" · ")}"
 } ?: "No slot"

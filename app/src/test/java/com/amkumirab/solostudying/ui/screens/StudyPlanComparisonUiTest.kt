@@ -80,6 +80,7 @@ class StudyPlanComparisonUiTest {
         rule.runOnIdle { snapshot = PlannerSnapshot(old.copy(config = old.config.copy(weeklyGoalMinutes = 0), blocks = emptyList()), availability = windows) }
         rule.waitUntil(10000) { rule.onAllNodesWithTag("comparison_shortfall_1").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("confirm_rebuild_comparison").assertIsNotEnabled()
+        rule.onNodeWithTag("confirm_rebuild_comparison").performSemanticsAction(SemanticsActions.OnClick) { it() }
         rule.onNodeWithTag("rebuild_edit_answers").performScrollTo().assertIsEnabled()
     }
 
@@ -125,6 +126,7 @@ class StudyPlanComparisonUiTest {
         } }
         rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("confirm_rebuild_comparison").assertIsNotEnabled().assertTextEquals("Confirm")
+        rule.onNodeWithTag("confirm_rebuild_comparison").performSemanticsAction(SemanticsActions.OnClick) { it() }
         rule.onNodeWithTag("cancel_rebuild_comparison").assertIsEnabled()
         rule.runOnIdle { active = false }
         rule.onNodeWithTag("confirm_rebuild_comparison").assertIsEnabled()

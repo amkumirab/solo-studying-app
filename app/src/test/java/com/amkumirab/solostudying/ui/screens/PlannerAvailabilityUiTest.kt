@@ -196,6 +196,7 @@ class PlannerAvailabilityUiTest {
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(original, store.readData().plan)
         rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Confirm").performClick()
         rule.waitUntil(10000) { shadowOf(Looper.getMainLooper()).idle(); store.readData().plan?.config?.weekdayMinutes == List(7) { 120 } }
         assertEquals(6000, store.readData().plan!!.config.courses.single().remainingMinutes)
@@ -208,7 +209,8 @@ class PlannerAvailabilityUiTest {
         open()
         rule.onNodeWithText("Schedule", useUnmergedTree = true).performScrollTo().performClick()
         rule.onNodeWithText("Rebuild remaining").performClick()
-        rule.onNodeWithText("Confirm").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("confirm_rebuild_comparison").assertIsNotEnabled()
         rule.onNodeWithText("Enable at least one study day in Availability before rebuilding. Your current plan is unchanged.").assertExists()
         assertEquals(original, store.readData().plan)
     }

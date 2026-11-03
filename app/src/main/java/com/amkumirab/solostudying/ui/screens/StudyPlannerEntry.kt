@@ -19,9 +19,6 @@ import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
 import com.amkumirab.solostudying.ui.viewmodel.StudyPlannerViewModel
 import java.time.LocalDate
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun StudyPlannerEntry(
@@ -39,10 +36,7 @@ fun StudyPlannerEntry(
     var selectedSection by rememberSaveable { mutableStateOf("Schedule") }
     var editing by rememberSaveable { mutableStateOf(false) }
     var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
-    var actionError by rememberSaveable { mutableStateOf<String?>(null) }
-    var rebuilding by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val busy = state.busy || rebuilding
+    val busy = state.busy
     // A failed compare-and-swap invalidates remembered drafts and pending move dialogs.
     key(state.editorGeneration) {
         val restoredEditor = rememberSaveableStateHolder()
@@ -67,11 +61,11 @@ fun StudyPlannerEntry(
                     onSave = { updated, saved -> plannerViewModel.save(updated, state.snapshot, saved) }, subjects = state.subjects)
             }
         }
-        if (open) Dialog(onDismissRequest = { if (!busy) { if (reportWeek != null) reportWeek = null else open = false } }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        if (open) Dialog(onDismissRequest = { if (!busy) { if (reportWeek != null) reportWeek = null else { open = false; confirmation = null } } }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Surface(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
-                    TextButton(onClick = { open = false }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close planner") }
-                    if (reportWeek == null || state.plan == null) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { open = false; confirmation = null }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Close planner") }
+                    if (confirmation != "rebuild" && (reportWeek == null || state.plan == null)) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("Schedule", "Subjects", "Availability").forEach { section ->
                             FilterChip(selected = selectedSection == section, onClick = { selectedSection = section }, enabled = !busy,
                                 label = { Text(section) }, modifier = Modifier.heightIn(min = 48.dp))
@@ -83,13 +77,21 @@ fun StudyPlannerEntry(
                     }
                     val plan = state.plan
                     if (state.unreadableAvailability && selectedSection != "Availability") {
-                        TextButton(onClick = { selectedSection = "Availability" }, enabled = !busy,
+                        TextButton(onClick = { confirmation = null; selectedSection = "Availability" }, enabled = !busy,
                             modifier = Modifier.padding(horizontal = 16.dp).heightIn(min = 48.dp)) { Text("Review unreadable availability settings") }
                     }
                     if (!state.loaded) {
                         Text("Loading planner settings…", modifier = Modifier.padding(16.dp))
                     } else restoredEditor.SaveableStateProvider("planner-editor") {
-                    if (reportWeek != null && plan != null) {
+                    if (confirmation == "rebuild" && plan != null) {
+                        StudyRebuildReview(state.snapshot, bosses, today, busy,
+                            onCancel = { confirmation = null },
+                            onEditAnswers = { confirmation = null; editing = true; selectedSection = "Schedule" },
+                            onApply = { accepted, expected -> plannerViewModel.save(accepted, expected) { confirmation = null } },
+                            modifier = Modifier.weight(1f), isSessionActive = isSessionActive,
+                            blockedMessage = state.subjectError.takeIf { state.unreadableSubjects }
+                                ?: state.availabilityError.takeIf { state.unreadableAvailability })
+                    } else if (reportWeek != null && plan != null) {
                         WeeklyPlannerReportScreen(plan, bosses, today, LocalDate.parse(reportWeek),
                             onWeekChange = { reportWeek = it.toString() }, onBack = { reportWeek = null },
                             modifier = Modifier.weight(1f), subjects = state.subjects)
@@ -104,8 +106,8 @@ fun StudyPlannerEntry(
                             onReset = { reset -> plannerViewModel.clearSubjects(reset) }, modifier = Modifier.weight(1f))
                     } else if (editing || (plan == null && !state.unreadableRecord)) {
                         val draftSnapshot = remember { state.snapshot }
-                        StudyPlannerWizard(bosses, today, plan, weekdayDefaults, busy,
-                            onAccept = { accepted -> plannerViewModel.save(accepted, draftSnapshot) { editing = false; actionError = null } },
+                        StudyPlannerWizard(bosses, today, plan, weekdayDefaults, busy || isSessionActive,
+                            onAccept = { accepted -> plannerViewModel.save(accepted, draftSnapshot) { editing = false } },
                             onCancel = { if (plan == null) open = false else editing = false },
                             modifier = Modifier.weight(1f), subjects = state.subjects, availability = state.availability)
                     } else if (plan != null) {
@@ -120,7 +122,6 @@ fun StudyPlannerEntry(
                             OutlinedButton(onClick = { confirmation = "rebuild" }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Rebuild remaining") }
                         }
                         TextButton(onClick = { confirmation = "clear" }, enabled = !busy, modifier = Modifier.padding(horizontal = 16.dp).heightIn(min = 48.dp)) { Text("Remove plan") }
-                        actionError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
                         restoredEditor.SaveableStateProvider("planner-week") {
                         StudyPlannerWeek(plan, bosses, today, isSessionActive || busy,
                             onStart = { boss, minutes ->
@@ -134,38 +135,13 @@ fun StudyPlannerEntry(
             }
         }
     }
-    confirmation?.let { action ->
+    if (confirmation == "clear") {
         AlertDialog(onDismissRequest = { confirmation = null },
-            title = { Text(if (action == "clear") "Remove this study plan?" else "Rebuild the remaining plan?") },
-            text = { Text(if (action == "clear") "Only planning settings are removed. Your goals, sessions and rewards are kept."
-                else "Replace unlocked blocks using recorded progress and your available days, starting today. Locked sessions keep their exact slots. Past, studied or conflicting locks must be unlocked first. Weekly goals, current course limits and saved clock windows will apply. Your current plan stays unchanged if rebuilding cannot fit the work.") },
+            title = { Text("Remove this study plan?") },
+            text = { Text("Only planning settings are removed. Your goals, sessions and rewards are kept.") },
             confirmButton = { TextButton(onClick = {
                 confirmation = null
-                if (action == "clear") plannerViewModel.clear { editing = false; actionError = null }
-                else state.plan?.let { plan ->
-                    val rebuildSnapshot = state.snapshot
-                    val remaining = remainingPlannerCourses(plan, bosses, state.subjects)
-                    when {
-                        state.availability?.totalMinutes == 0 -> actionError = "Enable at least one study day in Availability before rebuilding. Your current plan is unchanged."
-                        remaining.isEmpty() -> actionError = "All available courses are complete. Edit answers to choose new goals."
-                        remaining.any { it.finishBy !in today..today.plusDays(365) } -> actionError = "A finish date is outside the next year. Edit answers to choose new dates before rebuilding."
-                        else -> {
-                            rebuilding = true
-                            scope.launch {
-                                val proposal = withContext(Dispatchers.Default) { runCatching { rebuildWithStudyLocks(plan.config.copy(start = today, courses = remaining,
-                                    weekdayMinutes = rebuildSnapshot.availability?.weekdayMinutes ?: plan.config.weekdayMinutes,
-                                    weeklyScheduling = null, studyWindows = rebuildSnapshot.availability ?: plan.config.studyWindows).withWeeklyScheduling(rebuildSnapshot.subjects), plan, bosses, today) }.getOrNull() }
-                                rebuilding = false
-                                val rebuilt = proposal?.plan
-                                if (rebuilt == null) {
-                                    actionError = proposal?.error ?: "Could not rebuild this plan. Edit answers to review your course dates and capacity."
-                                } else if (rebuilt.shortfalls.isNotEmpty()) {
-                                    actionError = "Remaining work no longer fits your schedule. Edit answers to review capacity warnings. Your current plan is unchanged."
-                                } else plannerViewModel.save(rebuilt, rebuildSnapshot) { actionError = null }
-                            }
-                        }
-                    }
-                }
+                plannerViewModel.clear { editing = false }
             }, enabled = !busy) { Text("Confirm") } },
             dismissButton = { TextButton(onClick = { confirmation = null }) { Text("Cancel") } })
     }

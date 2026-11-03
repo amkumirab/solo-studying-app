@@ -74,6 +74,7 @@ class WeightedWeeklySessionsUiTest {
         assertEquals(old, store.readData().plan)
         assertNull(store.readData().plan!!.config.weeklyScheduling)
         rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Confirm").performClick()
         rule.waitUntil(10000) { shadowOf(Looper.getMainLooper()).idle(); store.readData().plan?.config?.weeklyScheduling != null }
         val saved = store.readData().plan!!

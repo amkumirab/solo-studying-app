@@ -145,12 +145,14 @@ class PlannerWorkflowIntegrationTest {
         val preferences = app.getSharedPreferences(StudyPlannerStore.PREFERENCES_NAME, 0)
         val beforeConflict = preferences.all.toMap()
         rule.onNodeWithText("Rebuild remaining").performClick()
-        rule.onNodeWithText("Confirm").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("confirm_rebuild_comparison").assertIsNotEnabled()
         rule.waitUntil(10000) {
             rule.onAllNodesWithText("Locked sessions conflict", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         assertEquals(beforeConflict, preferences.all)
         assertEquals(original, store.readData().plan)
+        rule.onNodeWithTag("cancel_rebuild_comparison").performClick()
         section("Availability")
         rule.onNodeWithTag("edit_availability").performClick()
         rule.onNodeWithTag("edit_availability_day_1").performScrollTo().performClick()
@@ -164,6 +166,7 @@ class PlannerWorkflowIntegrationTest {
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(original, store.readData().plan)
         rule.onNodeWithText("Rebuild remaining").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("rebuild_comparison_ready").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Confirm").performClick()
         awaitSaved { store.readData().plan != original }
         val rebuilt = store.readData().plan!!

@@ -1,5 +1,21 @@
 # App organization
 
+## Planner change comparison
+
+Contract: docs/PLANNER_CHANGE_COMPARISON.md. Approved follow-up to the acceptance
+audit: safe reactive comparison, not silent live regeneration of accepted slots.
+
+1. Test and implement exact slot comparison and a shared read-only rebuild
+   proposal, retaining scheduling, lock and progress rules. Verify domain tests.
+2. Build shared comparison content and a guarded background rebuild review;
+   integrate with entry and answer preview. Test actual saves and cancellation.
+3. Verify stale/restored/reactive states, conflicts, incomplete work, keyboard and
+   native narrow/tablet layouts. Run the full suite, lint and both APK builds;
+   review the scoped diff and deliver local commits and a named test APK.
+
+Reuse existing controls and persistence. Keep all public text English. No new
+sample data, automatic writes, half-hour migration or dependencies.
+
 ## Planner workflow verification
 
 Verify the university-planner prompt against the actual Android implementation.

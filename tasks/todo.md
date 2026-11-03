@@ -1,5 +1,17 @@
 # App organization
 
+## Planner change comparison
+
+- [x] Domain red tests, exact slot matching and shared rebuild proposal.
+  - Missing APIs first failed compilation. Six new tests include 80 generated
+    comparisons, duplicate/renumbered slots, metadata warnings, exact week/course
+    totals, retained locks, recorded progress and invalid rebuild inputs.
+  - Planner domain regression, lintDebug and assembleDebug succeeded on 2026-11-03.
+- [ ] Comparison UI, guarded entry/answer integration and interaction tests.
+- [ ] Stale/restored/busy/conflict guards and native layout/keyboard verification.
+- [ ] Scoped review, full tests/lint/APKs, local commits and named test package.
+- [ ] Physical upgrade, rotation and TalkBack acceptance on a real device.
+
 ## Planner workflow verification
 
 - [x] Add real-entry creation, calendar/report and cold-load regression coverage.

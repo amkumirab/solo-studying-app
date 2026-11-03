@@ -40,6 +40,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Optional weekly study goals with priority-weighted sessions, saved course limits, and honest unscheduled-work warnings
 - Read-only weekly planning reports with daily, subject and priority charts, exact time values and separate session credit
 - Compact weekly planning overview with exact goal coverage, focus budgets, unallocated time and explicit target shortfalls
+- Read-only accepted/proposed schedule comparison before rebuilding or saving edited answers
 - Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
 - One-tap focus presets that remember the last duration and skill
@@ -189,6 +190,14 @@ silently reducing the weekly goal. Missing/zero targets and outside-plan weeks
 stay explicit. These figures are planned time, not completed study. The existing
 open action remains above the summary, and no plan is saved by inspection.
 See [overview accounting and phone checks](docs/PLANNER_OVERVIEW.md).
+
+Choose **Rebuild remaining** to review changes before confirming them. Compare
+accepted versus proposed remaining focus, weekly course totals and unscheduled
+work. **Show session changes** pages through replaced/added/removed slots and
+their manual/edit markers. Locked slots stay exact. Cancel leaves the accepted
+plan unchanged; incomplete/conflicting rebuilds cannot be applied. **Edit answers**
+also shows this comparison before its existing save/acknowledgement flow.
+See [change comparison and phone checks](docs/PLANNER_CHANGE_COMPARISON.md).
 
 ## Tech stack
 

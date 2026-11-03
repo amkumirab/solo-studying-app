@@ -13,6 +13,11 @@ audit: safe reactive comparison, not silent live regeneration of accepted slots.
    native narrow/tablet layouts. Run the full suite, lint and both APK builds;
    review the scoped diff and deliver local commits and a named test APK.
 
+The explicit publication request organizes delivery into five focused commits:
+domain comparison, comparison interface, guarded planner integration, native
+layout tests, and documentation. Publish after verifying the unchanged app/test
+tree; check remote CI and main-branch synchronization separately after pushing.
+
 Reuse existing controls and persistence. Keep all public text English. No new
 sample data, automatic writes, half-hour migration or dependencies.
 

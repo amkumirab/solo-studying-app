@@ -18,7 +18,7 @@ Test classes live under the matching `app/src/test/java` package.
 | 5. Scheduling | `domain/planner/WeightedWeeklyPlan.kt`, `WeeklyStudyAllocation.kt`, `SessionLocks.kt`, `PlannedStudyBreaks.kt`; `WeightedWeeklyPlanTest`, `TimedStudyPlanTest`, `PlannerBreaksTest` | Deterministic, weighted, deadline-aware, bounded scheduling with locks, caps and optional breaks. Exact-minute sessions differ from the brief's strict half-hour increments. A bounded greedy builder is not a global optimizer; it does not guarantee minimal same-subject repetition. |
 | 6. Calendar/editing | `ui/screens/StudyPlannerWeek.kt`, timed move/duration/subject/custom-session dialogs; `TimedStudyMoveUiTest`, `StudyDurationEntryTest`, `SessionSubjectEntryTest`, `CustomSessionEntryTest`, `SessionLocksUiTest` | Seven scrollable days with times, duration, priority and named colors. Accessible edit dialogs replace drag-and-drop. All listed manual actions exist; only locked slots are guaranteed to survive explicit rebuilds. |
 | 7. Analytics | `domain/planner/WeeklyPlannerReport.kt`, `ui/screens/PlannerReportCharts.kt`; `WeeklyPlannerReportTest`, `PlannerReportIntegrationTest` | Interactive day, subject and priority bars. Planned totals, target percentage and unused budget remain distinct from credit. Credit follows the ID ledger, not actual study dates; actual activity dates belong in Profile history. |
-| 8. Reactivity | `StudyPlannerEntry.kt`, `StudyPlannerWizard.kt`, `StudyPlannerViewModel.kt`; `PlannerWorkflowIntegrationTest`, `WeeklyStudyGoalUiTest` | Preview inputs update the preview; accepted mutations update report/overview. Editing subject/availability settings does **not** immediately regenerate accepted sessions. This deliberately differs from the original live-regeneration requirement. |
+| 8. Reactivity | `StudyPlannerEntry.kt`, `StudyPlannerWizard.kt`, `StudyRebuildReview.kt`; `StudyPlanComparisonEntryTest`, `PlannerWorkflowIntegrationTest` | Reactive accepted/proposed comparison is available before rebuilding and in edited-answer previews. Changed inputs invalidate old results; cancel preserves accepted data and confirm uses the displayed snapshot. Editing settings still does **not** silently regenerate accepted sessions; this is the chosen safe boundary rather than literal live replacement. |
 | 9. UX/accessibility | Existing Material theme; `PlannerOverviewLayoutTest`, `PlannerReportLayoutTest`, `SessionSubjectLayoutTest` | Narrow/large-font and Android-tablet host tests exist. Full-app keyboard, TalkBack, rotation and system reduced-motion acceptance still require a device. Host theme is dark-only; no desktop/web application or light mode is claimed. |
 | 10. Persistence | `planner/StudyPlannerStore.kt`, strict versioned codecs; `StudyPlannerStoreTest`, `PlannerSubjectsTest`, `PlannerWorkflowIntegrationTest` | Local private preferences; atomic snapshot compare-and-swap, legacy reads, explicit recovery, preserved IDs/baselines. Cold model reload is tested, not cross-device synchronization or physical process-death acceptance. |
 | 11. Smart feedback | `PlannerWeekOverviewContent.kt`, `WeeklyStudyGoalComponents.kt`, `StudyPlannerWizard.kt`; overview/weekly-allocation tests | Actual shortage, excess, empty/zero target, break/window/cap and lock-conflict explanations exist. No dedicated contextual highest-priority/upcoming-exam recommendation feature yet. |
@@ -60,9 +60,10 @@ This verifies a regression guard, not a newly discovered production defect.
 
 ## Remaining work, in dependency order
 
-1. **Decide live-update semantics.** Preserve the current safe accepted-plan
-   boundary unless explicitly changed. A useful follow-up is a reactive *draft*
-   comparison with explicit acceptance, not silently replacing manual sessions.
+1. **Reactive draft comparison implemented.** The approved safe boundary keeps
+   accepted plans unchanged until explicit confirmation. See
+   [change comparison](PLANNER_CHANGE_COMPARISON.md) for reactive previews,
+   manual-slot warnings, remaining-work accounting and verification limits.
 2. **Clarify scheduling granularity and rebuild policy.** The app supports 15,
    25, 45, 60, 90 and 120-minute focus preferences and exact-minute final blocks;
    availability endpoints use half-hours. Do not force old plans into half-hour
@@ -75,8 +76,8 @@ This verifies a regression guard, not a newly discovered production defect.
 5. **Device acceptance.** Complete the checks below, then reconcile the remaining
    differences with the brief. Android tablet support is not a desktop release.
 
-The above are follow-up scopes, not newly approved implementation. They must be
-specified before changing behavior. This audit must not be used to declare all
+The remaining follow-up scopes require separate approval and specification before
+changing behavior. This audit must not be used to declare all
 requirements passed merely because the regression suite is green.
 
 ## Verification commands

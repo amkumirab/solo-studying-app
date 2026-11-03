@@ -7,9 +7,38 @@
     comparisons, duplicate/renumbered slots, metadata warnings, exact week/course
     totals, retained locks, recorded progress and invalid rebuild inputs.
   - Planner domain regression, lintDebug and assembleDebug succeeded on 2026-11-03.
-- [ ] Comparison UI, guarded entry/answer integration and interaction tests.
-- [ ] Stale/restored/busy/conflict guards and native layout/keyboard verification.
-- [ ] Scoped review, full tests/lint/APKs, local commits and named test package.
+- [x] Comparison UI, guarded entry/answer integration and interaction tests.
+  - Three entry tests initially failed on the missing review route. The shared
+    comparison now precedes confirmed rebuilds and appears in edited answers.
+  - 55 focused domain/UI/regression tests passed, with lintDebug and assembleDebug.
+    Tests cover real saves, unchanged bytes on cancel, snapshot conflicts, cold
+    restoration, changed recorded progress, locks, unreadable settings and active
+    study. Keyboard disclosure and 20-row pagination/restoration are verified.
+  - A red test caught a hidden duration-edit marker on manual slots; all flags
+    now display. Old rebuild tests await preview readiness and leave review
+    before changing sections; their data/credit assertions remain intact.
+- [x] Stale/restored/busy/conflict guards and native layout/keyboard verification.
+  - 21 feature tests passed, including native 320 dp/1.5-font-scale, 800 dp tablet
+    and 360 dp-high viewport checks. All labels remain complete and 48 dp actions
+    remain visible outside scrolling. Generated render PNGs were visually reviewed.
+  - Direct accessibility OnClick tests reproduced invalid apply callbacks despite
+    disabled visuals; applying now requires a valid applicable candidate inside
+    the callback as well. A recovery-link test reproduced the review blocking
+    navigation to unreadable availability; the link now exits review first.
+  - The short-screen test scroll helper was corrected for deliberately fixed
+    footer controls; its text-layout and displayed/touch-target assertions stay.
+- [x] Scoped review, full tests/lint/APKs, local commits and named test package.
+  - Final verification on 2026-11-03: 573 tests in 115 suites, zero failures,
+    errors or skipped tests. lintDebug has zero errors and the same 38 existing
+    warnings. Debug and unsigned Release builds succeeded in the combined run.
+  - Reviewed exact accounting, visual pairing versus credit identities, bounded
+    matching/paging, pure background work, stale-result and callback guards,
+    persistence compatibility and narrow/large-font/tablet renders.
+  - The named comparison Debug APK uses the existing application ID and Debug
+    certificate; v2 signature verified. Hash and phone checks are in the contract.
+    The approved repository publication uses five focused commits. Application
+    and test files are unchanged by the split; verify remote CI after pushing.
+    No store release or tracked APK is part of publication.
 - [ ] Physical upgrade, rotation and TalkBack acceptance on a real device.
 
 ## Planner workflow verification

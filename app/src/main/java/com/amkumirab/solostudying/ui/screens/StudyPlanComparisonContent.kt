@@ -51,6 +51,7 @@ internal fun StudyPlanComparisonContent(
                 Text("Budgets are not guaranteed free clock slots; breaks, deadlines and course limits still apply.", style = MaterialTheme.typography.bodySmall)
             }
         }
+        PlannerGuidanceContent(comparison.proposed, bosses, today, week, subjects = subjects, proposed = true)
         totals.courses.filter { it.acceptedMinutes > 0 || it.proposedMinutes > 0 }.forEach { course ->
             Column(Modifier.semantics(mergeDescendants = true) {}.testTag("comparison_course_${course.bossId}")) {
                 Text(name(course.bossId), style = MaterialTheme.typography.titleSmall)

@@ -23,6 +23,7 @@ fun StudyPlannerWeek(
     plan: StudyPlan, bosses: List<BossEntity>, today: LocalDate, isSessionActive: Boolean,
     onStart: (BossEntity, Int) -> Unit, onMove: (StudyPlan) -> Unit, modifier: Modifier = Modifier, subjects: List<PlannerSubject> = emptyList(),
     onOpenReport: ((LocalDate) -> Unit)? = null,
+    guidance: @Composable (LocalDate) -> Unit = {},
 ) {
     val context = LocalContext.current
     val datePicker = remember { mutableStateOf<DatePickerDialog?>(null) }
@@ -52,6 +53,7 @@ fun StudyPlannerWeek(
             if (onOpenReport != null) OutlinedButton(onClick = { onOpenReport(weekStart) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_weekly_report")) { Text("Weekly report") }
             OutlinedCard(Modifier.fillMaxWidth()) { PlannerWeekOverviewContent(plan, weekStart, Modifier.padding(12.dp)) }
+            guidance(weekStart)
             if (plan.config.studyWindows != null) Text("Local clock times · saved study windows apply. Study can start early. Lock a session to keep its slot when rebuilding.", style = MaterialTheme.typography.bodySmall)
             if (plan.config.breakMinutes > 0) Text("${plan.config.breakMinutes}-minute minimum breaks also apply when moving, adding or resizing sessions. Breaks are not study time.", style = MaterialTheme.typography.bodySmall)
             if (plan.config.studyWindows != null) {

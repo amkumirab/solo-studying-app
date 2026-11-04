@@ -7,7 +7,13 @@
     Missing APIs first failed compilation. A test's outside-plan date was fixed
     to remain Monday; existing validation was not relaxed. lintDebug and the
     foundation Debug build succeeded. No scheduling/storage behavior changed.
-- [ ] Shared read-only content, guarded navigation and draft/accepted integration.
+- [x] Shared read-only content, guarded navigation and draft/accepted integration.
+  - The missing composable first failed compilation. Four UI tests and three
+    real-store entry cases now pass, including actual editor/review navigation,
+    unchanged preferences, no study starts, disabled accessibility callbacks,
+    reactive progress/drafts and keyboard/restored disclosure.
+  - Forty focused guidance/comparison/workflow tests, lintDebug and assembleDebug
+    passed. Expired-plan and native adaptive-layout follow-up checks remain next.
 - [ ] Entry/reactivity/restoration, keyboard and native adaptive-layout tests.
 - [ ] Scoped review, full suite/lint/APKs, three local commits and test package.
 - [ ] Physical upgrade, TalkBack and rotation acceptance on a real device.

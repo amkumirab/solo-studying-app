@@ -127,7 +127,19 @@ fun StudyPlannerEntry(
                             onStart = { boss, minutes ->
                                 if (!isSessionActive && !busy) { onStart(boss, minutes); open = false }
                             }, onMove = { plannerViewModel.save(it, state.snapshot) }, modifier = Modifier.weight(1f), subjects = state.subjects,
-                            onOpenReport = { reportWeek = it.toString() })
+                            onOpenReport = { reportWeek = it.toString() }, guidance = { week ->
+                                if (!state.unreadableSubjects && !state.unreadableAvailability) {
+                                    PlannerGuidanceContent(plan, bosses, today, week, subjects = state.subjects,
+                                        actionsEnabled = !busy && !isSessionActive, onAction = { action ->
+                                            if (!busy && !isSessionActive) when (action) {
+                                                PlannerAdviceAction.Availability -> selectedSection = "Availability"
+                                                PlannerAdviceAction.Subjects -> selectedSection = "Subjects"
+                                                PlannerAdviceAction.EditAnswers -> editing = true
+                                                PlannerAdviceAction.ReviewPlan -> confirmation = "rebuild"
+                                            }
+                                        })
+                                }
+                            })
                         }
                     }
                     }

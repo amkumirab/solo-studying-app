@@ -20,6 +20,8 @@ Weekly messages describe planned time, not actual study or guaranteed spare
 clock slots. Do not recommend adding study for a zero/unset goal or outside-plan
 week. Keep selected-week amounts separate from all-date deadline coverage.
 Highest priority is from the displayed plan, not unsaved subject settings.
+The current week still shows expired-date repair advice when every plan date has
+passed; it does not invent a weekly goal or allocation outside accepted dates.
 
 Actions only navigate to existing Availability, Subjects, Edit answers or the
 read-only rebuild review. Never write, start study, unlock, reschedule or apply a
@@ -73,3 +75,56 @@ $env:GRADLE_USER_HOME = 'C:\Users\amira\.gradle'
 
 Physical upgrade, TalkBack, rotation and real-phone performance remain manual
 unless tested on an attached device. This is not a store release.
+
+## Phone smoke test
+
+Install the delivered Debug APK over the existing app; do not uninstall or clear
+data. Open Study > Plan > Open weekly plan > Schedule. Scroll below the weekly
+overview to Planner guidance. Only the first message is initially expanded.
+
+- For a near finish-by date with uncovered work, check the remaining amount,
+  open Review remaining plan, then Cancel. Goal progress/history must not change.
+- Expand more guidance. A budget shortage should lead to Availability; a weekly
+  gap to Edit plan answers; a priority allocation to Subjects. Merely opening and
+  leaving these editors must not change the accepted plan.
+- Navigate weeks and check that weekly amounts change, while deadline messages
+  explicitly use today's date. Compare a proposed plan and confirm its guidance
+  is labelled Proposed and has no action that changes settings.
+- Record study for a course or complete it; obsolete remaining-work advice should
+  refresh. Start a real timer and check that advice cannot launch another action
+  while study is active. Finish/cancel the real timer normally.
+- Increase system font size, rotate, reopen, and use TalkBack to reach the heading,
+  disclosure and actions. All text must wrap and the controls remain reachable.
+
+## Verification record, 2026-11-04
+
+- Full `testDebugUnitTest lintDebug assembleDebug assembleRelease` succeeded in
+  6 minutes 12 seconds: 593 tests in 119 suites, zero failures, errors or skips.
+  The feature adds 20 tests: ten domain, four UI, three real-entry and three native
+  layout cases. No existing test, assertion, timeout or check was weakened.
+- The first domain/UI red runs failed on missing APIs. A follow-up red test caught
+  overdue guidance disappearing when all plan dates were before the current week.
+  Current-week repair advice now remains visible without inventing outside-plan
+  weekly metrics. That regression and the full suite pass.
+- lintDebug: zero errors, the same 38 pre-existing warnings, none in changed
+  feature files. Debug and unsigned Release built. No dependency, manifest,
+  schema, timer/reward, CI or scheduling-policy changes.
+- Native 320 dp/1.5-font-scale, 800 dp tablet and 360 dp-high viewport tests passed.
+  Four generated PNGs in `app/build/reports/planner-guidance/` were visually
+  inspected. Text wraps completely and actions have at least 48 dp height.
+  The dark area below the short viewport is the host window, not app content.
+- Scoped review checked accounting, determinism, bounded advice, accepted/draft
+  separation, guarded no-write navigation and local-storage compatibility.
+  This establishes automated evidence, not physical-phone certification.
+- No phone/emulator was attached. Upgrade retention, rotation, TalkBack, real-phone
+  performance and system reduced-motion acceptance remain manual checks.
+  Three focused local commits are prepared; no push, store release or APK upload
+  is part of this implementation request.
+
+Test package: `app/build/outputs/apk/debug/solo-studying-planner-guidance-20261104-debug.apk`
+(20,588,383 bytes, ignored build output). SHA-256:
+`35a96170934137ceb916b89505159901c573ba4af261d1c4cd7dfd52c4cc4be8`.
+Signature scheme v2 verified. Application ID `com.amkumirab.solostudying`, development
+version 1.0/code 1, min SDK 24, target SDK 36. The Debug certificate matches the
+previous comparison package:
+`dc57434a4949a016ea3cddfc1e184412d530add37b926c48d73aaff25c62b824`.

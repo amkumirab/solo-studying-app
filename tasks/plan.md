@@ -14,6 +14,10 @@ roadmap; preserve previous verification records and pending physical checks.
 
 Do not push, change existing schedules, add samples or modify CI in this slice.
 
+Completed locally on 2026-11-04. See the contract for the 593-test verification,
+expired-plan repair, native render checks and signed test-package details.
+Physical-device acceptance remains open; the full original brief is not complete.
+
 ## Planner change comparison
 
 Contract: docs/PLANNER_CHANGE_COMPARISON.md. Approved follow-up to the acceptance

@@ -116,4 +116,16 @@ class PlannerGuidanceTest {
         val later = source.copy(config = source.config.copy(courses = listOf(course.copy(finishBy = monday.plusDays(15)))))
         assertTrue(plannerGuidance(later, listOf(boss()), monday, monday).none { it is PlannerAdvice.Deadline })
     }
+
+    @Test fun `current week still warns when every accepted finish date has already expired`() {
+        val source = StudyPlan(config().copy(courses = listOf(config().courses.first().copy(finishBy = monday))),
+            listOf(StudyBlock(1, 1, monday, 60)))
+        val today = monday.plusWeeks(1)
+        val advice = plannerGuidance(source, listOf(boss()), today, today)
+        val expired = advice.filterIsInstance<PlannerAdvice.Deadline>().single()
+        assertTrue(expired.overdue)
+        assertEquals(240, expired.uncoveredMinutes)
+        assertEquals(PlannerAdviceAction.EditAnswers, expired.action)
+        assertTrue(advice.none { it is PlannerAdvice.Weekly || it is PlannerAdvice.Priority })
+    }
 }

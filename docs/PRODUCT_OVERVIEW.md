@@ -91,6 +91,14 @@ valid displayed proposal can be confirmed against its expected snapshot. Loading
 active study, conflicts and incomplete rebuilds block applying; cancel never
 saves. See [planner comparisons](PLANNER_CHANGE_COMPARISON.md).
 
+Contextual guidance below the selected week's overview uses accepted priorities,
+exact ledger progress, future slot coverage and weekly budgets. It shows one
+message initially, with a disclosure for at most three. Deleted goals and overdue
+finish dates get repair advice; a fully expired plan still shows a current-week
+warning. Shortcuts only open Subjects, Availability, Edit answers or the guarded
+rebuild review. Draft comparison guidance is labelled and read-only. No cloud,
+automatic mutation or completion claim is involved. See [guidance](PLANNER_GUIDANCE.md).
+
 The Today dashboard includes the accepted plan's course sessions, with remaining
 minutes and recorded progress. Matching course recommendations are hidden to
 avoid duplicates. Long session lists expand on demand. "No time today" previews

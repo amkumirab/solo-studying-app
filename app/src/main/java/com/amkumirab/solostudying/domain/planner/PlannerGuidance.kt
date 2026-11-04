@@ -32,7 +32,8 @@ internal sealed interface PlannerAdvice {
 internal fun plannerGuidance(plan: StudyPlan, bosses: List<BossEntity>, today: LocalDate,
     weekStart: LocalDate): List<PlannerAdvice> {
     val overview = plannerWeekOverview(plan, weekStart)
-    if (overview.activeDays == 0) return emptyList()
+    // An expired plan still needs a repair warning when opening the current week.
+    if (overview.activeDays == 0 && weekStart != plannerWeekStart(today)) return emptyList()
     val byId = bosses.associateBy { it.id }
     val remaining = remainingPlannerCourses(plan, bosses)
     val progress = blockProgress(plan, bosses).groupBy { it.block.bossId }
@@ -46,7 +47,7 @@ internal fun plannerGuidance(plan: StudyPlan, bosses: List<BossEntity>, today: L
         PlannerAdvice.Deadline(course.bossId, course.finishBy, ((deficit + 59) / 60).toInt(), course.finishBy < today)
     }.sortedWith(compareByDescending<PlannerAdvice.Deadline> { it.overdue }
         .thenByDescending { it.uncoveredMinutes > 0 }.thenBy { it.finishBy }.thenBy { it.bossId }).firstOrNull()
-    val priority = remaining.filter { it.finishBy >= maxOf(today, weekStart) && weekStart.plusDays(6) >= today }
+    val priority = remaining.filter { overview.activeDays > 0 && it.finishBy >= maxOf(today, weekStart) && weekStart.plusDays(6) >= today }
         .sortedWith(compareByDescending<PlannerCourse> { it.priority }.thenBy { it.bossId }).firstOrNull()
         ?.takeIf { it.bossId != deadline?.bossId }?.let { course ->
             PlannerAdvice.Priority(course.bossId, course.priority,

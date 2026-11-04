@@ -14,8 +14,21 @@
     reactive progress/drafts and keyboard/restored disclosure.
   - Forty focused guidance/comparison/workflow tests, lintDebug and assembleDebug
     passed. Expired-plan and native adaptive-layout follow-up checks remain next.
-- [ ] Entry/reactivity/restoration, keyboard and native adaptive-layout tests.
-- [ ] Scoped review, full suite/lint/APKs, three local commits and test package.
+- [x] Entry/reactivity/restoration, keyboard and native adaptive-layout tests.
+  - Twenty feature tests pass. A red regression caught hidden overdue advice
+    after every plan date expired; current-week repair guidance now remains
+    visible without inventing weekly allocation outside plan dates.
+  - Native 320 dp/1.5-font-scale, tablet and short-viewport cases pass; all four
+    render images were visually reviewed. Actions remain reachable and 48 dp.
+- [x] Scoped review, full suite/lint/APKs, three local commits and test package.
+  - Verified on 2026-11-04: 593 tests in 119 suites, zero failures/errors/skips;
+    lintDebug zero errors and the same 38 existing warnings. Debug and unsigned
+    Release builds succeeded in 6 minutes 12 seconds. No existing checks weakened.
+  - Reviewed exact credit/coverage, bounded deterministic messages, frozen plan
+    values versus draft values, no-write navigation, accessibility and restore.
+    No dependencies, permissions, schema, CI or timer/reward behavior changed.
+  - Named Debug APK v2 signature, matching previous certificate, package/SDKs and
+    SHA-256 checked. Keep all three commits local until publication is requested.
 - [ ] Physical upgrade, TalkBack and rotation acceptance on a real device.
 
 ## Planner change comparison

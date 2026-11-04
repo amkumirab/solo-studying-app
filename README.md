@@ -41,6 +41,7 @@ page organization have since changed; these are not screenshots of the latest bu
 - Read-only weekly planning reports with daily, subject and priority charts, exact time values and separate session credit
 - Compact weekly planning overview with exact goal coverage, focus budgets, unallocated time and explicit target shortfalls
 - Read-only accepted/proposed schedule comparison before rebuilding or saving edited answers
+- Offline planner guidance for finish-date coverage, priority allocations and weekly goals, with guarded editor shortcuts
 - Deadline-aware daily study requirements and 15-minute budget comparisons showing accumulated spare time or shortages before saving
 - Weekly course sessions inside Today, with direct start, credited progress, and a confirmed "No time today" rescheduling preview
 - One-tap focus presets that remember the last duration and skill
@@ -198,6 +199,13 @@ their manual/edit markers. Locked slots stay exact. Cancel leaves the accepted
 plan unchanged; incomplete/conflicting rebuilds cannot be applied. **Edit answers**
 also shows this comparison before its existing save/acknowledgement flow.
 See [change comparison and phone checks](docs/PLANNER_CHANGE_COMPARISON.md).
+
+Below the selected week's overview, **Planner guidance** shows the most relevant
+finish-date, priority or weekly-target message. **Show more guidance** expands up
+to three messages. Advice uses the displayed plan and recorded study; past slots
+do not cover future work. Shortcuts open existing editors or the rebuild review,
+never save a plan or start study. Proposed-plan advice is separately labelled and
+read-only. See [guidance rules and phone checks](docs/PLANNER_GUIDANCE.md).
 
 ## Tech stack
 

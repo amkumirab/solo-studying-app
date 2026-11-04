@@ -21,12 +21,12 @@ Test classes live under the matching `app/src/test/java` package.
 | 8. Reactivity | `StudyPlannerEntry.kt`, `StudyPlannerWizard.kt`, `StudyRebuildReview.kt`; `StudyPlanComparisonEntryTest`, `PlannerWorkflowIntegrationTest` | Reactive accepted/proposed comparison is available before rebuilding and in edited-answer previews. Changed inputs invalidate old results; cancel preserves accepted data and confirm uses the displayed snapshot. Editing settings still does **not** silently regenerate accepted sessions; this is the chosen safe boundary rather than literal live replacement. |
 | 9. UX/accessibility | Existing Material theme; `PlannerOverviewLayoutTest`, `PlannerReportLayoutTest`, `SessionSubjectLayoutTest` | Narrow/large-font and Android-tablet host tests exist. Full-app keyboard, TalkBack, rotation and system reduced-motion acceptance still require a device. Host theme is dark-only; no desktop/web application or light mode is claimed. |
 | 10. Persistence | `planner/StudyPlannerStore.kt`, strict versioned codecs; `StudyPlannerStoreTest`, `PlannerSubjectsTest`, `PlannerWorkflowIntegrationTest` | Local private preferences; atomic snapshot compare-and-swap, legacy reads, explicit recovery, preserved IDs/baselines. Cold model reload is tested, not cross-device synchronization or physical process-death acceptance. |
-| 11. Smart feedback | `PlannerWeekOverviewContent.kt`, `WeeklyStudyGoalComponents.kt`, `StudyPlannerWizard.kt`; overview/weekly-allocation tests | Actual shortage, excess, empty/zero target, break/window/cap and lock-conflict explanations exist. No dedicated contextual highest-priority/upcoming-exam recommendation feature yet. |
+| 11. Smart feedback | `domain/planner/PlannerGuidance.kt`, `ui/screens/PlannerGuidanceContent.kt`; `PlannerGuidanceTest`, `PlannerGuidanceUiTest`, `PlannerGuidanceEntryTest`, `PlannerGuidanceLayoutTest` | Bounded offline advice for near/expired finish dates, actual remaining-work gaps, accepted priority allocation, missing goals and weekly budget/target status. Actions only navigate to existing editors/review; draft advice is labelled/read-only. Dates are not fabricated exams, budget is not spare clock capacity, and no plan is silently changed. |
 | 12. Example data | Empty-state flow in `StudyPlannerWizard.kt`; `StudyPlannerUiTest` | **Missing:** initial generated example schedule, four example subjects and 14-hour/16-hour defaults. Existing flow requires user goals; do not inject sample goals into existing accounts. |
 | 13. Edge cases | Domain validators, strict codecs and guarded editors; `StudyPlannerTest`, `WeeklyAvailabilityTest`, lock/duration/custom-session tests | Empty/duplicate/invalid input, zero goal, rest days, removed goals, overlap, midnight end and stale saves have automated coverage. Dates are local wall-clock planning values, not time-zone synchronization. Physical restoration remains pending. |
 | 14. Quality | Pure domain tests, real-store Compose integration and layout tests; Gradle verification below | Existing tests plus cross-feature workflows verify accounting and preservation. Native host tests are not phone end-to-end tests; no zero-bug or global-optimality claim. |
 | 15. Maintainability | Separate `domain/planner`, `planner`, `ui/viewmodel`, `ui/screens` modules | No new dependency, schema, permission, runtime refactor or scheduling-policy change in this verification slice. Historical slice docs record earlier versions; this map describes the current accepted behavior. |
-| 16. Definition of done | This audit and the acceptance checklist below | **Open:** product differences above, missing sample/recommendation features and device-only checks prevent a claim that the full original brief is complete. |
+| 16. Definition of done | This audit and the acceptance checklist below | **Open:** product differences above, missing sample preview and device-only checks prevent a claim that the full original brief is complete. Contextual guidance is implemented; it does not resolve the scheduling-policy or device-acceptance differences. |
 
 ## Cross-feature regression contract
 
@@ -68,8 +68,9 @@ This verifies a regression guard, not a newly discovered production defect.
    25, 45, 60, 90 and 120-minute focus preferences and exact-minute final blocks;
    availability endpoints use half-hours. Do not force old plans into half-hour
    sessions, or change manual/lock behavior, under a testing-only update.
-3. **Contextual recommendations.** Derive upcoming-deadline/high-priority advice
-   from accepted versus draft values with actionable, truthful explanations.
+3. **Contextual recommendations implemented.** Accepted/proposed guidance derives
+   finish-date, priority and weekly advice from real plan/progress values. See
+   [guidance](PLANNER_GUIDANCE.md) for explicit bounds, actions and device checks.
 4. **Optional example-plan preview.** If retained from the brief, use an explicit
    isolated preview or opt-in initialization. Never create dummy goals, study
    history or sample records on an existing installation without consent.

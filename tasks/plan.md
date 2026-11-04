@@ -1,5 +1,19 @@
 # App organization
 
+## Contextual planner guidance
+
+Approved follow-up: docs/PLANNER_GUIDANCE.md. Extend the same university-planner
+roadmap; preserve previous verification records and pending physical checks.
+
+1. Pure bounded advice from real plan/progress/week values; red/green domain
+   tests and focused regression. Commit the verified foundation.
+2. Reusable themed content, selected-week navigation actions and labelled draft
+   advice. Test entry no-write routes, guards, reactivity and restoration.
+3. Native narrow/large-font/tablet checks, scoped review, full tests/lint and both
+   APK builds. Update docs and deliver three local commits and a named test APK.
+
+Do not push, change existing schedules, add samples or modify CI in this slice.
+
 ## Planner change comparison
 
 Contract: docs/PLANNER_CHANGE_COMPARISON.md. Approved follow-up to the acceptance

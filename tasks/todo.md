@@ -1,5 +1,17 @@
 # App organization
 
+## Contextual planner guidance
+
+- [x] Pure recommendation types and progress-aware deterministic rule tests.
+  - Nine new domain cases and eight overview regressions passed on 2026-11-04.
+    Missing APIs first failed compilation. A test's outside-plan date was fixed
+    to remain Monday; existing validation was not relaxed. lintDebug and the
+    foundation Debug build succeeded. No scheduling/storage behavior changed.
+- [ ] Shared read-only content, guarded navigation and draft/accepted integration.
+- [ ] Entry/reactivity/restoration, keyboard and native adaptive-layout tests.
+- [ ] Scoped review, full suite/lint/APKs, three local commits and test package.
+- [ ] Physical upgrade, TalkBack and rotation acceptance on a real device.
+
 ## Planner change comparison
 
 - [x] Domain red tests, exact slot matching and shared rebuild proposal.

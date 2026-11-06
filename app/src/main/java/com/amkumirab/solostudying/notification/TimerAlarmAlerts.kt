@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.amkumirab.solostudying.R
+import com.amkumirab.solostudying.storage.commitChanges
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
@@ -21,7 +22,7 @@ import java.util.UUID
 internal class TimerAlarmSettingsStore(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     fun isEnabled(): Boolean = preferences.getBoolean("enabled", false)
-    fun setEnabled(enabled: Boolean): Boolean = preferences.edit().putBoolean("enabled", enabled).commit()
+    fun setEnabled(enabled: Boolean): Boolean = preferences.commitChanges { putBoolean("enabled", enabled) }
     companion object { const val PREFERENCES_NAME = "solo_studying_timer_alarm" }
 }
 
@@ -47,8 +48,12 @@ internal object TimerAlarmAlerts {
         val manager = app.getSystemService(NotificationManager::class.java)
         if (manager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL) return false
         val event = TimerAlarmEvent(UUID.randomUUID().toString(), timer, System.currentTimeMillis() + MAX_ALERT_MILLIS, isTest)
-        if (!preferences(app).edit().putString("token", event.token).putString("timer", timer.name)
-                .putLong("expires", event.expiresAtMillis).putBoolean("test", isTest).commit()) return false
+        if (!preferences(app).commitChanges {
+                putString("token", event.token)
+                putString("timer", timer.name)
+                putLong("expires", event.expiresAtMillis)
+                putBoolean("test", isTest)
+            }) return false
         TimerCompletionFeedback.stop(app)
         TimerCompletionFeedback.startAlarm(app)
         scheduleTimeout(app, event)

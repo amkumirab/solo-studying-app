@@ -14,6 +14,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import com.amkumirab.solostudying.R
+import com.amkumirab.solostudying.storage.commitChanges
 import com.amkumirab.solostudying.sound.SoundSettingsStore
 import java.util.concurrent.ConcurrentHashMap
 
@@ -59,9 +60,7 @@ internal object TimerCompletionFeedback {
     private fun claimCompletion(context: Context, timer: CompletedTimer, endTimeMillis: Long): Boolean {
         val preferences = context.applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
         if (preferences.getLong(timer.name, -1L) == endTimeMillis) return false
-        val editor = preferences.edit()
-        editor.putLong(timer.name, endTimeMillis)
-        return editor.commit()
+        return preferences.commitChanges { putLong(timer.name, endTimeMillis) }
     }
 
     @Suppress("DEPRECATION") // Compatibility paths for the supported Android 7–12 devices.

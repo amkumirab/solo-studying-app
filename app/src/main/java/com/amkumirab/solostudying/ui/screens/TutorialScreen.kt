@@ -9,6 +9,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -470,7 +472,7 @@ fun StepProfileExplanation() {
                 value = "LVL 12",
                 desc = "Represents your lifetime growth and total knowledge accumulated.",
                 isSpotlight = activeSpotlight == 0,
-                icon = Icons.Default.TrendingUp,
+                icon = Icons.AutoMirrored.Filled.TrendingUp,
                 color = NeonBlueAccent
             )
 
@@ -836,7 +838,7 @@ fun StepBossBattlesExplanation(
                 // HP Bar
                 val hpPercentage = state.fakeBossHp.toFloat() / state.fakeBossMaxHp.toFloat()
                 LinearProgressIndicator(
-                    progress = hpPercentage,
+                    progress = { hpPercentage },
                     color = if (state.fakeBossHp == 0) RpgEmerald else RpgRuby,
                     trackColor = DarkCardBorder,
                     modifier = Modifier
@@ -1066,7 +1068,7 @@ fun StepSkillsGrimoireExplanation() {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Default.MenuBook,
+            imageVector = Icons.AutoMirrored.Filled.MenuBook,
             contentDescription = "Grimoire",
             tint = RpgGold,
             modifier = Modifier.size(80.dp)
@@ -1125,7 +1127,7 @@ fun SkillPreviewItem(name: String, lvl: Int, progress: Float) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
-                progress = progress,
+                progress = { progress },
                 color = RpgGold,
                 trackColor = BlackFantasyBackground,
                 modifier = Modifier

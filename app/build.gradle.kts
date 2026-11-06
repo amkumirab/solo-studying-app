@@ -33,7 +33,13 @@ android {
   buildFeatures {
     compose = true
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      // Robolectric 4.17 accesses SharedSecrets when simulating Android on JDK 17+.
+      all { it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED") }
+    }
+  }
 }
 
 dependencies {

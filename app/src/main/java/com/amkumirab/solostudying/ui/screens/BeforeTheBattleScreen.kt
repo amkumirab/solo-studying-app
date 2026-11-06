@@ -140,7 +140,7 @@ fun BeforeTheBattleScreen(
     val baseReward = if (isFreeStudy || studyStep != null || (usesGoalSession && !willDefeatGoal)) {
         SessionRewardCalculator.completedFreeStudy(sessionSeconds)
     } else {
-        SessionRewardCalculator.completedBoss(boss?.difficulty ?: "Medium")
+        SessionRewardCalculator.completedBoss(boss.difficulty)
     }
     val estimatedReward = SessionRewardCalculator.applyProgressionModifiers(
         reward = baseReward,
@@ -245,14 +245,14 @@ fun BeforeTheBattleScreen(
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         GoalSessionDurationPicker(sessionMinutes, suggestedDailyMinutes) { sessionMinutes = it }
                         Text(
-                            "Whole goal: ${boss?.requiredMinutes} min · Studied: ${(boss?.timeSpentSeconds ?: 0L) / 60} min",
+                            "Whole goal: ${boss.requiredMinutes} min · Studied: ${boss.timeSpentSeconds / 60} min",
                             color = TextMuted,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         if (sessionMinutes != null && sessionSeconds < checkNotNull(sessionMinutes) * 60L) {
                             Text("This session ends when the remaining goal time is reached.", color = RpgGold)
                         }
-                        if (boss?.isRealBoss == true) {
+                        if (boss.isRealBoss) {
                             Text("Study time is saved. Confirm the deliverable separately when finished.", color = TextMuted)
                         }
                     }
@@ -279,7 +279,7 @@ fun BeforeTheBattleScreen(
                         )
                     )
                     
-                    Divider(color = DarkCardBorder.copy(alpha = 0.5f), thickness = 1.dp)
+                    HorizontalDivider(color = DarkCardBorder.copy(alpha = 0.5f), thickness = 1.dp)
 
                     // Stats grid representation
                     Row(
@@ -292,10 +292,10 @@ fun BeforeTheBattleScreen(
                                 if (isFreeStudy) {
                                     "Astral Free Study"
                                 } else {
-                                    studyStep?.title ?: boss?.name ?: "Encounter"
+                                    studyStep?.title ?: boss.name
                                 },
                             )
-                            SummaryItem("LOCATION", if (isFreeStudy) "Astral Plane Portal" else "Dungeon: ${boss?.dungeonName ?: "Realm"}")
+                            SummaryItem("LOCATION", if (isFreeStudy) "Astral Plane Portal" else "Dungeon: ${boss.dungeonName}")
                             SummaryItem("FOCUS DURATION", "${sessionSeconds / 60} min ${sessionSeconds % 60} sec")
                         }
                         Column(modifier = Modifier.weight(1f)) {

@@ -16,7 +16,11 @@
     successfully before runtime-library upgrades. minSdk stays 24.
   - Regenerated the wrapper twice as documented; its JAR and distribution
     checksums matched the official Gradle SHA-256 values.
-- [ ] Upgrade and verify AndroidX/Compose/coroutines/test dependencies.
+- [x] Upgrade and verify AndroidX/Compose/coroutines/test dependencies.
+  - Compose BOM 2026.09.00, coroutines 1.11.0, AndroidX test core/runner 1.7.0,
+    and Robolectric 4.17 compile; all 32 focused UI/retention/alarm/database cases
+    passed after adding Robolectric's documented JDK 17+ test-only module flag.
+  - Replaced deprecated dividers, progress overloads and directional icons.
 - [ ] Verify Room upgrade, exact join results and schema/data compatibility.
 - [ ] Update CI action runtimes and document migration decisions.
 - [ ] Full JVM/lint/build checks, emulator UI tests and upgrade retention.

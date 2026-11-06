@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.Notes
@@ -3768,7 +3769,7 @@ fun NotificationOverlays(
             showBreakOption = if (isCycleRound) true else viewModel.breakSuggestionsEnabled &&
                 summary.endState != SessionEndState.Suspended && !isCycleComplete,
             breakButtonLabel = if (isCycleRound) {
-                "START ${focusCycle?.plan?.breakMinutes} MIN BREAK"
+                "START ${focusCycle.plan.breakMinutes} MIN BREAK"
             } else {
                 "TAKE A BREAK"
             },
@@ -3846,7 +3847,7 @@ fun NotificationOverlays(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = "LEVEL ${pair.first}", style = MaterialTheme.typography.titleMedium.copy(color = TextMuted, fontWeight = FontWeight.Bold))
-                        Icon(Icons.Default.ArrowForward, contentDescription = "Level advancement arrow", tint = NeonBlueAccent, modifier = Modifier.padding(horizontal = 8.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Level advancement arrow", tint = NeonBlueAccent, modifier = Modifier.padding(horizontal = 8.dp))
                         Text(text = "LEVEL ${pair.second}", style = MaterialTheme.typography.titleLarge.copy(color = NeonBlueAccent, fontWeight = FontWeight.ExtraBold))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -5145,7 +5146,7 @@ fun OnboardingScreen(
                                 }
                             }
 
-                            Divider(color = Color.Gray.copy(alpha = 0.15f))
+                            HorizontalDivider(color = Color.Gray.copy(alpha = 0.15f))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -5176,7 +5177,7 @@ fun OnboardingScreen(
                                 }
                             }
 
-                            Divider(color = Color.Gray.copy(alpha = 0.15f))
+                            HorizontalDivider(color = Color.Gray.copy(alpha = 0.15f))
 
                             Text("🛡️ COVENANT FLEXIBILITY", fontWeight = FontWeight.Bold, color = RpgGold, fontSize = 13.sp)
                             Row(

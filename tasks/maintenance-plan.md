@@ -4,6 +4,8 @@ Approved on 2026-11-06: remove verified unused resources/context parameters and
 perform a broad dependency/toolchain upgrade, not just a narrow KSP patch.
 Keep the original planner acceptance tasks unchanged. Tasks are tracked in
 `tasks/maintenance-todo.md` by explicit user choice.
+The user also approved publishing the English maintenance commits to `main`
+after successful final tests and then checking the online GitHub Actions run.
 
 ## Contract
 

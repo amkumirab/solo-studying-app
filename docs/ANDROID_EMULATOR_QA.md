@@ -153,8 +153,80 @@ run. Do not treat the one-minute foreground timer check as alarm-delivery proof.
 
 ## Limits
 
-One API level is not compatibility testing across supported Android versions.
+Passing on current API levels does not establish compatibility across all
+supported Android versions.
 Physical vibration strength, real audio output, OEM power management, real-device
 lock-screen delivery and actual phone upgrades remain separate acceptance checks.
 Do not mark the entire application tested merely because this suite passes.
 Official reference: [Emulator command line](https://developer.android.com/studio/run/emulator-commandline).
+
+## Android 17 maintenance checks
+
+The scripts also support a separate AOSP Android 17/API 37 AVD named
+`SoloStudying_QA_API37`, using `emulator-5582`. API 36 remains the default and
+continues to use `emulator-5580`. Both scripts verify the selected AVD identity.
+Neither script clears application data or targets a connected phone.
+
+If the second image and AVD are absent, install/create them explicitly:
+
+```powershell
+sdkmanager --install 'system-images;android-37.0;default;x86_64'
+'no' | avdmanager create avd --name SoloStudying_QA_API37 --package 'system-images;android-37.0;default;x86_64' --device pixel_5
+.\scripts\Start-AndroidQa.ps1 -ApiLevel 37
+```
+
+After the emulator finishes booting and both APKs have been built:
+
+```powershell
+.\scripts\Invoke-AndroidQa.ps1 -ApiLevel 37
+```
+
+Results are separate: `instrumentation-api36.txt` and `instrumentation-api37.txt`
+under ignored `app/build/reports/emulator-qa`. A zero-test run is not accepted.
+The emulator binary used for this maintenance pass is 37.2.13.0; API 37 uses
+the default x86_64 revision 6 image. No Google account is required.
+
+See [build maintenance](BUILD_MAINTENANCE.md) for the upgraded stack and the
+unchanged application/data contract. These checks do not replace the pending
+physical-device scenarios listed above.
+
+### Maintenance verification: 2026-11-06
+
+The final maintenance build passed `testDebugUnitTest lintDebug assembleDebug
+assembleRelease assembleDebugAndroidTest`: 601 JVM cases across 123 suites,
+zero failures/errors/skips, no compiler warnings or KSP exception in the local
+build log. Lint retains one documented `UseKtx` advisory, with zero errors.
+The release artifact is unsigned and was built, not installed or store-published.
+
+On API 37, all 9 instrumentation tests passed in 59.426 seconds. The separate
+system-bar test passed under dark system mode in 6.457 seconds, including
+activity recreation. The AVD was restored to its original light system mode.
+On API 36, all 9 instrumentation tests passed in 57.045 seconds using the same
+new application and test APKs, without clearing the existing QA app data.
+
+For the real packaged-app upgrade check, the previously named system-bars APK
+was installed first on API 37. A synthetic `QA_Upgrade_One_Minute` focus profile
+and naturally completed one-minute session were created through the UI.
+Installing the new APK with `adb install -r` retained the profile preferences
+byte-for-byte immediately after upgrade (SHA-256
+`daefc3892c224db5a1a0dc822c5655a0913226829b5d9ac651351c40b9e094c7`).
+After launch, Today still showed 1 of 45 minutes and the saved profile appeared
+in Focus. Notification permission remained denied; the app was usable.
+
+Starting that saved profile in the new build completed naturally, displayed
+1m 0s and +1 XP, and increased Today to 2 of 45 minutes. Starting a profile
+updates its last-used timestamp, so its file hash is not expected to remain
+unchanged after this deliberate use. No app data was cleared. The API 37 crash
+buffer was empty after the exploratory and instrumented checks.
+
+The debug APK is `solo-studying-maintenance-20261106-debug.apk` (22,262,303 bytes),
+SHA-256 `228FADAF417E1D3505ADBB9F8EC87E792F1BDCA49C5528A0F1001CA03C9D7DA6`.
+Its application ID and debug signing certificate match the old APK; minSdk is
+24 and targetSdk is 37. Evidence remains under ignored emulator reports:
+`qa37-maintenance-today.png`, `qa37-maintenance-profile.png`,
+`qa37-maintenance-summary.png` and the per-API instrumentation logs.
+
+The unsigned release APK SHA-256 is
+`199B9F5721778ADBFF47FC5EBB7C57E88AC53C7EE9DFAF9F062BF4A82ABE13E1`.
+Emulator success does not establish physical sound/vibration, locked-screen
+delivery, OEM background behavior, older API compatibility or a phone upgrade.

@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.media.AudioManager
 import android.view.WindowManager
+import androidx.core.view.WindowCompat
 import androidx.test.core.app.ApplicationProvider
 import org.junit.*
 import org.junit.Assert.*
@@ -61,5 +62,20 @@ class TimerAlarmActivityTest {
         assertEquals(expected, controller.get().window.attributes.flags and expected)
         assertFalse(controller.get().isFinishing)
         controller.destroy()
+    }
+
+    @Test @Config(sdk = [26, 36], qualifiers = "notnight")
+    fun `dark alarm screen keeps light system icons in system light mode`() {
+        assertTrue(TimerAlarmAlerts.begin(app, CompletedTimer.BREAK, isTest = true))
+        val controller = Robolectric.buildActivity(TimerAlarmActivity::class.java,
+            TimerAlarmAlerts.screenIntent(app, TimerAlarmAlerts.events.value!!)).create()
+        try {
+            val activity = controller.get()
+            val bars = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+            assertFalse("Dark alarm needs light status-bar icons", bars.isAppearanceLightStatusBars)
+            assertFalse("Dark alarm needs light navigation-bar icons", bars.isAppearanceLightNavigationBars)
+        } finally {
+            controller.destroy()
+        }
     }
 }

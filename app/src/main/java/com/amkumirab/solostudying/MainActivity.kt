@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
@@ -24,6 +23,7 @@ import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.ui.screens.MainAppScreen
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
+import com.amkumirab.solostudying.ui.theme.enableSoloStudyingEdgeToEdge
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModelFactory
 import kotlinx.coroutines.launch
@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
+    enableSoloStudyingEdgeToEdge()
     RpgSoundManager.initialize(applicationContext)
 
     if (

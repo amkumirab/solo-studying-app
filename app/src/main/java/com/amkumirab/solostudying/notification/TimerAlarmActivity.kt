@@ -7,7 +7,6 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.amkumirab.solostudying.MainActivity
 import com.amkumirab.solostudying.ui.screens.TimerAlarmScreen
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
+import com.amkumirab.solostudying.ui.theme.enableSoloStudyingEdgeToEdge
 
 class TimerAlarmActivity : ComponentActivity() {
     private var token by mutableStateOf<String?>(null)
@@ -26,7 +26,7 @@ class TimerAlarmActivity : ComponentActivity() {
         token = intent.data?.lastPathSegment
         if (TimerAlarmAlerts.events.value?.token != token || token == null) { finish(); return }
         showOverLockScreen()
-        enableEdgeToEdge()
+        enableSoloStudyingEdgeToEdge()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = dismiss()
         })

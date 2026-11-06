@@ -6,12 +6,12 @@ plugins {
 
 android {
   namespace = "com.amkumirab.solostudying"
-  compileSdk { version = release(36) { minorApiLevel = 1 } }
+  compileSdk { version = release(37) }
 
   defaultConfig {
     applicationId = "com.amkumirab.solostudying"
     minSdk = 24
-    targetSdk = 36
+    targetSdk = 37
     versionCode = 1
     versionName = "1.0"
 

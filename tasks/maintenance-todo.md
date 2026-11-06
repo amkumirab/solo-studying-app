@@ -11,7 +11,11 @@
   - KSP 2.3.13 generated the existing Room sources successfully on the original
     toolchain. Its release lineage includes the 2.3.6 fix for upstream issue
     google/ksp#2763. Final full build/runtime verification remains below.
-- [ ] Upgrade the compatible AGP/Gradle/Kotlin/SDK toolchain.
+- [x] Upgrade the compatible AGP/Gradle/Kotlin/SDK toolchain.
+  - AGP 9.5.1, Gradle 9.8.2, Kotlin 2.4.21 and compile/target SDK 37 compiled
+    successfully before runtime-library upgrades. minSdk stays 24.
+  - Regenerated the wrapper twice as documented; its JAR and distribution
+    checksums matched the official Gradle SHA-256 values.
 - [ ] Upgrade and verify AndroidX/Compose/coroutines/test dependencies.
 - [ ] Verify Room upgrade, exact join results and schema/data compatibility.
 - [ ] Update CI action runtimes and document migration decisions.

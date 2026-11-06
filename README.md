@@ -251,8 +251,8 @@ access in one place.
 
 ### Requirements
 
-- Android Studio with support for Android Gradle Plugin 9.1
-- Android SDK 36.1
+- Android Studio with support for Android Gradle Plugin 9.5
+- Android SDK 37 (the Gradle wrapper supplies Gradle 9.8.2)
 - JDK 21 (the JDK bundled with current Android Studio works)
 - An emulator or Android device running API 24 or newer
 

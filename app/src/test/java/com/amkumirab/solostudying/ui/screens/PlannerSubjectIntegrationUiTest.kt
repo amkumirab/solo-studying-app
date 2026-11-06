@@ -1,7 +1,7 @@
 package com.amkumirab.solostudying.ui.screens
 
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
@@ -44,7 +44,7 @@ class PlannerSubjectIntegrationUiTest {
             assertEquals(6000, course.remainingMinutes)
             assertEquals(5, course.priority)
             assertEquals(today.plusDays(28), course.finishBy)
-            assertTrue(accepted!!.shortfalls.isEmpty())
+            assertTrue(accepted.shortfalls.isEmpty())
         }
     }
 

@@ -2,7 +2,7 @@ package com.amkumirab.solostudying.ui.screens
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import android.app.DatePickerDialog
 import com.amkumirab.solostudying.data.entity.BossEntity
@@ -128,8 +128,8 @@ class CustomSessionUiTest {
         rule.waitUntil(10000) { rule.onAllNodesWithTag("custom_new_slot").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("confirm_custom_session").performClick()
         assertEquals(2, saved!!.blocks.last().bossId)
-        assertEquals(today.plusDays(1), saved!!.blocks.last().date)
-        assertEquals(input.blocks, saved!!.blocks.dropLast(1))
+        assertEquals(today.plusDays(1), saved.blocks.last().date)
+        assertEquals(input.blocks, saved.blocks.dropLast(1))
     }
 
     @Test fun `new recorded progress invalidates removal preview and add cannot absorb unallocated credit`() {

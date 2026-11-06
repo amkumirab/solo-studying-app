@@ -2,7 +2,7 @@ package com.amkumirab.solostudying.ui.screens
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
@@ -35,7 +35,7 @@ class TimedStudyPlanUiTest {
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
         rule.runOnIdle {
             assertEquals(windows, accepted!!.config.studyWindows)
-            assertEquals(listOf(1020, 1140), accepted!!.blocks.map { it.startMinute })
+            assertEquals(listOf(1020, 1140), accepted.blocks.map { it.startMinute })
         }
     }
 

@@ -1,7 +1,7 @@
 package com.amkumirab.solostudying.ui.screens
 
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.amkumirab.solostudying.data.entity.DungeonEntity
 import com.amkumirab.solostudying.domain.dungeon.DungeonStudyPlanInput
 import com.amkumirab.solostudying.domain.dungeon.calculateDungeonStudyPlan
@@ -37,7 +37,7 @@ class DungeonStudyPlanUiTest {
         composeRule.onNodeWithTag("dungeon_plan_save").assertIsEnabled().performClick()
         composeRule.runOnIdle {
             assertEquals(6_000, saved!!.targetMinutes)
-            assertEquals(today.plusMonths(2), saved!!.deadline)
+            assertEquals(today.plusMonths(2), saved.deadline)
             assertTrue(dismissed)
         }
     }

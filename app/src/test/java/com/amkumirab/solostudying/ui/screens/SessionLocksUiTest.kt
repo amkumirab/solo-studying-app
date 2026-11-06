@@ -4,7 +4,7 @@ import android.app.Application
 import android.os.Looper
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
@@ -113,7 +113,7 @@ class SessionLocksUiTest {
         rule.waitUntil(10000) { rule.onAllNodesWithTag("planner_accept").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
         assertEquals(original.blocks.single(), accepted!!.blocks.single { it.locked })
-        assertEquals(60, accepted!!.blocks.sumOf { it.minutes })
+        assertEquals(60, accepted.blocks.sumOf { it.minutes })
     }
 
     @Test fun `postponement explains locks and the move editor cannot bypass them`() {

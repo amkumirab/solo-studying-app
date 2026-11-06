@@ -7,7 +7,7 @@ import android.app.Application
 import android.content.DialogInterface
 import androidx.test.core.app.ApplicationProvider
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
@@ -62,8 +62,8 @@ class StudyPlannerUiTest {
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
         rule.runOnIdle {
             assertEquals(300, accepted!!.config.courses.single().remainingMinutes)
-            assertEquals(45, accepted!!.config.sessionMinutes)
-            assertTrue(accepted!!.shortfalls.isEmpty())
+            assertEquals(45, accepted.config.sessionMinutes)
+            assertTrue(accepted.shortfalls.isEmpty())
         }
     }
 
@@ -106,7 +106,7 @@ class StudyPlannerUiTest {
         rule.waitUntil(10000) { ownerModel?.state?.value?.loaded == true }
         rule.runOnIdle {
             assertSame("Planner must use this activity's application", ApplicationProvider.getApplicationContext<Application>(), ownerModel!!.getApplication<Application>())
-            assertEquals(plan, ownerModel!!.state.value.plan)
+            assertEquals(plan, ownerModel.state.value.plan)
         }
         rule.waitUntil(10000) { rule.onAllNodesWithText("Open weekly plan").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("open_study_planner").performClick()
@@ -210,8 +210,8 @@ class StudyPlannerUiTest {
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
         rule.runOnIdle {
             assertEquals(listOf(165, 165, 165, 165, 165, 0, 0), accepted!!.config.weekdayMinutes)
-            assertEquals(6000, accepted!!.blocks.sumOf { it.minutes })
-            assertTrue(accepted!!.shortfalls.isEmpty())
+            assertEquals(6000, accepted.blocks.sumOf { it.minutes })
+            assertTrue(accepted.shortfalls.isEmpty())
         }
     }
 

@@ -5,7 +5,7 @@ import android.os.Looper
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
@@ -97,7 +97,7 @@ class PlannerBreaksUiTest {
         next(); awaitPreview()
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
         assertEquals(0, accepted!!.config.breakMinutes)
-        assertNull(accepted!!.config.studyWindows)
+        assertNull(accepted.config.studyWindows)
     }
 
     @Test fun `weekly view labels break interval separately without a trailing break`() {
@@ -145,7 +145,7 @@ class PlannerBreaksUiTest {
         rule.waitUntil(10000) { rule.onAllNodesWithTag("custom_new_slot").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("confirm_custom_session").performClick()
         assertEquals(580, saved!!.blocks.last().startMinute)
-        assertEquals(source.blocks.single(), saved!!.blocks.first())
+        assertEquals(source.blocks.single(), saved.blocks.first())
     }
 
     @Test fun `cancelling edited answers does not save or move existing sessions`() {

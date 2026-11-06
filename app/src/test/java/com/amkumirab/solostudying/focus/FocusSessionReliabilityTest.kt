@@ -615,8 +615,7 @@ class FocusSessionReliabilityTest {
             viewModel.selectAndStartFreeStudy(minutes = 1)
             waitForCondition { if (viewModel.isBattleActive) true else null }
             viewModel.simulateStudySeconds(60L)
-            waitForCondition { if (!viewModel.isBattleActive) true else null }
-            Unit
+            waitForCondition<Boolean> { if (!viewModel.isBattleActive) true else null }
         }
 
         val sessions = repository.allSessions.first()

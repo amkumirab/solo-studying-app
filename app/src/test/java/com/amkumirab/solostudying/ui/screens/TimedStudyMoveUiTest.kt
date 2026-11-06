@@ -4,7 +4,7 @@ import android.app.DatePickerDialog
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
@@ -35,8 +35,8 @@ class TimedStudyMoveUiTest {
         rule.onNodeWithTag("move_start_time").performTextReplacement("18:00")
         rule.onNodeWithTag("confirm_timed_move").assertIsEnabled().performClick()
         assertEquals(1080, saved!!.blocks.first().startMinute)
-        assertEquals(plan.blocks.last(), saved!!.blocks.last())
-        assertEquals(listOf(7, 19), saved!!.blocks.map { it.id })
+        assertEquals(plan.blocks.last(), saved.blocks.last())
+        assertEquals(listOf(7, 19), saved.blocks.map { it.id })
     }
 
     @Test fun `edited time survives recreation and cancellation never saves`() {
@@ -80,8 +80,8 @@ class TimedStudyMoveUiTest {
         }
         rule.onNodeWithTag("confirm_timed_move").performClick()
         assertEquals(today.plusDays(1), saved!!.blocks.first().date)
-        assertEquals(30, saved!!.blocks.first().minutes)
-        assertEquals(7, saved!!.blocks.first().id)
+        assertEquals(30, saved.blocks.first().minutes)
+        assertEquals(7, saved.blocks.first().id)
     }
 
     @Test fun `week move action opens the explicit time editor`() {

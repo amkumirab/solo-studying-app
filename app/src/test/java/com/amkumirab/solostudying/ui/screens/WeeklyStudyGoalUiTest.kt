@@ -3,7 +3,7 @@ package com.amkumirab.solostudying.ui.screens
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.domain.planner.*
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
@@ -43,8 +43,8 @@ class WeeklyStudyGoalUiTest {
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
         rule.runOnIdle {
             assertEquals(240, accepted!!.config.weeklyGoalMinutes)
-            assertNotNull(accepted!!.config.weeklyScheduling)
-            assertEquals(120, accepted!!.shortfalls[1])
+            assertNotNull(accepted.config.weeklyScheduling)
+            assertEquals(120, accepted.shortfalls[1])
         }
     }
 
@@ -72,7 +72,7 @@ class WeeklyStudyGoalUiTest {
         rule.onNodeWithTag("planner_accept").performScrollTo().performClick()
         rule.runOnIdle {
             assertEquals(1, accepted!!.config.weeklyGoalMinutes)
-            assertEquals(2, accepted!!.blocks.sumOf { it.minutes })
+            assertEquals(2, accepted.blocks.sumOf { it.minutes })
         }
     }
 

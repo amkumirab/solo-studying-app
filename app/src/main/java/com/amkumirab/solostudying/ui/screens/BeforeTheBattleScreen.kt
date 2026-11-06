@@ -1,7 +1,7 @@
 package com.amkumirab.solostudying.ui.screens
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -393,7 +393,7 @@ fun BeforeTheBattleScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     RpgSoundManager.playClickSound()
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(music.url))
+                                    val intent = Intent(Intent.ACTION_VIEW, music.url.toUri())
                                     context.startActivity(intent)
                                 }
                                 .testTag("music_${music.title.replace(" ", "_")}"),

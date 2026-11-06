@@ -1,6 +1,7 @@
 package com.amkumirab.solostudying.ui.viewmodel
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amkumirab.solostudying.data.entity.BossEntity
@@ -37,8 +38,10 @@ data class TutorialUiState(
 
 class TutorialViewModel(
     private val repository: SoloStudyingRepository,
-    private val context: Context
+    context: Context
 ) : ViewModel() {
+
+    private val applicationContext = context.applicationContext
 
     private val _uiState = MutableStateFlow(TutorialUiState())
     val uiState: StateFlow<TutorialUiState> = _uiState.asStateFlow()
@@ -51,7 +54,7 @@ class TutorialViewModel(
 
     init {
         viewModelScope.launch {
-            val prefs = context.getSharedPreferences("solo_studying_tutorial_prefs", Context.MODE_PRIVATE)
+            val prefs = applicationContext.getSharedPreferences("solo_studying_tutorial_prefs", Context.MODE_PRIVATE)
             val hasOpenedBefore = prefs.getBoolean("has_opened_before", false)
             val isReplaying = prefs.getBoolean("is_replaying_tutorial", false)
 
@@ -59,7 +62,7 @@ class TutorialViewModel(
             if (profile != null) {
                 if (!hasOpenedBefore) {
                     // Record the first launch before showing onboarding.
-                    prefs.edit().putBoolean("has_opened_before", true).apply()
+                    prefs.edit { putBoolean("has_opened_before", true) }
                 } else if (!isReplaying) {
                     // Returning user and not explicitly replaying -> skip tutorial automatically
                     if (!profile.hasCompletedTutorial) {
@@ -242,8 +245,8 @@ class TutorialViewModel(
     // Final Completion
     fun completeTutorial() {
         viewModelScope.launch {
-            val prefs = context.getSharedPreferences("solo_studying_tutorial_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("is_replaying_tutorial", false).apply()
+            val prefs = applicationContext.getSharedPreferences("solo_studying_tutorial_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putBoolean("is_replaying_tutorial", false) }
 
             val profile = repository.getProfileSync() ?: UserProfileEntity()
             repository.insertOrUpdateProfile(
@@ -258,8 +261,8 @@ class TutorialViewModel(
 
     fun replayTutorial() {
         viewModelScope.launch {
-            val prefs = context.getSharedPreferences("solo_studying_tutorial_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("is_replaying_tutorial", true).apply()
+            val prefs = applicationContext.getSharedPreferences("solo_studying_tutorial_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putBoolean("is_replaying_tutorial", true) }
 
             val profile = repository.getProfileSync() ?: UserProfileEntity()
             repository.insertOrUpdateProfile(

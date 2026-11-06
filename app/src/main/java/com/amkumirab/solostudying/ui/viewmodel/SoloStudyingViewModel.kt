@@ -508,7 +508,7 @@ class SoloStudyingViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SoloStudyingViewModel::class.java)) {
             val statusVM = StatusViewModel(repository, context)
-            val dungeonVM = DungeonViewModel(repository, context)
+            val dungeonVM = DungeonViewModel(repository)
             val focusCycleVM = FocusCycleViewModel(context)
             val focusProfileVM = FocusProfileViewModel(context)
             val battleVM = BattleViewModel(
@@ -516,7 +516,7 @@ class SoloStudyingViewModelFactory(
                 context = context,
                 onSessionFinished = focusCycleVM::onSessionFinished,
             )
-            val skillVM = SkillViewModel(repository, context)
+            val skillVM = SkillViewModel(repository)
             val shopVM = ShopViewModel(repository)
             val tutorialVM = TutorialViewModel(repository, context)
             val breakVM = BreakViewModel(context, onBreakFinished = focusCycleVM::finishBreak)

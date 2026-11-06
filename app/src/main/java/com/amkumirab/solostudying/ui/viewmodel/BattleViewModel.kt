@@ -36,13 +36,15 @@ import java.time.LocalDate
 
 class BattleViewModel(
     private val repository: SoloStudyingRepository,
-    private val context: Context,
+    context: Context,
     private val focusSessionStore: FocusSessionStore = FocusSessionStore(context),
     private val focusShieldManager: FocusShieldManager = FocusShieldManager(context),
     private val strictFocusStore: StrictFocusStore = StrictFocusStore(context),
     private val onSessionFinished: (SessionSummary) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
+
+    private val applicationContext = context.applicationContext
 
     // --- Active Battle States ---
     var activeBoss by mutableStateOf<BossEntity?>(null)
@@ -154,18 +156,18 @@ class BattleViewModel(
     private fun publishFocusSessionState() {
         saveFocusSessionState()
         val snapshot = focusSessionStore.read() ?: return
-        FocusSessionNotifier.show(context, snapshot)
+        FocusSessionNotifier.show(applicationContext, snapshot)
         if (snapshot.isPaused) {
-            FocusSessionNotifier.cancelCompletionAlarm(context)
+            FocusSessionNotifier.cancelCompletionAlarm(applicationContext)
         } else {
-            FocusSessionNotifier.scheduleCompletion(context, snapshot)
+            FocusSessionNotifier.scheduleCompletion(applicationContext, snapshot)
         }
     }
 
     private fun clearFocusSessionState() {
         focusSessionStore.clear()
-        FocusSessionNotifier.cancelActive(context)
-        FocusSessionNotifier.cancelCompletionAlarm(context)
+        FocusSessionNotifier.cancelActive(applicationContext)
+        FocusSessionNotifier.cancelCompletionAlarm(applicationContext)
     }
 
     private fun restoreSavedFocusSession() {
@@ -429,7 +431,7 @@ class BattleViewModel(
         lastTickTimeMillis = clock()
         focusShieldManager.reconcile(sessionActive = true, sessionPaused = false)
         refreshFocusShieldState()
-        FocusSessionNotifier.cancelCompleted(context)
+        FocusSessionNotifier.cancelCompleted(applicationContext)
         publishFocusSessionState()
         timerJob = viewModelScope.launch {
             while (isBattleActive && !isBattlePaused && battleTimeLeftSeconds > 0L) {
@@ -617,7 +619,7 @@ class BattleViewModel(
                 saveFocusSessionState()
                 val completedSnapshot = focusSessionStore.read()
                 resetActiveSession()
-                completedSnapshot?.let { FocusSessionNotifier.showCompleted(context, pendingSummary?.subject ?: it.displayTitle(), it) }
+                completedSnapshot?.let { FocusSessionNotifier.showCompleted(applicationContext, pendingSummary?.subject ?: it.displayTitle(), it) }
             } finally {
                 isCompletingSession = false
             }

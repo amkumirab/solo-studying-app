@@ -1,6 +1,5 @@
 package com.amkumirab.solostudying.ui.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.amkumirab.solostudying.data.entity.BossEntity
@@ -18,7 +17,6 @@ import kotlinx.coroutines.launch
 
 class DungeonViewModel(
     private val repository: SoloStudyingRepository,
-    private val context: Context
 ) : ViewModel() {
 
     val bosses: StateFlow<List<BossEntity>> = repository.allBosses.stateIn(

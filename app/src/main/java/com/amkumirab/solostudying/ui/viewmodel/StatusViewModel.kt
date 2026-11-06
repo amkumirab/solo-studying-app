@@ -69,8 +69,8 @@ class StatusViewModel(
     private val todayProvider: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
 
-    private val context = context.applicationContext
-    private val reminderSettingsStore = ReminderSettingsStore(this.context)
+    private val applicationContext = context.applicationContext
+    private val reminderSettingsStore = ReminderSettingsStore(applicationContext)
 
     val userProfile: StateFlow<UserProfileEntity?> = repository.userProfile.stateIn(
         scope = viewModelScope,
@@ -176,16 +176,16 @@ class StatusViewModel(
 
     fun simulateCompanionNotification(action: String) {
         viewModelScope.launch {
-            val intent = android.content.Intent(context, NotificationReceiver::class.java).apply {
+            val intent = android.content.Intent(applicationContext, NotificationReceiver::class.java).apply {
                 this.action = action
             }
-            context.sendBroadcast(intent)
+            applicationContext.sendBroadcast(intent)
         }
     }
 
     fun updateReminderSettings(settings: ReminderSettings) {
         reminderSettingsStore.save(settings)
-        NotificationHelper.scheduleDailyAlarms(context, settings)
+        NotificationHelper.scheduleDailyAlarms(applicationContext, settings)
     }
 
     fun updateSessionNote(sessionId: Long, note: String) {

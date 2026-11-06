@@ -43,7 +43,7 @@ abstract class SoloStudyingDatabase : RoomDatabase() {
 
                 // Only use fallbackToDestructiveMigration in development mode to safeguard production users
                 if (isDevelopmentMode(context)) {
-                    builder.fallbackToDestructiveMigration()
+                    builder.fallbackToDestructiveMigration(dropAllTables = false)
                 }
 
                 // Add prepared migrations for release versions

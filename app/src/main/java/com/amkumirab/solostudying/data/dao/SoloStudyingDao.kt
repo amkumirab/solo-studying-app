@@ -65,7 +65,7 @@ interface SoloStudyingDao {
     @Query("DELETE FROM boss_skills WHERE bossId = :bossId")
     suspend fun deleteBossSkillsForBoss(bossId: Int)
 
-    @Query("SELECT * FROM skills INNER JOIN boss_skills ON skills.id = boss_skills.skillId WHERE boss_skills.bossId = :bossId")
+    @Query("SELECT skills.* FROM skills INNER JOIN boss_skills ON skills.id = boss_skills.skillId WHERE boss_skills.bossId = :bossId")
     fun getSkillsForBoss(bossId: Int): Flow<List<SkillEntity>>
 
     // --- User Profile ---

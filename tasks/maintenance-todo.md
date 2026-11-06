@@ -21,7 +21,11 @@
     and Robolectric 4.17 compile; all 32 focused UI/retention/alarm/database cases
     passed after adding Robolectric's documented JDK 17+ test-only module flag.
   - Replaced deprecated dividers, progress overloads and directional icons.
-- [ ] Verify Room upgrade, exact join results and schema/data compatibility.
+- [x] Verify Room upgrade, exact join results and schema/data compatibility.
+  - Room 2.8.5 passed 13 cold-reopen, migration and gameplay cases. The schema
+    stays at version 12. Select only skills columns, eliminating the generated
+    query mismatch warning. The explicit development fallback preserves the old
+    drop-known-tables-only behavior. Packaged-app upgrade checks remain below.
 - [ ] Update CI action runtimes and document migration decisions.
 - [ ] Full JVM/lint/build checks, emulator UI tests and upgrade retention.
 - [ ] Scoped review and honest handoff with remaining physical-device limits.

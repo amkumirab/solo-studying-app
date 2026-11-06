@@ -7,7 +7,10 @@
   - Removed only the seven template colors and two unused constructor arguments
     approved by the user. Lint and compilation passed on the original stack.
 - [ ] Migrate KTX suggestions without changing commit semantics.
-- [ ] Upgrade and verify KSP against the documented upstream exception.
+- [x] Upgrade and verify KSP against the documented upstream exception.
+  - KSP 2.3.13 generated the existing Room sources successfully on the original
+    toolchain. Its release lineage includes the 2.3.6 fix for upstream issue
+    google/ksp#2763. Final full build/runtime verification remains below.
 - [ ] Upgrade the compatible AGP/Gradle/Kotlin/SDK toolchain.
 - [ ] Upgrade and verify AndroidX/Compose/coroutines/test dependencies.
 - [ ] Verify Room upgrade, exact join results and schema/data compatibility.

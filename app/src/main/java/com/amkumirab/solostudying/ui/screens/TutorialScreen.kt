@@ -430,7 +430,7 @@ fun StepAwakening(
 // ==========================================
 @Composable
 fun StepProfileExplanation() {
-    var activeSpotlight by remember { mutableStateOf(0) }
+    var activeSpotlight by remember { mutableIntStateOf(0) }
 
     // Automatic cyclic spotlight animation for educational visual anchors
     LaunchedEffect(Unit) {

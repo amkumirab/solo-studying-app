@@ -34,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -1654,7 +1655,7 @@ fun BossCard(
                             )
                         )
                         Text(
-                            text = String.format(Locale.getDefault(), "%.1f%% DMG", completionPercent),
+                            text = String.format(LocalLocale.current.platformLocale, "%.1f%% DMG", completionPercent),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = NeonBlueAccent,
                                 fontWeight = FontWeight.Bold
@@ -2203,7 +2204,7 @@ fun BattleTab(
                             text = if (isFreeStudy) {
                                 "FOCUSED: ${viewModel.battleTimeSpentSeconds}S"
                             } else {
-                                "DEALT ${String.format(Locale.getDefault(), "%.1f", damagePercent * 100f)}% DAMAGE"
+                                "DEALT ${String.format(LocalLocale.current.platformLocale, "%.1f", damagePercent * 100f)}% DAMAGE"
                             },
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontWeight = FontWeight.Bold,
@@ -2772,7 +2773,7 @@ fun ShopTab(
                                             )
                                         )
                                         Text(
-                                            text = "Available Amount: ${String.format(Locale.getDefault(), "%.1f", balance.availableHours)} Hours",
+                                            text = "Available Amount: ${String.format(LocalLocale.current.platformLocale, "%.1f", balance.availableHours)} Hours",
                                             style = MaterialTheme.typography.bodySmall.copy(
                                                 color = RpgGold,
                                                 fontWeight = FontWeight.Bold
@@ -4806,7 +4807,7 @@ private fun formatCountdown(seconds: Long): String {
 fun OnboardingScreen(
     onFinish: (name: String, hunterClass: String, mainGoal: String, learningPath: String, scheduleDays: String, scheduleMinutes: Int, scheduleFlexibility: String, weekdayMinutes: String) -> Unit
 ) {
-    var currentStep by remember { mutableStateOf(0) }
+    var currentStep by remember { mutableIntStateOf(0) }
     
     // Step 0: Name & Class
     var userName by remember { mutableStateOf("") }
@@ -4839,7 +4840,7 @@ fun OnboardingScreen(
     // Step 3: Schedule days, minutes, flexibility
     val weekDays = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     val selectedDays = remember { mutableStateListOf("Mon", "Wed", "Fri") }
-    var targetMinutesPerDay by remember { mutableStateOf(45) }
+    var targetMinutesPerDay by remember { mutableIntStateOf(45) }
     var selectedFlexibility by remember { mutableStateOf("Medium") }
 
     val maxStep = 4

@@ -3,6 +3,7 @@ package com.amkumirab.solostudying.ui.viewmodel
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -79,10 +80,10 @@ class BattleViewModel(
     var activeBossStepTitle by mutableStateOf<String?>(null)
         private set
 
-    var battleTimeLeftSeconds by mutableStateOf(0L)
+    var battleTimeLeftSeconds by mutableLongStateOf(0L)
         private set
 
-    var battleTimeSpentSeconds by mutableStateOf(0L)
+    var battleTimeSpentSeconds by mutableLongStateOf(0L)
         private set
 
     private var initialBossTimeSpent: Long = 0
@@ -1082,6 +1083,5 @@ class BattleViewModel(
 
     override fun onCleared() {
         timerJob?.cancel()
-        super.onCleared()
     }
 }

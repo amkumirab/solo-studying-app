@@ -128,7 +128,6 @@ class BreakViewModel(
 
     override fun onCleared() {
         timerJob?.cancel()
-        super.onCleared()
     }
 
     companion object {

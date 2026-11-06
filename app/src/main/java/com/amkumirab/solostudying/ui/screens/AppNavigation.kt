@@ -45,7 +45,7 @@ fun RPGBottomBar(currentTab: Tab, onTabSelected: (Tab) -> Unit, isBattleActive: 
 @Composable
 internal fun AppHeader(
     title: String, playerSummary: String, onSettings: () -> Unit,
-    onBack: (() -> Unit)? = null, modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier, onBack: (() -> Unit)? = null,
 ) {
     Surface(color = MaterialTheme.colorScheme.surface, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {

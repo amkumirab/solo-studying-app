@@ -15,8 +15,9 @@ import com.amkumirab.solostudying.domain.planner.*
 
 @Composable
 internal fun AvailabilityDayEditor(
-    dayIndex: Int, initial: StudyDayAvailability, busy: Boolean, otherDaysMinutes: Int = 0,
+    dayIndex: Int, initial: StudyDayAvailability, busy: Boolean,
     onSave: (StudyDayAvailability) -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier,
+    otherDaysMinutes: Int = 0,
 ) {
     var starts by rememberSaveable { mutableStateOf(initial.windows.map { availabilityClockLabel(it.startMinute) }) }
     var ends by rememberSaveable { mutableStateOf(initial.windows.map { availabilityClockLabel(it.endMinute) }) }

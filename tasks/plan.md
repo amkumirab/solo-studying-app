@@ -252,3 +252,25 @@ unlocked time from later days of the same course, after preview/confirmation.
 2. Add the weekly action and accessible preview dialog; test restoration, credit,
    busy states and cancellation without saving.
 3. Review, full regression, lint and both APK builds; keep two commits local.
+
+## Packaged-app end-to-end acceptance
+
+Exercise actual MainActivity, Room, planner and timer through the installed UI,
+not a composable wrapper or injected ViewModel. An `e2e` build type uses
+`com.amkumirab.solostudying.e2e`; normal debug/release identities stay unchanged.
+
+1. Prove host-runner safety and exact UI selection with Python stdlib tests.
+   Refuse unknown AVDs, package identities, ambiguous labels and invalid bounds.
+2. Build/install the isolated APK on the dedicated API 36/37 AVDs. Drive the
+   existing tutorial bypass, goal creation and weekly planner entirely via UI.
+3. Start a real two-minute goal session, pause/resume and cold-relaunch the
+   process. Observe natural completion, exact progress and persisted history;
+   verify another cold launch cannot duplicate credit or rewards.
+4. Capture per-step XML/screenshots and machine-readable pass/fail evidence.
+5. Run regression/lint/build and existing device suites. Preserve previous
+   unchecked physical-device tasks; no remote publication is included.
+
+No storage seeding, test timer shortcuts, schema changes, new app permissions,
+OS security changes or weakened assertions. Clear only the explicit disposable
+E2E package after both APK and AVD identity checks.
+Reference: https://developer.android.com/build/build-variants

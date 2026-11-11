@@ -500,3 +500,32 @@
     behavior, rotation and upgrade retention cannot be certified locally.
   - Source changes are split into focused repository commits. The Debug APK
     remains a local test package; no store publication is part of this update.
+
+## Packaged-app end-to-end acceptance
+
+- [x] Test host-runner identity guards and UI selector failures before implementation.
+  - Missing APIs failed imports first; unsupported APIs, disabled ancestor controls
+    and repeat permission-denial dialogs also failed their regression cases before
+    correction. All 10 host tests pass, including negative credit/reward oracles.
+- [x] Add an isolated E2E APK without changing Debug/Release application IDs.
+  - Built and installed the separate E2E package. Normal Debug APK SHA-256 is still
+    228FADAF417E1D3505ADBB9F8EC87E792F1BDCA49C5528A0F1001CA03C9D7DA6.
+- [x] Exercise goal creation and weekly planning through the installed app.
+- [x] Exercise real timer completion, pause/resume and cold-process recovery.
+- [x] Assert persisted progress/history and no duplicate credit after relaunch.
+  - API 36 complete journey passed: 120 seconds, one session and note, 150 XP,
+    130 awarded Gold (80 goal + 50 level-up), level 2, 230 total Gold. Read-only
+    cold database snapshots remained identical after relaunch and report viewing.
+- [x] Run full checks and record per-API results and physical-device limits.
+  - The same six-step complete journey passed on API 37 with identical expected
+    progress and rewards. Both per-run JSON reports are marked passed.
+  - Existing nine instrumentation cases passed on API 36 (45.022s) and API 37
+    (38.340s). Crash buffers were empty; emulators stopped without wiping data.
+  - Gradle verification passed for JVM/lint/Debug/Release/test APKs. Unchanged
+    JVM code reused 601 up-to-date passing cases (123 suites); lint remains at
+    zero errors and one existing UseKtx advisory. Host tests are wired into CI;
+    no push or online CI run is part of this local implementation.
+  - Reviewed exact app/AVD boundaries, native-only actions, read-only SQLite
+    snapshots, negative oracles, failure evidence and unchanged production code.
+    No existing assertion, test, lint rule or physical-device checklist was removed.
+    See docs/ANDROID_E2E.md for commands and the still-unverified device scenarios.

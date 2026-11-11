@@ -308,6 +308,10 @@ lock conflicts, credit preservation and cold reloads. See the
 [planner acceptance audit](docs/PLANNER_ACCEPTANCE_AUDIT.md) for requirement
 coverage, intentional differences and remaining physical-device checks.
 
+For the installed-app journey (goal creation, weekly planning, a real timer and
+cold-process recovery), see [packaged-app E2E checks](docs/ANDROID_E2E.md).
+It uses a separately installed E2E copy and never resets the normal app.
+
 ## Build and install a debug APK
 
 On Windows, build the app from the repository root:

@@ -20,3 +20,4 @@ local.properties
 debug.keystore
 *.jks
 *.keystore
+__pycache__/

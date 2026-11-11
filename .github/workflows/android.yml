@@ -24,6 +24,9 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v6.4.1
 
+      - name: Check packaged-app runner guards
+        run: python3 -m unittest discover -s scripts -p test_android_e2e.py -v
+
       - name: Run unit tests and lint
         run: |
           chmod +x gradlew

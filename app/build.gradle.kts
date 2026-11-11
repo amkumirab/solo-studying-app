@@ -19,6 +19,12 @@ android {
   }
 
   buildTypes {
+    create("e2e") {
+      initWith(getByName("debug"))
+      applicationIdSuffix = ".e2e"
+      versionNameSuffix = "-e2e"
+      matchingFallbacks += "debug"
+    }
     release {
       isCrunchPngs = false
       isMinifyEnabled = false

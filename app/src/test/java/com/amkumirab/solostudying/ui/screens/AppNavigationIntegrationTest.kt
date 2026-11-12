@@ -137,7 +137,10 @@ class AppNavigationIntegrationTest {
         }
         val restoration = StateRestorationTester(rule)
         restoration.setContent { SoloStudyingTheme { MainAppScreen(viewModel) } }
-        rule.waitUntil(10000) { viewModel.bosses.value.size == 12 }
+        rule.waitUntil(10000) {
+            rule.onAllNodesWithTag("daily_tasks_toggle").fetchSemanticsNodes().isNotEmpty() &&
+                viewModel.bosses.value.size == 12
+        }
         rule.onNodeWithTag("bottom_nav_dungeons").performClick()
         rule.onNodeWithTag("gate_status_toggle").performScrollTo().performClick()
         rule.onNodeWithTag("study_hub_focus").performScrollTo().performClick()

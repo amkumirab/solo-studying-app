@@ -274,3 +274,21 @@ No storage seeding, test timer shortcuts, schema changes, new app permissions,
 OS security changes or weakened assertions. Clear only the explicit disposable
 E2E package after both APK and AVD identity checks.
 Reference: https://developer.android.com/build/build-variants
+
+## Live notification countdown (2026-11-12)
+
+The active notification body must count down without opening the app or touching
+Pause/Resume. Pausing freezes the displayed duration; resuming rebases it. Keep
+existing controls, completion scheduling, silence and permission behavior.
+
+1. Reproduce the static-body regression with a failing notification test.
+2. Render a SystemUI-owned Chronometer in collapsed and expanded content using
+   DecoratedCustomViewStyle and adaptive notification text appearances. Do not
+   introduce per-second app work, a service, permissions or storage changes.
+3. Test API 24 rendering, long durations and pause/resume view reuse. Verify the
+   packaged E2E app's notification on the dedicated API 36/37 emulators, then run
+   regression/lint/build and provide an update APK. No remote push is requested.
+
+References:
+- https://developer.android.com/reference/android/widget/RemoteViews#setChronometer(int,long,java.lang.String,boolean)
+- https://developer.android.com/develop/ui/views/notifications/custom-notification

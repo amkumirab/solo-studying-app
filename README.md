@@ -218,6 +218,11 @@ read-only. See [guidance rules and phone checks](docs/PLANNER_GUIDANCE.md).
 - Chronometer-based Android notifications for background focus controls
 - Robolectric and JUnit for local tests
 
+The focus notification's main countdown updates live in collapsed and expanded
+views. Pause freezes it; Resume restarts it without opening the app. See
+[live notification timer](docs/LIVE_NOTIFICATION_TIMER.md) for implementation
+details and a short phone check.
+
 The bundled interface sounds come from Kenney's CC0 Interface Sounds pack.
 
 Focus and break completion use a two-short/one-long vibration cue and the bundled

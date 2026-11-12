@@ -7,6 +7,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.SystemClock
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.amkumirab.solostudying.MainActivity
@@ -54,6 +57,23 @@ object FocusSessionNotifier {
         val title = snapshot.displayTitle()
         val cycle = FocusCycleStore(context).read()?.takeIf { it.phase == FocusCyclePhase.FOCUS }
         val roundLabel = cycle?.let { "Round ${it.currentRound} of ${it.plan.totalRounds} · " }.orEmpty()
+        val status = "${roundLabel}${if (snapshot.isPaused) "Paused" else "Focus in progress"}"
+        // SystemUI owns the clock, so it keeps ticking without waking the app each second.
+        // https://developer.android.com/reference/android/widget/RemoteViews#setChronometer(int,long,java.lang.String,boolean)
+        val content = RemoteViews(context.packageName, R.layout.notification_focus_timer).apply {
+            setTextViewText(R.id.focus_notification_title, title)
+            setTextViewText(R.id.focus_notification_status, status)
+            setChronometerCountDown(R.id.focus_notification_countdown, true)
+            setChronometer(
+                R.id.focus_notification_countdown,
+                SystemClock.elapsedRealtime() + snapshot.timeLeftSeconds * 1_000L,
+                null,
+                !snapshot.isPaused,
+            )
+            setViewVisibility(R.id.focus_notification_countdown, if (snapshot.isPaused) View.GONE else View.VISIBLE)
+            setViewVisibility(R.id.focus_notification_paused_time, if (snapshot.isPaused) View.VISIBLE else View.GONE)
+            setTextViewText(R.id.focus_notification_paused_time, formatDuration(snapshot.timeLeftSeconds))
+        }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(notificationIcon(context))
             .setContentTitle(title)
@@ -61,9 +81,12 @@ object FocusSessionNotifier {
                 if (snapshot.isPaused) {
                     "${roundLabel}Paused · ${formatDuration(snapshot.timeLeftSeconds)} remaining"
                 } else {
-                    "${roundLabel}Focus in progress · ${formatDuration(snapshot.timeLeftSeconds)} remaining"
+                    status
                 },
             )
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(content)
+            .setCustomBigContentView(content)
             .setContentIntent(openSessionIntent(context))
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setPriority(NotificationCompat.PRIORITY_LOW)

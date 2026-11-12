@@ -529,3 +529,23 @@
     snapshots, negative oracles, failure evidence and unchanged production code.
     No existing assertion, test, lint rule or physical-device checklist was removed.
     See docs/ANDROID_E2E.md for commands and the still-unverified device scenarios.
+
+## Live notification countdown (2026-11-12)
+
+- [x] Reproduce the frozen notification body with a failing regression test.
+- [x] Replace static running duration with a native live countdown in both sizes.
+- [x] Verify paused/resumed rendering, minimum API and long sessions.
+- [x] Observe live SystemUI countdown and controls on dedicated API 36/37 AVDs.
+- [x] Run regression/lint/build, review and provide the normal update APK.
+  - 605 JVM tests in 123 suites passed with no failures, errors or skipped tests.
+    Debug/E2E/unsigned Release/test APKs built. Lint: zero errors, one retained
+    UseKtx advisory. Five API-37 deprecation advisories are test-only notification
+    view inspection calls; no suppression was added.
+  - Full runs exposed a navigation fixture waiting on StateFlow without a UI
+    synchronization point. Kept its 12-goal assertion and 10-second deadline;
+    also wait for the composed home node before checking the data. The complete
+    suite then passed. Production navigation and data behavior are unchanged.
+  - Reviewed elapsed-realtime anchoring, paused view reuse, native actions,
+    adaptive text styles and no new app wakeups, permissions or storage changes.
+    Exact APK identity and real SystemUI observations: docs/LIVE_NOTIFICATION_TIMER.md.
+- [ ] Confirm behavior on the user's physical phone after installing the update.

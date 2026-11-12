@@ -6,7 +6,13 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
+import android.view.View
+import android.widget.Chronometer
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
+import com.amkumirab.solostudying.R
 import com.amkumirab.solostudying.focus.FocusSessionSnapshot
 import com.amkumirab.solostudying.focus.FocusSessionStore
 import org.junit.After
@@ -60,6 +66,65 @@ class FocusSessionNotificationTest {
         assertEquals("Electromagnetics", notification.extras.getString(Notification.EXTRA_TITLE))
         assertTrue(notification.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER))
         assertEquals(listOf("Pause", "Finish"), notification.actions.map { it.title.toString() })
+    }
+
+    @Test
+    fun `running notification provides a live countdown in the main content`() {
+        FocusSessionNotifier.show(context, runningSnapshot())
+
+        val notification = shadowOf(notificationManager)
+            .getNotification(FocusSessionNotifier.ACTIVE_NOTIFICATION_ID)
+
+        val builder = Notification.Builder.recoverBuilder(context, notification)
+        for (content in listOf(builder.createContentView(), builder.createBigContentView())) {
+            val view = requireNotNull(content).apply(context, FrameLayout(context))
+            val clock = view.findViewById<Chronometer>(R.id.focus_notification_countdown)
+            assertNotNull("Main content must contain a live countdown", clock)
+            assertTrue(clock.isCountDown)
+            assertEquals(SystemClock.elapsedRealtime() + 300_000L, clock.base)
+            assertEquals(View.VISIBLE, clock.visibility)
+        }
+        assertEquals("Focus in progress", notification.extras.getString(Notification.EXTRA_TEXT))
+    }
+
+    @Test
+    @Config(sdk = [24])
+    fun `main countdown also works on the minimum supported Android version`() {
+        `running notification provides a live countdown in the main content`()
+    }
+
+    @Test
+    fun `pausing replaces the live clock with a frozen duration and resume rebases it`() {
+        FocusSessionNotifier.show(context, runningSnapshot().copy(isPaused = true))
+        val paused = shadowOf(notificationManager).getNotification(FocusSessionNotifier.ACTIVE_NOTIFICATION_ID)
+        val view = requireNotNull(Notification.Builder.recoverBuilder(context, paused).createContentView())
+            .apply(context, FrameLayout(context))
+
+        assertEquals(View.GONE, view.findViewById<Chronometer>(R.id.focus_notification_countdown).visibility)
+        val frozen = view.findViewById<TextView>(R.id.focus_notification_paused_time)
+        assertEquals(View.VISIBLE, frozen.visibility)
+        assertEquals("05:00", frozen.text.toString())
+
+        shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMinutes(5))
+        assertEquals("05:00", frozen.text.toString())
+        FocusSessionNotifier.show(context, runningSnapshot())
+        val resumed = shadowOf(notificationManager).getNotification(FocusSessionNotifier.ACTIVE_NOTIFICATION_ID)
+        requireNotNull(Notification.Builder.recoverBuilder(context, resumed).createContentView())
+            .reapply(context, view)
+        assertEquals(View.GONE, view.findViewById<TextView>(R.id.focus_notification_paused_time).visibility)
+        val clock = view.findViewById<Chronometer>(R.id.focus_notification_countdown)
+        assertEquals(View.VISIBLE, clock.visibility)
+        assertEquals(SystemClock.elapsedRealtime() + 300_000L, clock.base)
+    }
+
+    @Test
+    fun `live countdown supports sessions longer than one hour`() {
+        FocusSessionNotifier.show(context, runningSnapshot(timeLeftSeconds = 7_384L))
+        val notification = shadowOf(notificationManager).getNotification(FocusSessionNotifier.ACTIVE_NOTIFICATION_ID)
+        val view = requireNotNull(Notification.Builder.recoverBuilder(context, notification).createContentView())
+            .apply(context, FrameLayout(context))
+        assertEquals(SystemClock.elapsedRealtime() + 7_384_000L,
+            view.findViewById<Chronometer>(R.id.focus_notification_countdown).base)
     }
 
     @Test

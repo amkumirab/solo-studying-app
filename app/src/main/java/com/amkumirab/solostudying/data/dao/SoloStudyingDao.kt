@@ -4,14 +4,21 @@ import androidx.room.*
 import com.amkumirab.solostudying.data.entity.*
 import kotlinx.coroutines.flow.Flow
 
+private const val VISIBLE_GOAL = """
+    goal.archivedAtMillis IS NULL AND (goal.secondGateOfId IS NULL OR EXISTS (
+        SELECT 1 FROM bosses AS parent WHERE parent.id = goal.secondGateOfId
+        AND parent.archivedAtMillis IS NULL
+    ))
+"""
+
 @Dao
 interface SoloStudyingDao {
 
     // --- Bosses ---
-    @Query("SELECT * FROM bosses ORDER BY createdAt DESC")
+    @Query("SELECT goal.* FROM bosses AS goal WHERE " + VISIBLE_GOAL + " ORDER BY goal.createdAt DESC")
     fun getAllBosses(): Flow<List<BossEntity>>
 
-    @Query("SELECT * FROM bosses WHERE id = :id LIMIT 1")
+    @Query("SELECT goal.* FROM bosses AS goal WHERE goal.id = :id AND " + VISIBLE_GOAL)
     suspend fun getBossById(id: Int): BossEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -20,8 +27,23 @@ interface SoloStudyingDao {
     @Update
     suspend fun updateBoss(boss: BossEntity)
 
-    @Delete
-    suspend fun deleteBoss(boss: BossEntity)
+    @Query("SELECT * FROM bosses WHERE archivedAtMillis IS NOT NULL ORDER BY archivedAtMillis DESC, id DESC")
+    fun getArchivedBosses(): Flow<List<BossEntity>>
+
+    @Query("SELECT * FROM bosses WHERE secondGateOfId = :id")
+    suspend fun getSecondGate(id: Int): BossEntity?
+
+    @Query("UPDATE bosses SET archivedAtMillis = :archivedAt WHERE id = :id AND archivedAtMillis IS NULL")
+    suspend fun archiveBoss(id: Int, archivedAt: Long): Int
+
+    @Query("""
+        UPDATE bosses SET archivedAtMillis = NULL WHERE id = :id AND archivedAtMillis IS NOT NULL
+        AND (secondGateOfId IS NULL OR secondGateOfId IN (SELECT id FROM bosses WHERE archivedAtMillis IS NULL))
+    """)
+    suspend fun restoreBoss(id: Int): Int
+
+    @Query("UPDATE bosses SET timeSpentSeconds = :seconds, isCompleted = :completed WHERE id = :id")
+    suspend fun updateBossProgress(id: Int, seconds: Long, completed: Boolean)
 
     // --- Boss study steps ---
     @Query("SELECT * FROM boss_steps ORDER BY bossId ASC, sortOrder ASC, createdAt ASC")

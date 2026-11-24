@@ -80,25 +80,37 @@ class DungeonStudyPlanPersistenceTest {
         assertTrue(repository.allDungeons.first().isEmpty())
     }
 
-    @Test fun `version eleven upgrades through Room validation without losing existing records`() = runBlocking {
+    @Test fun `version eleven upgrades through Room validation without losing existing records`() =
+        verifyMigration(11)
+
+    @Test fun `version twelve preserves goals study steps history and course targets`() =
+        verifyMigration(12)
+
+    private fun verifyMigration(version: Int) = runBlocking {
         val source = database.openHelper.writableDatabase
         val schema = mutableListOf<String>()
         source.query("SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL AND type IN ('table', 'index') ORDER BY type DESC").use { cursor ->
             while (cursor.moveToNext()) {
                 val name = cursor.getString(0)
-                if (name !in listOf("dungeons", "room_master_table", "android_metadata", "sqlite_sequence")) schema += cursor.getString(1)
+                if (name !in listOf("bosses", "index_bosses_secondGateOfId", "room_master_table",
+                        "android_metadata", "sqlite_sequence") && (version == 12 || name != "dungeons")
+                ) schema += cursor.getString(1)
             }
         }
         val name = "dungeon-plan-migration-test.db"
         context.deleteDatabase(name)
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context).name(name).callback(
-                object : SupportSQLiteOpenHelper.Callback(11) {
+                object : SupportSQLiteOpenHelper.Callback(version) {
                     override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL("CREATE TABLE bosses (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, difficulty TEXT NOT NULL, requiredMinutes INTEGER NOT NULL, imagePath TEXT, timeSpentSeconds INTEGER NOT NULL, isCompleted INTEGER NOT NULL, createdAt INTEGER NOT NULL, deadlineDate TEXT, dungeonName TEXT NOT NULL, isRealBoss INTEGER NOT NULL)")
                         schema.forEach(db::execSQL)
-                        db.execSQL("CREATE TABLE dungeons (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL, status TEXT NOT NULL, unlockedTitle TEXT NOT NULL)")
-                        db.execSQL("INSERT INTO dungeons VALUES (7, 'Operating Systems', 'Course', 'Unlocked', 'Scholar')")
+                        if (version == 11) db.execSQL("CREATE TABLE dungeons (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, description TEXT NOT NULL, status TEXT NOT NULL, unlockedTitle TEXT NOT NULL)")
+                        db.execSQL("INSERT INTO dungeons (id, name, description, status, unlockedTitle) VALUES (7, 'Operating Systems', 'Course', 'Unlocked', 'Scholar')")
+                        if (version == 12) db.execSQL("UPDATE dungeons SET targetMinutes = 4200, studyWeekdaysMask = 31 WHERE id = 7")
                         db.execSQL("INSERT INTO bosses (id, name, difficulty, requiredMinutes, imagePath, timeSpentSeconds, isCompleted, createdAt, deadlineDate, dungeonName, isRealBoss) VALUES (8, 'Processes', 'Medium', 6000, NULL, 3600, 0, 1000, NULL, 'Operating Systems', 0)")
+                        db.execSQL("INSERT INTO boss_steps (id, bossId, title, estimatedMinutes, sortOrder, isCompleted, createdAt) VALUES (9, 8, 'Scheduling', 60, 0, 1, 1000)")
+                        db.execSQL("INSERT INTO study_sessions (id, bossId, bossName, durationSeconds, xpEarned, goldEarned, timestamp, wasCompleted, isFreeStudy, note) VALUES (10, 8, 'Processes', 3600, 60, 20, 1000, 1, 0, 'Ready for revision')")
                     }
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
                 },
@@ -107,16 +119,21 @@ class DungeonStudyPlanPersistenceTest {
         helper.writableDatabase
         helper.close()
         val upgraded = Room.databaseBuilder(context, SoloStudyingDatabase::class.java, name)
-            .addMigrations(SoloStudyingDatabase.MIGRATION_11_12)
+            .addMigrations(SoloStudyingDatabase.MIGRATION_11_12, SoloStudyingDatabase.MIGRATION_12_13)
             .setJournalMode(RoomDatabase.JournalMode.TRUNCATE).allowMainThreadQueries().build()
         try {
             val repo = SoloStudyingRepository(upgraded)
             val dungeon = repo.allDungeons.first().single()
             assertEquals(7, dungeon.id)
             assertEquals("Course", dungeon.description)
-            assertNull(dungeon.targetMinutes)
-            assertEquals(127, dungeon.studyWeekdaysMask)
-            assertEquals(3_600L, repo.getBossById(8)!!.timeSpentSeconds)
+            assertEquals(if (version == 12) 4200 else null, dungeon.targetMinutes)
+            assertEquals(if (version == 12) 31 else 127, dungeon.studyWeekdaysMask)
+            val goal = checkNotNull(repo.getBossById(8))
+            assertEquals(3_600L, goal.timeSpentSeconds)
+            assertNull(goal.archivedAtMillis)
+            assertNull(goal.secondGateOfId)
+            assertEquals("Scheduling", repo.getBossStepById(9)?.title)
+            assertEquals("Ready for revision", repo.allSessions.first().single().note)
             repo.saveDungeonStudyPlan(input, today)
         } finally { upgraded.close() }
         val reopened = Room.databaseBuilder(context, SoloStudyingDatabase::class.java, name)

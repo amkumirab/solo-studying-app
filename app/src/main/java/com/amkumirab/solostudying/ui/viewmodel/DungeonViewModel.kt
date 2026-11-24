@@ -8,6 +8,7 @@ import com.amkumirab.solostudying.data.entity.DungeonEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.domain.dungeon.DungeonStudyPlanInput
+import com.amkumirab.solostudying.domain.dungeon.DungeonGoalEdit
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,9 @@ class DungeonViewModel(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
+    )
+    val deletedGoals = repository.archivedBosses.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList(),
     )
 
     val bossSteps: StateFlow<List<BossStepEntity>> = repository.allBossSteps.stateIn(
@@ -83,11 +87,13 @@ class DungeonViewModel(
         }
     }
 
-    fun deleteBoss(boss: BossEntity) {
-        viewModelScope.launch {
-            repository.deleteBoss(boss)
-        }
-    }
+    suspend fun archiveGoal(boss: BossEntity): Boolean = repository.deleteBoss(boss)
+
+    suspend fun restoreGoal(id: Int): Boolean = repository.restoreBoss(id)
+
+    suspend fun editGoal(id: Int, input: DungeonGoalEdit): Boolean = repository.editBoss(id, input)
+
+    suspend fun openSecondGate(id: Int, minutes: Int): Boolean = repository.openSecondGate(id, minutes)
 
     fun createBossStep(bossId: Int, title: String, estimatedMinutes: Int) {
         val cleanTitle = title.trim()

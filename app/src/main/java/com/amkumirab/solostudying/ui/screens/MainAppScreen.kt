@@ -324,10 +324,6 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                             prepSelectedSkill = viewModel.selectedSkillToTrain
                             currentTab = Tab.Battle
                         },
-                        onDeleteBoss = { boss ->
-                            RpgSoundManager.playClickSound()
-                            viewModel.deleteBoss(boss)
-                        },
                         onConquerRealBoss = { boss ->
                             RpgSoundManager.playClickSound()
                             viewModel.conquerRealBossManual(boss)
@@ -828,7 +824,6 @@ internal fun DungeonTab(
     viewModel: SoloStudyingViewModel,
     onCreateBossClicked: () -> Unit,
     onFightBoss: (BossEntity) -> Unit,
-    onDeleteBoss: (BossEntity) -> Unit,
     onConquerRealBoss: (BossEntity) -> Unit,
     quickStartSelection: QuickStartSelection,
     onQuickStartSelectionChange: (QuickStartSelection) -> Unit,
@@ -844,6 +839,10 @@ internal fun DungeonTab(
     var selectedDungeonCategory by rememberSaveable { mutableStateOf("All") }
     var showDungeonPlanDialog by rememberSaveable { mutableStateOf(false) }
     var stepsBoss by remember { mutableStateOf<BossEntity?>(null) }
+    var goalActionId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var goalAction by rememberSaveable { mutableStateOf(GoalAction.Edit) }
+    var showDeletedGoals by rememberSaveable { mutableStateOf(false) }
+    val deletedGoals by viewModel.dungeonViewModel.deletedGoals.collectAsStateWithLifecycle()
     val sectionState = rememberSaveableStateHolder()
     val dailyQuests by viewModel.dailyQuests.collectAsState()
     val allDailyQuests by viewModel.allDailyQuests.collectAsState()
@@ -878,8 +877,14 @@ internal fun DungeonTab(
     }
 
     val filteredBosses = remember(bosses, selectedDungeonCategory) {
-        if (selectedDungeonCategory == "All") bosses 
-        else bosses.filter { it.dungeonName == selectedDungeonCategory }
+        bosses.filter { it.secondGateOfId == null &&
+            (selectedDungeonCategory == "All" || it.dungeonName == selectedDungeonCategory) }
+    }
+    val visibleSecondGates = remember(bosses) { bosses.filter { it.secondGateOfId != null }.associateBy { it.secondGateOfId } }
+    val archivedSecondGates = remember(deletedGoals) { deletedGoals.mapNotNull { it.secondGateOfId }.toSet() }
+    val manageGoal: (BossEntity, GoalAction) -> Unit = { boss, action ->
+        goalActionId = boss.id
+        goalAction = action
     }
 
     sectionState.SaveableStateProvider(selectedSection.name) {
@@ -1292,6 +1297,14 @@ internal fun DungeonTab(
                 }
                 Spacer(Modifier.height(12.dp))
 
+                OutlinedButton(
+                    onClick = { showDeletedGoals = true },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("deleted_goals"),
+                ) {
+                    Text(if (deletedGoals.isEmpty()) "Deleted goals" else "Deleted goals (${deletedGoals.size})")
+                }
+                Spacer(Modifier.height(12.dp))
+
                 if (filteredBosses.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -1342,21 +1355,48 @@ internal fun DungeonTab(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     filteredBosses.forEach { boss ->
-                        BossCard(
-                            boss = boss,
-                            steps = bossSteps.filter { it.bossId == boss.id },
-                            activeBoss = activeBoss,
-                            isBattleActive = isBattleActive,
-                            onFightBoss = { onFightBoss(boss) },
-                            onDeleteBoss = { onDeleteBoss(boss) },
-                            onConquerRealBoss = { onConquerRealBoss(boss) },
-                            onManageSteps = { stepsBoss = boss },
-                        )
+                        key(boss.id) {
+                            val gate = visibleSecondGates[boss.id]
+                            val gateContent: (@Composable () -> Unit)? = if (gate != null) {
+                                {
+                                    Text("Second Gate", style = MaterialTheme.typography.titleSmall, color = NeonBlueAccent)
+                                    ManagedGoalCard(gate, bossSteps, activeBoss, isBattleActive, onFightBoss,
+                                        onConquerRealBoss, { stepsBoss = it }, manageGoal)
+                                }
+                            } else if (boss.id in archivedSecondGates) {
+                                { Text("Restore the Second Gate from Deleted goals.", color = TextMuted) }
+                            } else null
+                            ManagedGoalCard(boss, bossSteps, activeBoss, isBattleActive, onFightBoss,
+                                onConquerRealBoss, { stepsBoss = it }, manageGoal, gateContent)
+                        }
                     }
                 }
                 }
             }
         }
+    }
+
+    if (showDeletedGoals) {
+        DeletedGoalsDialog(
+            goals = deletedGoals,
+            onDismiss = { showDeletedGoals = false },
+            onRestore = viewModel.dungeonViewModel::restoreGoal,
+        )
+    }
+
+    bosses.firstOrNull { it.id == goalActionId }?.let { boss ->
+        GoalManagementDialog(
+            goal = boss,
+            action = goalAction,
+            onDismiss = { goalActionId = null },
+            onCommit = { edit, extraMinutes ->
+                if (viewModel.battleViewModel.hasActiveOrRecoveringSession()) false else when (goalAction) {
+                    GoalAction.Edit -> viewModel.dungeonViewModel.editGoal(boss.id, checkNotNull(edit))
+                    GoalAction.Archive -> viewModel.dungeonViewModel.archiveGoal(boss)
+                    GoalAction.SecondGate -> viewModel.dungeonViewModel.openSecondGate(boss.id, checkNotNull(extraMinutes))
+                }
+            },
+        )
     }
 
     if (showDungeonPlanDialog) {
@@ -1459,6 +1499,9 @@ fun BossCard(
     onDeleteBoss: () -> Unit,
     onConquerRealBoss: () -> Unit,
     onManageSteps: () -> Unit = {},
+    onEdit: (() -> Unit)? = null,
+    onOpenSecondGate: (() -> Unit)? = null,
+    secondGateContent: (@Composable () -> Unit)? = null,
 ) {
     val isCurrentlyFightingThis = activeBoss?.id == boss.id
     val difficultyColor = getDifficultyColor(boss.difficulty)
@@ -1733,6 +1776,7 @@ fun BossCard(
                 ) {
                     IconButton(
                         onClick = onDeleteBoss,
+                        enabled = !isBattleActive,
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color(0xFF231E29)),
@@ -1740,12 +1784,17 @@ fun BossCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
-                            contentDescription = "Delete boss item"
+                            contentDescription = "Move ${boss.name} to Deleted goals"
                         )
+                    }
+                    if (onEdit != null && !isBattleActive) {
+                        IconButton(onClick = onEdit, enabled = !isBattleActive) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit ${boss.name}")
+                        }
                     }
 
                     // MANUAL CONQUEST: If it's a real-life deliverable exam/submission, OR if it's the currently active study boss, show Manual "COMPLETED" bypass
-                    if ((boss.isRealBoss || isCurrentlyFightingThis) && !boss.isCompleted) {
+                    if (boss.secondGateOfId == null && (boss.isRealBoss || isCurrentlyFightingThis) && !boss.isCompleted) {
                         Button(
                             onClick = onConquerRealBoss,
                             modifier = Modifier.weight(1.2f),
@@ -1770,33 +1819,41 @@ fun BossCard(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("ACTIVE FIGHT", fontWeight = FontWeight.Bold)
                         }
-                    } else {
+                    } else if (!boss.isCompleted) {
                         Button(
                             onClick = onFightBoss,
-                            enabled = true,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (boss.isCompleted) Color(0xFF1F2F2D) else NeonBlueAccent,
-                                contentColor = if (boss.isCompleted) RpgEmerald else BlackFantasyBackground
+                                containerColor = NeonBlueAccent,
+                                contentColor = BlackFantasyBackground
                             ),
                             modifier = Modifier.weight(1.5f),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Icon(
-                                imageVector = if (boss.isCompleted) Icons.Default.Replay else Icons.Default.Shield,
-                                contentDescription = "Enter fight icon",
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (boss.isCompleted) {
-                                    if (isBattleActive) "SWITCH (FARM)" else "FIGHT AGAIN (FARM)"
-                                } else {
-                                    if (isBattleActive) "SWITCH TO THIS" else "BEGIN DEFY QUEST"
-                                },
+                                text = if (isBattleActive) "SWITCH TO THIS" else "BEGIN DEFY QUEST",
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
+                }
+                if (onOpenSecondGate != null) {
+                    OutlinedButton(
+                        onClick = onOpenSecondGate,
+                        enabled = !isBattleActive,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    ) { Text("Open Second Gate") }
+                }
+                if (secondGateContent != null) {
+                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(12.dp))
+                    secondGateContent()
                 }
             }
         }
@@ -4766,7 +4823,7 @@ private fun getBossCardBrush(difficulty: String): Brush {
     }
 }
 
-private fun formatStudyTimeShort(seconds: Long): String {
+internal fun formatStudyTimeShort(seconds: Long): String {
     val mins = seconds / 60
     val secs = seconds % 60
     return if (mins > 0) "${mins}m ${secs}s" else "${secs}s"

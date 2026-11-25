@@ -1,5 +1,8 @@
 package com.amkumirab.solostudying.ui.screens
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.amkumirab.solostudying.ui.viewmodel.ShopViewModel
+
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -30,6 +33,25 @@ import androidx.compose.ui.window.Dialog
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.ui.theme.*
 import kotlinx.coroutines.delay
+
+@Composable
+internal fun RewardShopDestination(
+    viewModel: ShopViewModel,
+    goldBalance: Int,
+    onCreateReward: () -> Unit,
+) {
+    val rewards by viewModel.rewards.collectAsStateWithLifecycle()
+    val balances by viewModel.balances.collectAsStateWithLifecycle()
+    ShopTab(
+        rewards = rewards,
+        balances = balances,
+        goldBalance = goldBalance,
+        onCreateRewardClicked = onCreateReward,
+        onPurchaseReward = viewModel::purchaseReward,
+        onUseReward = viewModel::useRewardTime,
+        onDeleteReward = viewModel::deleteReward,
+    )
+}
 
 @Composable
 fun ShopTab(

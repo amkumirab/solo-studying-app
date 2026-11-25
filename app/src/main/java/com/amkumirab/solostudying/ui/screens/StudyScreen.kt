@@ -76,15 +76,19 @@ internal fun DungeonTab(
     var showDeletedGoals by rememberSaveable { mutableStateOf(false) }
     val deletedGoals by viewModel.dungeonViewModel.deletedGoals.collectAsStateWithLifecycle()
     val sectionState = rememberSaveableStateHolder()
-    val dailyQuests by viewModel.dailyQuests.collectAsState()
-    val allDailyQuests by viewModel.allDailyQuests.collectAsState()
-    val recurringQuests by viewModel.recurringQuests.collectAsState()
+    val isToday = selectedSection == DungeonSection.Today
+    val dailyQuests = if (isToday) viewModel.dailyQuestViewModel.todayQuests.collectAsStateWithLifecycle().value
+        else emptyList()
+    val allDailyQuests = if (isToday) viewModel.dailyQuestViewModel.allQuests.collectAsStateWithLifecycle().value
+        else emptyList()
+    val recurringQuests = if (isToday) viewModel.dailyQuestViewModel.recurringQuests.collectAsStateWithLifecycle().value
+        else emptyList()
     val dungeons by viewModel.dungeonViewModel.dungeons.collectAsStateWithLifecycle()
     val dashboardDate = remember(viewModel.dailyQuestViewModel.todayDate) {
         runCatching { LocalDate.parse(viewModel.dailyQuestViewModel.todayDate) }
             .getOrDefault(LocalDate.now())
     }
-    val todayPlan = remember(profile, sessions, dailyQuests, bosses, bossSteps, dashboardDate) {
+    val todayPlan = if (isToday) remember(profile, sessions, dailyQuests, bosses, bossSteps, dashboardDate) {
         profile?.let {
             buildTodayPlan(
                 profile = it,
@@ -95,7 +99,7 @@ internal fun DungeonTab(
                 today = dashboardDate,
             )
         }
-    }
+    } else null
 
     // Accumulate all distinct dungeon categories created by the player
     val dungeonsList = remember(bosses, dungeons) {

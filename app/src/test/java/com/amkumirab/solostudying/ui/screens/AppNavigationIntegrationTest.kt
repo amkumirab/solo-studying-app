@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import com.amkumirab.solostudying.data.entity.BossEntity
+import com.amkumirab.solostudying.data.entity.RewardItemEntity
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
@@ -86,6 +87,26 @@ class AppNavigationIntegrationTest {
         rule.onNodeWithTag("profile_overview").assertIsSelected()
         rule.onNodeWithTag("bottom_nav_today").performClick()
         rule.onNodeWithTag("daily_quest_board").assertExists()
+    }
+
+    @Test fun `rewards refresh after a change made while another tab is visible`() {
+        rule.setContent { SoloStudyingTheme { MainAppScreen(viewModel) } }
+        rule.waitUntil(10_000) { rule.onAllNodesWithTag("daily_tasks_toggle").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("bottom_nav_shop").performClick()
+        rule.onNodeWithTag("create_reward_button").assertIsDisplayed()
+        rule.onNodeWithTag("bottom_nav_today").performClick()
+
+        val name = "Library break"
+        runBlocking {
+            database.soloStudyingDao().insertReward(
+                RewardItemEntity(name = name, description = "Read for fun.", cost = 5, rewardType = "One-Time"),
+            )
+        }
+        rule.onNodeWithText(name).assertDoesNotExist()
+
+        rule.onNodeWithTag("bottom_nav_shop").performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText(name).assertIsDisplayed()
     }
 
     @Test fun `leaving session keeps timer active and return bar restores paused session`() {

@@ -33,6 +33,22 @@ No change to rewards, scheduling logic, stored data, permissions or dependencies
 Study and Profile keep separate saved-state scopes for each section so returning
 to a section restores its scroll position and expanded details.
 
+### State ownership and navigation
+
+The Activity retains the app ViewModel and its feature models across recreation.
+When it is permanently destroyed, the app ViewModel clears the feature scopes;
+focus recovery still reads the saved session rather than relying on those scopes.
+The app shell coordinates navigation and cross-screen session actions. Rewards,
+Profile and Study collect their UI data near the screen or section that needs it.
+Widget refresh is separate so credited time can update widgets while the Activity
+is stopped but still composed.
+
+Keep the existing tab and section navigation for Update 1. It already restores
+saved tab, section and scroll state, routes widget and notification actions, and
+keeps an active timer independent of the displayed screen. A navigation library
+could help if the app needs more complex deep links or nested back stacks. Adding
+one now would require migrating these behaviors without fixing state ownership.
+
 ## Tests and commands
 
 Robolectric Compose tests under `app/src/test/java/.../ui/screens` cover labels,

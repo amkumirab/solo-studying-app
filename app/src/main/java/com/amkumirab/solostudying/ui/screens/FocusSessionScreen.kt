@@ -28,14 +28,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amkumirab.solostudying.focuscycle.FocusCyclePhase
+import com.amkumirab.solostudying.focuscycle.FocusCycleState
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.ui.theme.*
-import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
+import com.amkumirab.solostudying.ui.viewmodel.BattleViewModel
 import java.util.*
 
 @Composable
-fun BattleTab(
-    viewModel: SoloStudyingViewModel,
+internal fun BattleTab(
+    viewModel: BattleViewModel,
+    cycle: FocusCycleState?,
+    onAbandon: () -> Unit,
     onGoToDungeons: () -> Unit
 ) {
     val boss = viewModel.activeBoss
@@ -133,7 +136,7 @@ fun BattleTab(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
-                viewModel.focusCycleState?.takeIf { it.phase == FocusCyclePhase.FOCUS }?.let { cycle ->
+                cycle?.takeIf { it.phase == FocusCyclePhase.FOCUS }?.let { cycle ->
                     Surface(
                         color = RpgGold.copy(alpha = 0.14f),
                         shape = RoundedCornerShape(20.dp),
@@ -532,7 +535,7 @@ fun BattleTab(
                     },
                     onRetreat = {
                         RpgSoundManager.playClickSound()
-                        viewModel.abandonActiveBoss()
+                        onAbandon()
                     },
                 )
             }

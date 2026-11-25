@@ -1,5 +1,8 @@
 package com.amkumirab.solostudying.ui.screens
 
+import android.content.Intent
+import android.provider.Settings
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -22,8 +26,73 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.amkumirab.solostudying.notification.ReminderSettings
+import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.sound.SoundSettings
+import com.amkumirab.solostudying.ui.viewmodel.BattleViewModel
+import com.amkumirab.solostudying.ui.viewmodel.BreakViewModel
+import com.amkumirab.solostudying.ui.viewmodel.SkillViewModel
+import com.amkumirab.solostudying.ui.viewmodel.StatusViewModel
+
+@Composable
+internal fun ProfileDestination(
+    profile: UserProfileEntity?,
+    section: ProfileSection,
+    onSectionSelected: (ProfileSection) -> Unit,
+    status: StatusViewModel,
+    skills: SkillViewModel,
+    battle: BattleViewModel,
+    breaks: BreakViewModel,
+    onReplayTutorial: () -> Unit,
+) {
+    val context = LocalContext.current
+    val history = if (section == ProfileSection.Overview || section == ProfileSection.History) {
+        status.sessions.collectAsStateWithLifecycle().value
+    } else emptyList()
+    val skillList = if (section == ProfileSection.Skills) {
+        skills.skills.collectAsStateWithLifecycle().value
+    } else emptyList()
+    val isSettings = section == ProfileSection.Settings
+    val reminderSettings = if (isSettings) status.reminderSettings.collectAsStateWithLifecycle().value
+        else ReminderSettings()
+    val soundSettings = if (isSettings) RpgSoundManager.settings.collectAsStateWithLifecycle().value
+        else SoundSettings()
+
+    StatsTab(
+        profile = profile,
+        sessions = history,
+        skills = skillList,
+        onCreateSkill = skills::createSkill,
+        onDeleteSkill = skills::deleteSkill,
+        onUpdateSchedule = status::updateScheduleWithWeekdays,
+        onTriggerSimulatedNotification = status::simulateCompanionNotification,
+        reminderSettings = reminderSettings,
+        onReminderSettingsChange = status::updateReminderSettings,
+        soundSettings = soundSettings,
+        onSoundEnabledChange = { enabled ->
+            RpgSoundManager.setSoundEnabled(enabled)
+            if (enabled) RpgSoundManager.playClickSound()
+        },
+        onSoundVolumeChange = RpgSoundManager::setVolume,
+        onPreviewSound = RpgSoundManager::previewSound,
+        onReplayTutorial = onReplayTutorial,
+        breakSuggestionsEnabled = isSettings && breaks.breakSuggestionsEnabled,
+        onBreakSuggestionsEnabledChange = breaks::updateBreakSuggestions,
+        focusShieldEnabled = isSettings && battle.focusShieldEnabled,
+        focusShieldHasAccess = isSettings && battle.focusShieldHasAccess,
+        onFocusShieldEnabledChange = battle::updateFocusShieldEnabled,
+        onRequestFocusShieldAccess = {
+            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        },
+        onUpdateSessionNote = status::updateSessionNote,
+        selectedSection = section,
+        onSectionSelected = onSectionSelected,
+        showSettingsHeader = false,
+    )
+}
 
 @Composable
 fun StatsTab(

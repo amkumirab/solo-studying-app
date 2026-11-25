@@ -1,7 +1,5 @@
 package com.amkumirab.solostudying.ui.screens
 
-import android.content.Intent
-import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -28,16 +26,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.domain.dungeon.calculateDungeonStudyPlan
-import com.amkumirab.solostudying.domain.streak.buildWeeklyStreakSnapshot
 import com.amkumirab.solostudying.quickstart.QuickStartPreferences
 import com.amkumirab.solostudying.quickstart.QuickStartSelection
 import com.amkumirab.solostudying.quickstart.normalizeQuickStartSelection
 import com.amkumirab.solostudying.sound.RpgSoundManager
 import com.amkumirab.solostudying.ui.theme.*
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
-import com.amkumirab.solostudying.widget.TodayWidgetProvider
-import com.amkumirab.solostudying.widget.WeeklyStreakWidgetProvider
-import com.amkumirab.solostudying.widget.buildTodayWidgetSnapshot
 
 enum class Tab(val title: String, val icon: ImageVector) {
     Today("Today", Icons.Default.Today),
@@ -50,17 +44,7 @@ enum class Tab(val title: String, val icon: ImageVector) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(viewModel: SoloStudyingViewModel) {
-    val bosses by viewModel.bosses.collectAsState()
-    val dungeons by viewModel.dungeons.collectAsStateWithLifecycle()
-    val bossSteps by viewModel.bossSteps.collectAsState()
-    val userProfile by viewModel.userProfile.collectAsState()
-    val rewards by viewModel.rewards.collectAsState()
-    val balances by viewModel.balances.collectAsState()
-    val sessions by viewModel.sessions.collectAsState()
-    val skills by viewModel.skills.collectAsState()
-    val dailyQuests by viewModel.dailyQuests.collectAsState()
-    val reminderSettings by viewModel.reminderSettings.collectAsState()
-    val soundSettings by RpgSoundManager.settings.collectAsState()
+    val userProfile by viewModel.statusViewModel.userProfile.collectAsStateWithLifecycle()
 
     var currentTab by rememberSaveable { mutableStateOf(Tab.Today) }
     var studySection by rememberSaveable { mutableStateOf(DungeonSection.Goals) }
@@ -100,29 +84,15 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
         quickStartPreferences.save(normalized)
     }
 
-    LaunchedEffect(userProfile, sessions, dailyQuests, bosses, bossSteps, quickStartSelection) {
-        TodayWidgetProvider.updateAll(
-            context = context,
-            snapshot = buildTodayWidgetSnapshot(
-                profile = userProfile,
-                sessions = sessions,
-                quests = dailyQuests,
-                bosses = bosses,
-                steps = bossSteps,
-                quickStart = quickStartSelection,
-            ),
-        )
-        WeeklyStreakWidgetProvider.updateAll(
-            context = context,
-            snapshot = buildWeeklyStreakSnapshot(
-                profile = userProfile,
-                sessions = sessions,
-            ),
-        )
-    }
+    HomeWidgetUpdates(
+        status = viewModel.statusViewModel,
+        goals = viewModel.dungeonViewModel,
+        quests = viewModel.dailyQuestViewModel,
+        quickStart = quickStartSelection,
+    )
 
     FocusSessionLifecycleEffect(viewModel = viewModel)
-    StrictFocusPinningEffect(activity = activity, viewModel = viewModel)
+    StrictFocusPinningEffect(activity = activity, viewModel = viewModel.battleViewModel)
 
     LaunchedEffect(viewModel.isBattleActive) {
         if (viewModel.isBattleActive && prepBoss == null && prepFreeStudyMins == null) {
@@ -236,80 +206,93 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
 
             tabState.SaveableStateProvider(currentTab.name) {
                 when (currentTab) {
-                    Tab.Today, Tab.Dungeons -> DungeonTab(
-                        selectedSection = if (currentTab == Tab.Today) DungeonSection.Today else studySection,
-                        onSectionSelected = { studySection = it },
-                        bosses = bosses,
-                        bossSteps = bossSteps,
-                        sessions = sessions,
-                        activeBoss = viewModel.activeBoss,
-                        activeStepId = viewModel.activeBossStepId,
-                        isBattleActive = viewModel.isBattleActive,
-                        profile = userProfile,
-                        skills = skills,
-                        viewModel = viewModel,
-                        onCreateBossClicked = {
-                            RpgSoundManager.playClickSound()
-                            showCreateBossDialog = true
-                        },
-                        onFightBoss = { boss ->
-                            RpgSoundManager.playClickSound()
-                            prepBoss = boss
-                            prepStudyStep = null
-                            prepFreeStudyMins = null
-                            prepSelectedSkill = viewModel.selectedSkillToTrain
-                            currentTab = Tab.Battle
-                        },
-                        onConquerRealBoss = { boss ->
-                            RpgSoundManager.playClickSound()
-                            viewModel.conquerRealBossManual(boss)
-                        },
-                        quickStartSelection = quickStartSelection,
-                        onQuickStartSelectionChange = updateQuickStartSelection,
-                        onQuickStart = { selection ->
-                            if (!viewModel.isBattleActive) {
-                                val selectedSkill = skills.firstOrNull {
-                                    it.id == selection.skillId
-                                }
-                                updateQuickStartSelection(selection.copy(skillId = selectedSkill?.id))
-                                viewModel.selectedSkillToTrain = selectedSkill
-                                viewModel.selectAndStartFreeStudy(selection.durationMinutes)
-                                currentTab = Tab.Battle
-                            }
-                        },
-                        onCustomQuickStart = {
-                            RpgSoundManager.playClickSound()
-                            showFreeStudyDialog = true
-                        },
-                        onFocusCycles = {
-                            RpgSoundManager.playClickSound()
-                            showFocusCycleDialog = true
-                        },
-                        onDailyQuestStarted = {
-                            currentTab = Tab.Battle
-                        },
-                        onPlannedSessionStarted = { boss, minutes ->
-                            if (!viewModel.isBattleActive) {
-                                prepBoss = null
+                    Tab.Today, Tab.Dungeons -> {
+                        val isToday = currentTab == Tab.Today
+                        val bosses by viewModel.dungeonViewModel.bosses.collectAsStateWithLifecycle()
+                        val bossSteps by viewModel.dungeonViewModel.bossSteps.collectAsStateWithLifecycle()
+                        val sessions = if (isToday) {
+                            viewModel.statusViewModel.sessions.collectAsStateWithLifecycle().value
+                        } else emptyList()
+                        val skills = if (isToday || studySection == DungeonSection.Focus) {
+                            viewModel.skillViewModel.skills.collectAsStateWithLifecycle().value
+                        } else emptyList()
+                        DungeonTab(
+                            selectedSection = if (currentTab == Tab.Today) DungeonSection.Today else studySection,
+                            onSectionSelected = { studySection = it },
+                            bosses = bosses,
+                            bossSteps = bossSteps,
+                            sessions = sessions,
+                            activeBoss = viewModel.activeBoss,
+                            activeStepId = viewModel.activeBossStepId,
+                            isBattleActive = viewModel.isBattleActive,
+                            profile = userProfile,
+                            skills = skills,
+                            viewModel = viewModel,
+                            onCreateBossClicked = {
+                                RpgSoundManager.playClickSound()
+                                showCreateBossDialog = true
+                            },
+                            onFightBoss = { boss ->
+                                RpgSoundManager.playClickSound()
+                                prepBoss = boss
                                 prepStudyStep = null
                                 prepFreeStudyMins = null
-                                prepSelectedSkill = null
-                                viewModel.selectedSkillToTrain = null
-                                viewModel.selectAndStartBattle(boss, minutes)
+                                prepSelectedSkill = viewModel.selectedSkillToTrain
                                 currentTab = Tab.Battle
-                            }
-                        },
-                        onStartBossStep = { boss, step ->
-                            RpgSoundManager.playClickSound()
-                            prepBoss = boss
-                            prepStudyStep = step
-                            prepFreeStudyMins = null
-                            prepSelectedSkill = viewModel.selectedSkillToTrain
-                            currentTab = Tab.Battle
-                        },
-                    )
+                            },
+                            onConquerRealBoss = { boss ->
+                                RpgSoundManager.playClickSound()
+                                viewModel.conquerRealBossManual(boss)
+                            },
+                            quickStartSelection = quickStartSelection,
+                            onQuickStartSelectionChange = updateQuickStartSelection,
+                            onQuickStart = { selection ->
+                                if (!viewModel.isBattleActive) {
+                                    val selectedSkill = skills.firstOrNull {
+                                        it.id == selection.skillId
+                                    }
+                                    updateQuickStartSelection(selection.copy(skillId = selectedSkill?.id))
+                                    viewModel.selectedSkillToTrain = selectedSkill
+                                    viewModel.selectAndStartFreeStudy(selection.durationMinutes)
+                                    currentTab = Tab.Battle
+                                }
+                            },
+                            onCustomQuickStart = {
+                                RpgSoundManager.playClickSound()
+                                showFreeStudyDialog = true
+                            },
+                            onFocusCycles = {
+                                RpgSoundManager.playClickSound()
+                                showFocusCycleDialog = true
+                            },
+                            onDailyQuestStarted = {
+                                currentTab = Tab.Battle
+                            },
+                            onPlannedSessionStarted = { boss, minutes ->
+                                if (!viewModel.isBattleActive) {
+                                    prepBoss = null
+                                    prepStudyStep = null
+                                    prepFreeStudyMins = null
+                                    prepSelectedSkill = null
+                                    viewModel.selectedSkillToTrain = null
+                                    viewModel.selectAndStartBattle(boss, minutes)
+                                    currentTab = Tab.Battle
+                                }
+                            },
+                            onStartBossStep = { boss, step ->
+                                RpgSoundManager.playClickSound()
+                                prepBoss = boss
+                                prepStudyStep = step
+                                prepFreeStudyMins = null
+                                prepSelectedSkill = viewModel.selectedSkillToTrain
+                                currentTab = Tab.Battle
+                            },
+                        )
+                    }
                     Tab.Battle -> {
                         if (prepBoss != null || prepFreeStudyMins != null) {
+                            val dungeons by viewModel.dungeonViewModel.dungeons.collectAsStateWithLifecycle()
+                            val bosses by viewModel.dungeonViewModel.bosses.collectAsStateWithLifecycle()
                             BeforeTheBattleScreen(
                                 boss = prepBoss,
                                 studyStep = prepStudyStep,
@@ -348,58 +331,27 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                             )
                         } else {
                             BattleTab(
-                                viewModel = viewModel,
+                                viewModel = viewModel.battleViewModel,
+                                cycle = viewModel.focusCycleState,
+                                onAbandon = { viewModel.abandonActiveBoss() },
                                 onGoToDungeons = { currentTab = Tab.Dungeons }
                             )
                         }
                     }
-                    Tab.Shop -> ShopTab(
-                        rewards = rewards,
-                        balances = balances,
+                    Tab.Shop -> RewardShopDestination(
+                        viewModel = viewModel.shopViewModel,
                         goldBalance = userProfile?.gold ?: 0,
-                        onCreateRewardClicked = { showCreateRewardDialog = true },
-                        onPurchaseReward = { reward, callback ->
-                            viewModel.purchaseReward(reward, callback)
-                        },
-                        onUseReward = { rewardName, hours, callback ->
-                            viewModel.useRewardTime(rewardName, hours, callback)
-                        },
-                        onDeleteReward = { reward -> viewModel.deleteReward(reward) }
+                        onCreateReward = { showCreateRewardDialog = true },
                     )
-                    Tab.Stats -> StatsTab(
-                        showSettingsHeader = false,
-                        selectedSection = profileSection,
-                        onSectionSelected = { profileSection = it },
+                    Tab.Stats -> ProfileDestination(
                         profile = userProfile,
-                        sessions = sessions,
-                        skills = skills,
-                        onCreateSkill = { name, hrs, sug -> viewModel.createSkill(name, hrs, sug) },
-                        onDeleteSkill = { skill -> viewModel.deleteSkill(skill) },
-                        onUpdateSchedule = { days, mins, flex, weekdayMins -> viewModel.updateScheduleWithWeekdays(days, mins, flex, weekdayMins) },
-                        onTriggerSimulatedNotification = { action -> viewModel.simulateCompanionNotification(action) },
-                        reminderSettings = reminderSettings,
-                        onReminderSettingsChange = viewModel::updateReminderSettings,
-                        soundSettings = soundSettings,
-                        onSoundEnabledChange = { enabled ->
-                            RpgSoundManager.setSoundEnabled(enabled)
-                            if (enabled) RpgSoundManager.playClickSound()
-                        },
-                        onSoundVolumeChange = RpgSoundManager::setVolume,
-                        onPreviewSound = RpgSoundManager::previewSound,
-                        onReplayTutorial = { viewModel.tutorialViewModel.replayTutorial() },
-                        breakSuggestionsEnabled = viewModel.breakSuggestionsEnabled,
-                        onBreakSuggestionsEnabledChange = viewModel::setBreakSuggestionsEnabled,
-                        focusShieldEnabled = viewModel.focusShieldEnabled,
-                        focusShieldHasAccess = viewModel.focusShieldHasAccess,
-                        onFocusShieldEnabledChange = viewModel::setFocusShieldEnabled,
-                        onRequestFocusShieldAccess = {
-                            context.startActivity(
-                                Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                },
-                            )
-                        },
-                        onUpdateSessionNote = viewModel::updateSessionNote,
+                        section = profileSection,
+                        onSectionSelected = { profileSection = it },
+                        status = viewModel.statusViewModel,
+                        skills = viewModel.skillViewModel,
+                        battle = viewModel.battleViewModel,
+                        breaks = viewModel.breakViewModel,
+                        onReplayTutorial = viewModel.tutorialViewModel::replayTutorial,
                     )
                 }
             }
@@ -425,6 +377,7 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
     }
 
     if (showFocusCycleDialog) {
+        val skills by viewModel.skillViewModel.skills.collectAsStateWithLifecycle()
         FocusCycleSetupDialog(
             skills = skills,
             initialSkillId = quickStartSelection.skillId,
@@ -447,13 +400,14 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
         CreateRewardDialog(
             onDismiss = { showCreateRewardDialog = false },
             onConfirm = { name, desc, cost, type, value ->
-                viewModel.createReward(name, desc, cost, type, value)
+                viewModel.shopViewModel.createReward(name, desc, cost, type, value)
                 showCreateRewardDialog = false
             }
         )
     }
 
     if (showFreeStudyDialog) {
+        val skills by viewModel.skillViewModel.skills.collectAsStateWithLifecycle()
         var durationInput by remember {
             mutableStateOf(quickStartSelection.durationMinutes.toString())
         }

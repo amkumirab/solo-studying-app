@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.amkumirab.solostudying.focus.StrictFocusPinning
+import com.amkumirab.solostudying.ui.viewmodel.BattleViewModel
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
 import com.amkumirab.solostudying.widget.TodayWidgetProvider
 import com.amkumirab.solostudying.widget.WeeklyStreakWidgetProvider
@@ -53,7 +54,7 @@ internal fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
 @Composable
 internal fun StrictFocusPinningEffect(
     activity: Activity?,
-    viewModel: SoloStudyingViewModel,
+    viewModel: BattleViewModel,
 ) {
     val shouldPin = viewModel.strictFocusRequested &&
         viewModel.isBattleActive &&

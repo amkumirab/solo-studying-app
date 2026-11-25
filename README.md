@@ -88,6 +88,11 @@ The timer opens when you start a session. If you leave its screen, a session bar
 lets you return without ending your study. Existing focus-navigation warnings remain in place.
 Your data stays on your device. See [the layout contract](docs/APP_ORGANIZATION.md).
 
+In **Study → Goals**, edit an estimate without losing time already studied.
+Use **Open Second Gate** on a completed goal to add extra study inside its card,
+or **Deleted goals** to restore a goal with its original progress.
+See [goal management](docs/DUNGEON_MANAGEMENT.md).
+
 In **Study → Plan**, open the weekly planner and choose **Subjects** to manage
 course details without renaming or deleting the linked goals. Edit answers or
 confirm **Rebuild remaining** to apply priority and deadline changes to a schedule.

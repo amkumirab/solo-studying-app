@@ -19,7 +19,7 @@ data class DungeonEntity(
     @ColumnInfo(defaultValue = "127") val studyWeekdaysMask: Int = 127,
 )
 
-@Entity(tableName = "bosses")
+@Entity(tableName = "bosses", indices = [Index(value = ["secondGateOfId"], unique = true)])
 data class BossEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
@@ -31,7 +31,9 @@ data class BossEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val deadlineDate: String? = null,
     val dungeonName: String = "Main Realm", // Category folder like Semester 5, Java Course, Life Goals
-    val isRealBoss: Boolean = false // Real-life goals (exams, deliverables) requiring manual confirmation
+    val isRealBoss: Boolean = false, // Real-life goals requiring manual confirmation
+    val archivedAtMillis: Long? = null,
+    val secondGateOfId: Int? = null,
 )
 
 @Entity(

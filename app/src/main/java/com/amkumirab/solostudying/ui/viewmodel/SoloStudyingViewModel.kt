@@ -6,6 +6,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
 import com.amkumirab.solostudying.domain.session.SessionSummary
@@ -503,33 +506,38 @@ class SoloStudyingViewModelFactory(
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SoloStudyingViewModel::class.java)) {
-            val statusVM = StatusViewModel(repository, context)
-            val dungeonVM = DungeonViewModel(repository)
-            val focusCycleVM = FocusCycleViewModel(context)
-            val focusProfileVM = FocusProfileViewModel(context)
-            val battleVM = BattleViewModel(
-                repository = repository,
-                context = context,
-                onSessionFinished = focusCycleVM::onSessionFinished,
-            )
-            val skillVM = SkillViewModel(repository)
-            val shopVM = ShopViewModel(repository)
-            val tutorialVM = TutorialViewModel(repository, context)
-            val breakVM = BreakViewModel(context, onBreakFinished = focusCycleVM::finishBreak)
-            val dailyQuestVM = DailyQuestViewModel(repository)
+            val appContext = context.applicationContext
+            val featureStore = ViewModelStore()
+            val focusCycle = FocusCycleViewModel(appContext)
+            val features = ViewModelProvider.create(featureStore, viewModelFactory {
+                initializer { StatusViewModel(repository, appContext) }
+                initializer { DungeonViewModel(repository) }
+                initializer { focusCycle }
+                initializer { FocusProfileViewModel(appContext) }
+                initializer { BattleViewModel(repository, appContext, onSessionFinished = focusCycle::onSessionFinished) }
+                initializer { SkillViewModel(repository) }
+                initializer { ShopViewModel(repository) }
+                initializer { TutorialViewModel(repository, appContext) }
+                initializer { BreakViewModel(appContext, onBreakFinished = focusCycle::finishBreak) }
+                initializer { DailyQuestViewModel(repository) }
+            })
+            val ownedCycle = features[FocusCycleViewModel::class]
             @Suppress("UNCHECKED_CAST")
             return SoloStudyingViewModel(
-                statusVM,
-                dungeonVM,
-                battleVM,
-                skillVM,
-                shopVM,
-                tutorialVM,
-                breakVM,
-                dailyQuestVM,
-                focusCycleVM,
-                focusProfileVM,
-            ) as T
+                statusViewModel = features[StatusViewModel::class],
+                dungeonViewModel = features[DungeonViewModel::class],
+                battleViewModel = features[BattleViewModel::class],
+                skillViewModel = features[SkillViewModel::class],
+                shopViewModel = features[ShopViewModel::class],
+                tutorialViewModel = features[TutorialViewModel::class],
+                breakViewModel = features[BreakViewModel::class],
+                dailyQuestViewModel = features[DailyQuestViewModel::class],
+                focusCycleViewModel = ownedCycle,
+                focusProfileViewModel = features[FocusProfileViewModel::class],
+            ).also { app ->
+                // The Activity retains the parent across recreation; clear children only on teardown.
+                app.addCloseable(featureStore::clear)
+            } as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

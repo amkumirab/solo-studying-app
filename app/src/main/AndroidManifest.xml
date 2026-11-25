@@ -21,7 +21,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.SoloStudying">
+            android:theme="@style/Theme.SoloStudying.Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

@@ -4,6 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.graphics.drawable.AdaptiveIconDrawable
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.VectorDrawable
 import androidx.test.core.app.ApplicationProvider
 import com.amkumirab.solostudying.widget.TodayWidgetProvider
 import com.amkumirab.solostudying.widget.WeeklyStreakWidgetProvider
@@ -24,6 +27,31 @@ class AppResourcesTest {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val appName = context.getString(R.string.app_name)
     assertEquals("Solo Studying", appName)
+  }
+
+  @Test
+  fun `launcher icons use separate color and themed artwork`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    assertEquals(R.mipmap.ic_launcher, context.applicationInfo.icon)
+    for (icon in listOf(R.mipmap.ic_launcher, R.mipmap.ic_launcher_round)) {
+      val drawable = context.getDrawable(icon) as AdaptiveIconDrawable
+      assertTrue(drawable.foreground is BitmapDrawable)
+      assertTrue(drawable.monochrome is VectorDrawable)
+    }
+  }
+
+  @Test
+  fun `the launcher activity resolves the branded native splash`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val activity = context.packageManager.getActivityInfo(ComponentName(context, MainActivity::class.java), 0)
+    assertEquals(R.style.Theme_SoloStudying_Launcher, activity.theme)
+    val theme = context.resources.newTheme().apply { applyStyle(activity.theme, true) }
+    val splash = theme.obtainStyledAttributes(intArrayOf(android.R.attr.windowSplashScreenBackground))
+    try {
+      assertEquals(context.getColor(R.color.brand_navy), splash.getColor(0, 0))
+    } finally {
+      splash.recycle()
+    }
   }
 
   @Test

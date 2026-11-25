@@ -1,5 +1,7 @@
 # Solo Studying
 
+<img src="branding/readme-logo.png" width="128" height="128" alt="Solo Studying logo: an open book beneath a blue dungeon gateway and three rising arrows" />
+
 Solo Studying is an offline Android study timer that turns learning goals into
 RPG-style campaigns. A study session damages a selected boss, earns experience
 and gold, and records progress against the skill being trained.

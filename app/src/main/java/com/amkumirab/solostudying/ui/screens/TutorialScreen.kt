@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -35,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
+import com.amkumirab.solostudying.R
 import com.amkumirab.solostudying.ui.theme.*
 import com.amkumirab.solostudying.ui.viewmodel.TutorialViewModel
 import com.amkumirab.solostudying.ui.viewmodel.TutorialUiState
@@ -342,15 +345,10 @@ fun StepAwakening(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Cyclone,
-                contentDescription = "Awakening Sigil",
-                tint = NeonBlueAccent,
-                modifier = Modifier
-                    .size(80.dp)
-                    .graphicsLayer {
-                        rotationZ = (System.currentTimeMillis() / 20 % 360).toFloat()
-                    }
+            Image(
+                painter = painterResource(R.drawable.brand_onboarding),
+                contentDescription = stringResource(R.string.app_logo_description),
+                modifier = Modifier.size(80.dp)
             )
         }
 

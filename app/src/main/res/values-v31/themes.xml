@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SoloStudying.Launcher" parent="Theme.SoloStudying">
+        <item name="android:windowSplashScreenBackground">@color/brand_navy</item>
+    </style>
+</resources>

@@ -14,11 +14,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.amkumirab.solostudying.R
 import com.amkumirab.solostudying.ui.theme.*
 
 @Composable
@@ -82,10 +85,9 @@ fun OnboardingScreen(
             when (currentStep) {
                 0 -> {
                     // STEP 0: Hunter Profile & Class
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Hunter Icon",
-                        tint = RpgGold,
+                    Image(
+                        painter = painterResource(R.drawable.brand_onboarding),
+                        contentDescription = stringResource(R.string.app_logo_description),
                         modifier = Modifier.size(64.dp)
                     )
 

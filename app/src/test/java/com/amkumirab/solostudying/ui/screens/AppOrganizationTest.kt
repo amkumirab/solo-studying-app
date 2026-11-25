@@ -25,6 +25,18 @@ import org.robolectric.annotation.Config
 class AppOrganizationTest {
     @get:Rule val rule = createComposeRule()
 
+    @Test fun `profile onboarding displays the approved logo in its existing slot`() {
+        rule.setContent { SoloStudyingTheme { OnboardingScreen { _, _, _, _, _, _, _, _ -> } } }
+        rule.onNodeWithContentDescription("Solo Studying logo").assertIsDisplayed()
+            .assertWidthIsEqualTo(64.dp).assertHeightIsEqualTo(64.dp)
+    }
+
+    @Test fun `tutorial welcome displays the approved logo in its existing slot`() {
+        rule.setContent { SoloStudyingTheme { StepAwakening("", {}) } }
+        rule.onNodeWithContentDescription("Solo Studying logo").assertIsDisplayed()
+            .assertWidthIsEqualTo(80.dp).assertHeightIsEqualTo(80.dp)
+    }
+
     @Test fun `bottom destinations select independently and session return reports paused state`() {
         var selected by mutableStateOf(Tab.Today)
         var paused by mutableStateOf(false)

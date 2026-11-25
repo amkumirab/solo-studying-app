@@ -2,4 +2,5 @@
 <resources>
 
     <style name="Theme.SoloStudying" parent="android:Theme.DeviceDefault.NoActionBar" />
+    <style name="Theme.SoloStudying.Launcher" parent="Theme.SoloStudying" />
 </resources>

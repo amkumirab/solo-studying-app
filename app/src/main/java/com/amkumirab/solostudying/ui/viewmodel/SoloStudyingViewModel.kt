@@ -303,10 +303,6 @@ class SoloStudyingViewModel(
         )
     }
 
-    fun deleteBoss(boss: BossEntity) {
-        dungeonViewModel.deleteBoss(boss)
-    }
-
     fun createBossStep(bossId: Int, title: String, estimatedMinutes: Int) {
         dungeonViewModel.createBossStep(bossId, title, estimatedMinutes)
     }

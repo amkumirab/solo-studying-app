@@ -6,6 +6,8 @@ import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.*
 import com.amkumirab.solostudying.domain.session.SessionNotePolicy
 import com.amkumirab.solostudying.domain.dungeon.DungeonStudyPlanInput
+import com.amkumirab.solostudying.domain.dungeon.DungeonGoalEdit
+import com.amkumirab.solostudying.domain.dungeon.MAX_GOAL_MINUTES
 import com.amkumirab.solostudying.domain.dungeon.isValid
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
@@ -21,6 +23,7 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
     private val dao: SoloStudyingDao = database.soloStudyingDao()
 
     val allBosses: Flow<List<BossEntity>> = dao.getAllBosses()
+    val archivedBosses: Flow<List<BossEntity>> = dao.getArchivedBosses()
     val allBossSteps: Flow<List<BossStepEntity>> = dao.getAllBossSteps()
     val allDungeons: Flow<List<DungeonEntity>> = dao.getAllDungeons()
     val userProfile: Flow<UserProfileEntity?> = dao.getUserProfile()
@@ -43,9 +46,44 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
         dao.updateBoss(boss)
     }
 
-    suspend fun deleteBoss(boss: BossEntity) {
-        dao.deleteBoss(boss)
-    }
+    suspend fun updateBossProgress(boss: BossEntity) =
+        dao.updateBossProgress(boss.id, boss.timeSpentSeconds, boss.isCompleted)
+
+    suspend fun deleteBoss(boss: BossEntity): Boolean =
+        dao.archiveBoss(boss.id, System.currentTimeMillis()) == 1
+
+    suspend fun restoreBoss(id: Int): Boolean = dao.restoreBoss(id) == 1
+
+    suspend fun editBoss(id: Int, input: DungeonGoalEdit): Boolean =
+        database.withTransaction {
+            val current = dao.getBossById(id) ?: return@withTransaction false
+            if (!input.isValidFor(current)) return@withTransaction false
+            dao.updateBoss(current.copy(
+                name = input.name.trim(),
+                difficulty = input.difficulty,
+                requiredMinutes = input.minutes,
+                deadlineDate = input.deadline?.toString(),
+            ))
+            true
+        }
+
+    suspend fun openSecondGate(parentId: Int, minutes: Int): Boolean =
+        database.withTransaction {
+            if (minutes !in 1..MAX_GOAL_MINUTES) return@withTransaction false
+            val parent = dao.getBossById(parentId) ?: return@withTransaction false
+            if (!parent.isCompleted || parent.secondGateOfId != null ||
+                dao.getSecondGate(parentId) != null
+            ) return@withTransaction false
+            dao.insertBoss(BossEntity(
+                name = "${parent.name} · Second Gate",
+                difficulty = parent.difficulty,
+                requiredMinutes = minutes,
+                dungeonName = parent.dungeonName,
+                deadlineDate = parent.deadlineDate,
+                secondGateOfId = parentId,
+            ))
+            true
+        }
 
     suspend fun getBossStepById(id: Int): BossStepEntity? {
         return dao.getBossStepById(id)

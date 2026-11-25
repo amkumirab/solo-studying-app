@@ -227,29 +227,33 @@ class BattleViewModel(
         }
     }
 
+    internal fun hasActiveOrRecoveringSession(): Boolean =
+        isBattleActive || focusSessionStore.read()?.isActive == true
+
     fun selectAndStartBattle(boss: BossEntity, sessionMinutes: Int? = null) {
         require(sessionMinutes == null || sessionMinutes in 1..480) { "Session duration must be between 1 and 480 minutes" }
         viewModelScope.launch {
+            var currentBoss = repository.getBossById(boss.id) ?: return@launch
             if (isBattleActive) {
                 suspendCurrentSession(applyHeavyPenalty = false)
+                currentBoss = repository.getBossById(boss.id) ?: return@launch
             }
             activeDailyQuestId = null
             activeDailyQuestTitle = null
             activeBossStepId = null
             activeBossStepTitle = null
-            val currentBoss = repository.getBossById(boss.id) ?: boss
             activeBoss = currentBoss
             isTimedBossSession = sessionMinutes != null
             if (sessionMinutes != null) {
                 initialBossTimeSpent = currentBoss.timeSpentSeconds
                 battleTimeLeftSeconds = goalSessionSeconds(currentBoss, sessionMinutes)
-            } else if (boss.isCompleted) {
+            } else if (currentBoss.isCompleted) {
                 initialBossTimeSpent = 0L
-                battleTimeLeftSeconds = boss.requiredMinutes * 60L
+                battleTimeLeftSeconds = currentBoss.requiredMinutes * 60L
             } else {
-                initialBossTimeSpent = boss.timeSpentSeconds
-                val totalRequiredSeconds = boss.requiredMinutes * 60L
-                battleTimeLeftSeconds = maxOf(0L, totalRequiredSeconds - boss.timeSpentSeconds)
+                initialBossTimeSpent = currentBoss.timeSpentSeconds
+                val totalRequiredSeconds = currentBoss.requiredMinutes * 60L
+                battleTimeLeftSeconds = maxOf(0L, totalRequiredSeconds - currentBoss.timeSpentSeconds)
             }
             battleTimeSpentSeconds = 0L
             isFreeStudyActive = false
@@ -264,16 +268,18 @@ class BattleViewModel(
         require(step.bossId == boss.id) { "Study step does not belong to this goal" }
         require(step.estimatedMinutes in 1..480) { "Step duration must be between 1 and 480 minutes" }
         viewModelScope.launch {
+            var currentBoss = repository.getBossById(boss.id) ?: return@launch
             if (isBattleActive) {
                 suspendCurrentSession(applyHeavyPenalty = false)
+                currentBoss = repository.getBossById(boss.id) ?: return@launch
             }
             activeDailyQuestId = null
             activeDailyQuestTitle = null
             activeBossStepId = step.id
             isTimedBossSession = false
             activeBossStepTitle = step.title
-            activeBoss = boss
-            initialBossTimeSpent = boss.timeSpentSeconds
+            activeBoss = currentBoss
+            initialBossTimeSpent = currentBoss.timeSpentSeconds
             battleTimeLeftSeconds = step.estimatedMinutes * 60L
             battleTimeSpentSeconds = 0L
             isFreeStudyActive = false
@@ -478,7 +484,7 @@ class BattleViewModel(
             timeSpentSeconds = initialBossTimeSpent + battleTimeSpentSeconds
         )
         activeBoss = updatedBoss
-        repository.updateBoss(updatedBoss)
+        repository.updateBossProgress(updatedBoss)
     }
 
     fun completeActiveBoss() {
@@ -520,7 +526,7 @@ class BattleViewModel(
                 repository.runInTransaction {
                     if (!completedFreeStudy && boss != null) {
                         val updatedBossSeconds = initialBossTimeSpent + finalDuration
-                        updateBoss(
+                        updateBossProgress(
                             boss.copy(
                                 timeSpentSeconds = updatedBossSeconds,
                                 isCompleted = boss.isCompleted ||
@@ -744,7 +750,7 @@ class BattleViewModel(
                     )
                 }
             } else if (boss != null) {
-                updateBoss(
+                updateBossProgress(
                     boss.copy(timeSpentSeconds = initialBossTimeSpent + finalSpent),
                 )
 
@@ -995,10 +1001,10 @@ class BattleViewModel(
             var pendingSummary: SessionSummary? = null
             val conquered = repository.runInTransaction {
                 val currentBoss = getBossById(boss.id) ?: return@runInTransaction false
-                if (currentBoss.isCompleted) return@runInTransaction false
+                if (currentBoss.isCompleted || currentBoss.secondGateOfId != null) return@runInTransaction false
                 val baseReward = SessionRewardCalculator.manualBoss(currentBoss.difficulty)
                 val durationSeconds = currentBoss.requiredMinutes * 60L
-                updateBoss(
+                updateBossProgress(
                     currentBoss.copy(
                         isCompleted = true,
                         timeSpentSeconds = durationSeconds,

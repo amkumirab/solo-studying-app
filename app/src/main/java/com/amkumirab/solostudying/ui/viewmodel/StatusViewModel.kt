@@ -9,14 +9,19 @@ import androidx.lifecycle.viewModelScope
 import com.amkumirab.solostudying.data.entity.StudySessionEntity
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.domain.session.SessionReadPeriod
 import com.amkumirab.solostudying.notification.NotificationHelper
 import com.amkumirab.solostudying.notification.NotificationReceiver
 import com.amkumirab.solostudying.notification.ReminderSettings
 import com.amkumirab.solostudying.notification.ReminderSettingsStore
 import com.amkumirab.solostudying.sound.RpgSoundManager
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -25,6 +30,11 @@ import java.time.temporal.ChronoUnit
 internal data class MissedDayUpdate(
     val profile: UserProfileEntity,
     val message: String,
+)
+
+internal data class WeekSessionHistory(
+    val period: SessionReadPeriod,
+    val sessions: List<StudySessionEntity>,
 )
 
 internal fun calculateMissedDayUpdate(
@@ -83,6 +93,18 @@ class StatusViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    private val sessionPeriod = MutableStateFlow(SessionReadPeriod.current())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    internal val weekSessions: StateFlow<WeekSessionHistory> = sessionPeriod.flatMapLatest { period ->
+        repository.sessionsBetween(period.weekMillis, period.nextWeekMillis)
+            .map { sessions -> WeekSessionHistory(period, sessions) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeekSessionHistory(sessionPeriod.value, emptyList()))
+
+    internal fun refreshSessionPeriod() {
+        sessionPeriod.value = SessionReadPeriod.current()
+    }
 
     val reminderSettings: StateFlow<ReminderSettings> = reminderSettingsStore.settings
 

@@ -124,6 +124,12 @@ interface SoloStudyingDao {
     @Query("SELECT * FROM study_sessions ORDER BY timestamp DESC")
     fun getAllSessions(): Flow<List<StudySessionEntity>>
 
+    @Query(
+        "SELECT * FROM study_sessions WHERE timestamp >= :startMillis AND timestamp < :endMillis " +
+            "ORDER BY timestamp DESC",
+    )
+    fun getSessionsBetween(startMillis: Long, endMillis: Long): Flow<List<StudySessionEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: StudySessionEntity): Long
 

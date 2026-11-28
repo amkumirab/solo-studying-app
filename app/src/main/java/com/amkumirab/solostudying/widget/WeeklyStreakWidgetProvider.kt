@@ -10,6 +10,7 @@ import android.widget.RemoteViews
 import com.amkumirab.solostudying.MainActivity
 import com.amkumirab.solostudying.R
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
+import com.amkumirab.solostudying.domain.session.SessionReadPeriod
 import com.amkumirab.solostudying.domain.streak.WeeklyStreakDay
 import com.amkumirab.solostudying.domain.streak.WeeklyStreakDayState
 import com.amkumirab.solostudying.domain.streak.WeeklyStreakSnapshot
@@ -139,9 +140,12 @@ class WeeklyStreakWidgetProvider : AppWidgetProvider() {
 
         private suspend fun loadSnapshot(context: Context): WeeklyStreakSnapshot {
             val dao = SoloStudyingDatabase.getDatabase(context).soloStudyingDao()
+            val period = SessionReadPeriod.current()
             return buildWeeklyStreakSnapshot(
                 profile = dao.getProfileSync(),
-                sessions = dao.getAllSessions().first(),
+                sessions = dao.getSessionsBetween(period.weekMillis, period.nextWeekMillis).first(),
+                today = period.today,
+                zoneId = period.zoneId,
             )
         }
 

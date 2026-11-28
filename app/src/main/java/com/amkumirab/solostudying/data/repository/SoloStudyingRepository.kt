@@ -10,6 +10,7 @@ import com.amkumirab.solostudying.domain.dungeon.DungeonGoalEdit
 import com.amkumirab.solostudying.domain.dungeon.MAX_GOAL_MINUTES
 import com.amkumirab.solostudying.domain.dungeon.isValid
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.LocalDate
 
 enum class RewardPurchaseStatus {
@@ -33,6 +34,9 @@ class SoloStudyingRepository(private val database: SoloStudyingDatabase) {
     val allSkills: Flow<List<SkillEntity>> = dao.getAllSkills()
     val allDailyQuests: Flow<List<DailyQuestEntity>> = dao.getAllDailyQuests()
     val allRecurringQuests: Flow<List<RecurringQuestEntity>> = dao.getAllRecurringQuests()
+
+    fun sessionsBetween(startMillis: Long, endMillis: Long): Flow<List<StudySessionEntity>> =
+        dao.getSessionsBetween(startMillis, endMillis).distinctUntilChanged()
 
     suspend fun getBossById(id: Int): BossEntity? {
         return dao.getBossById(id)

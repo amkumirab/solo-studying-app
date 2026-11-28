@@ -12,14 +12,13 @@ import com.amkumirab.solostudying.MainActivity
 import com.amkumirab.solostudying.R
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.domain.quest.buildRecurringQuestOccurrence
-import com.amkumirab.solostudying.domain.quest.dailyQuestDateKey
 import com.amkumirab.solostudying.domain.quest.selectVisibleDailyQuests
+import com.amkumirab.solostudying.domain.session.SessionReadPeriod
 import com.amkumirab.solostudying.quickstart.QuickStartPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 class TodayWidgetProvider : AppWidgetProvider() {
 
@@ -121,7 +120,8 @@ class TodayWidgetProvider : AppWidgetProvider() {
 
         private suspend fun loadSnapshot(context: Context): TodayWidgetSnapshot {
             val dao = SoloStudyingDatabase.getDatabase(context).soloStudyingDao()
-            val today = LocalDate.now()
+            val period = SessionReadPeriod.current()
+            val today = period.today
             dao.getActiveRecurringQuests().forEach { recurringQuest ->
                 buildRecurringQuestOccurrence(
                     quest = recurringQuest,
@@ -133,16 +133,17 @@ class TodayWidgetProvider : AppWidgetProvider() {
             }
             val visibleQuests = selectVisibleDailyQuests(
                 quests = dao.getAllDailyQuests().first(),
-                today = dailyQuestDateKey(),
+                today = today.toString(),
             )
             return buildTodayWidgetSnapshot(
                 profile = dao.getProfileSync(),
-                sessions = dao.getAllSessions().first(),
+                sessions = dao.getSessionsBetween(period.todayMillis, period.tomorrowMillis).first(),
                 quests = visibleQuests,
                 bosses = dao.getAllBosses().first(),
                 steps = dao.getAllBossSteps().first(),
                 quickStart = QuickStartPreferences(context).read(),
                 today = today,
+                zoneId = period.zoneId,
             )
         }
     }

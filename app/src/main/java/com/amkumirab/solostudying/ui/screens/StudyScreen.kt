@@ -47,7 +47,6 @@ internal enum class DungeonSection(val title: String, val subtitle: String, val 
 internal fun DungeonTab(
     bosses: List<BossEntity>,
     bossSteps: List<BossStepEntity>,
-    sessions: List<StudySessionEntity>,
     activeBoss: BossEntity?,
     activeStepId: Int?,
     isBattleActive: Boolean,
@@ -88,16 +87,20 @@ internal fun DungeonTab(
         runCatching { LocalDate.parse(viewModel.dailyQuestViewModel.todayDate) }
             .getOrDefault(LocalDate.now())
     }
-    val todayPlan = if (isToday) remember(profile, sessions, dailyQuests, bosses, bossSteps, dashboardDate) {
-        profile?.let {
-            buildTodayPlan(
-                profile = it,
-                sessions = sessions,
-                quests = dailyQuests,
-                bosses = bosses,
-                steps = bossSteps,
-                today = dashboardDate,
-            )
+    val todayPlan = if (isToday) {
+        val history by viewModel.statusViewModel.weekSessions.collectAsStateWithLifecycle()
+        remember(profile, history, dailyQuests, bosses, bossSteps) {
+            profile?.let {
+                buildTodayPlan(
+                    profile = it,
+                    sessions = history.sessions,
+                    quests = dailyQuests,
+                    bosses = bosses,
+                    steps = bossSteps,
+                    today = history.period.today,
+                    zoneId = history.period.zoneId,
+                )
+            }
         }
     } else null
 

@@ -210,9 +210,6 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                         val isToday = currentTab == Tab.Today
                         val bosses by viewModel.dungeonViewModel.bosses.collectAsStateWithLifecycle()
                         val bossSteps by viewModel.dungeonViewModel.bossSteps.collectAsStateWithLifecycle()
-                        val sessions = if (isToday) {
-                            viewModel.statusViewModel.sessions.collectAsStateWithLifecycle().value
-                        } else emptyList()
                         val skills = if (isToday || studySection == DungeonSection.Focus) {
                             viewModel.skillViewModel.skills.collectAsStateWithLifecycle().value
                         } else emptyList()
@@ -221,7 +218,6 @@ fun MainAppScreen(viewModel: SoloStudyingViewModel) {
                             onSectionSelected = { studySection = it },
                             bosses = bosses,
                             bossSteps = bossSteps,
-                            sessions = sessions,
                             activeBoss = viewModel.activeBoss,
                             activeStepId = viewModel.activeBossStepId,
                             isBattleActive = viewModel.isBattleActive,

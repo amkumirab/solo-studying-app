@@ -40,6 +40,7 @@ internal fun FocusSessionLifecycleEffect(viewModel: SoloStudyingViewModel) {
                 viewModel.refreshFocusShield()
                 viewModel.syncBreakTime()
                 viewModel.refreshDailyQuests()
+                viewModel.statusViewModel.refreshSessionPeriod()
                 TodayWidgetProvider.requestUpdate(context)
                 WeeklyStreakWidgetProvider.requestUpdate(context)
             }

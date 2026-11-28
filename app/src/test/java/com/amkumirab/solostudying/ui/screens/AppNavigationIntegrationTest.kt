@@ -15,9 +15,11 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import com.amkumirab.solostudying.data.entity.BossEntity
 import com.amkumirab.solostudying.data.entity.RewardItemEntity
+import com.amkumirab.solostudying.data.entity.StudySessionEntity
 import com.amkumirab.solostudying.data.database.SoloStudyingDatabase
 import com.amkumirab.solostudying.data.entity.UserProfileEntity
 import com.amkumirab.solostudying.data.repository.SoloStudyingRepository
+import com.amkumirab.solostudying.domain.session.SessionReadPeriod
 import com.amkumirab.solostudying.ui.theme.SoloStudyingTheme
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModel
 import com.amkumirab.solostudying.ui.viewmodel.SoloStudyingViewModelFactory
@@ -87,6 +89,37 @@ class AppNavigationIntegrationTest {
         rule.onNodeWithTag("profile_overview").assertIsSelected()
         rule.onNodeWithTag("bottom_nav_today").performClick()
         rule.onNodeWithTag("daily_quest_board").assertExists()
+    }
+
+    @Test fun `today updates after a session while profile still shows older history`() {
+        val period = SessionReadPeriod.current()
+        val dao = database.soloStudyingDao()
+        val oldSession = StudySessionEntity(
+            id = 31, bossId = null, bossName = "Earlier study", durationSeconds = 1800,
+            xpEarned = 30, goldEarned = 15, timestamp = period.weekMillis - 1, wasCompleted = true,
+            note = "Keep this note",
+        )
+        runBlocking {
+            val profile = checkNotNull(dao.getProfileSync())
+            dao.insertOrUpdateProfile(profile.copy(scheduleDays = "Mon,Tue,Wed,Thu,Fri,Sat,Sun"))
+            dao.insertSession(oldSession)
+        }
+        rule.setContent { SoloStudyingTheme { MainAppScreen(viewModel) } }
+        fun waitForProgress(text: String) =
+            rule.waitUntil(10_000) { rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+        waitForProgress("0 of 45 minutes · 45 minutes remaining")
+        runBlocking {
+            dao.insertSession(oldSession.copy(
+                id = 32, timestamp = period.todayMillis, durationSeconds = 900,
+                bossName = "Current study", note = null,
+            ))
+        }
+        waitForProgress("15 of 45 minutes · 30 minutes remaining")
+
+        rule.onNodeWithTag("bottom_nav_stats").performClick()
+        rule.onNodeWithTag("profile_history").performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithTag("session_history_31").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Keep this note").assertExists()
     }
 
     @Test fun `rewards refresh after a change made while another tab is visible`() {
